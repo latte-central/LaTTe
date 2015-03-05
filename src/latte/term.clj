@@ -1,5 +1,5 @@
 
-(ns latte.termrepr)
+(ns latte.term)
 
 ;;{
 ;;
@@ -16,8 +16,11 @@
 ;;   - $\forall x :: \tau.\tau'$ (product)
 ;;   - $e$ :: $\tau$             (annotated term)
 ;;
-;; Each syntactic constructor is implemented as a separate class.
+;; Each syntactic constructor is implemented as a separate record.
 ;;
 ;;}
 
 
+(defrecord univ [^int level])
+
+ 
