@@ -1,25 +1,46 @@
 
+;;{
+
+;; # Miscellaneous utilities
+
+;; The `latte.utils` namespace provides a few
+;; programming utilies for the rest of the project.
+
+;;}
+
 (ns latte.utils)
 
-(def ^:dynamic *examples-enabled* true)
+;;{
 
+;; ## Inline examples
 
-;; (example (+ 2 (* 3 5)) => (+ 4 13))
+;; The `example` macro is the Lisp utility I use to
+;; support my litterate-programming style, providing
+;; inline examples that may also be run as tests, if
+;; the `*examples-enabled*` dynamic variable is rebound
+;; to a truthy value (most likely `true`).
 
-(let [res (+ 2 (* 3 5))
-      val (+ 4 13)]
-  (if (= res val)
-    val
-    (throw ex-info "Example failed" {:expr '(+ 2 (* 3 5))
-                                     :val '17 })))
+;;}
 
-;(let [res (+ 2 (* 3 5))
-;      val (+ 4 12)]
-;  (if (= res val)
-;    val
-;    (throw (ex-info "Example failed" {:expr '(+ 2 (* 3 5))
-;                                      :val '17 }))))
+(def ^:dynamic *examples-enabled*)
 
+(comment
+  (example (+ 2 (* 3 5)) => (+ 4 13))
+
+  ;; should yield:
+
+  (let [res (+ 2 (* 3 5))
+        val (+ 4 13)]
+    (if (= res val)
+      val
+      (throw ex-info "Example failed" {:expr '(+ 2 (* 3 5))
+                                       :val '17 })))
+  )
+
+(comment
+
+  ;;  a few macro reminders
+  
 (defmacro myquote
   [expr]
   `(quote ~expr))
@@ -37,6 +58,8 @@
 
 (macroexpand '(double-eval-once (+ 3 4)))
 
+)
+
 (defmacro example
   "Show as an example the evaluation of `expr` as `val`.
   Throws an exception is `*examples-enabled*`"
@@ -46,15 +69,12 @@
     (throw (ex-info "Missing '=>' in example" {:expr `(quote ~expr)
                                                :sep `(quote ~sep)
                                                :val `(quote ~val)})))
-  (if *examples-enabled*
+  (when *examples-enabled*
     `(let [expr# ~expr
            val# ~val]
        (if (~equiv? expr# val#)
          val#
          (throw (ex-info "Example failed" {:expr ~`(quote ~expr)
-                                           :val  ~`(quote ~val) }))))
-    nil))
-         
-(def ^:dynamic *examples-enabled* true)
+                                           :val  ~`(quote ~val) }))))))
 
-(macroexpand '(example (+ 2 12) => 13))
+;;  (macroexpand-1 '(example (+ 2 12) => 13))

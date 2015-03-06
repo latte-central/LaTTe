@@ -1,11 +1,23 @@
 
-(ns latte.term)
-
 ;;{
 ;;
 ;; # LaTTe : Representation of lambda-terms
 ;;
-;; The syntax of the CommonTypes lambda-terms is as follows:
+;; The `latte.term` namespace implements the
+;; basic terms of type theory.
+;;
+;;}
+
+(ns latte.term
+  (:require [latte.utils :refer [example]]))
+
+(def ^:dynamic *examples-enabled* true) ;; `false` to deactivate examples
+            
+;;{
+;;
+;; ## Lambda-terms
+;;
+;; The syntax of the lambda-terms is as follows:
 ;;
 ;; term $\kappa,~\tau,~e$ ::= 
 ;;
@@ -21,6 +33,20 @@
 ;;}
 
 
-(defrecord univ [^int level])
+;;{
 
- 
+;; ### Universes
+
+;; A *universe* is a set of types. The basic types are in the universe
+;;  of level 0 and each universe of level $n$ sits in a universe of level $n+1$.
+
+;;}
+
+
+(defrecord Univ [^int level])
+
+(defn mk-univ [level]
+  (->Univ level))
+
+(example (:level (mk-univ 2)) => 2)
+
