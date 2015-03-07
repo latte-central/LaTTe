@@ -8,7 +8,9 @@
 
 ;;}
 
-(ns latte.utils)
+(ns latte.utils
+  (:import (clojure.lang Var
+                         Symbol)))
 
 ;;{
 
@@ -22,7 +24,10 @@
 
 ;;}
 
-(def ^:dynamic *examples-enabled*)
+
+;(Var intern *ns* (Symbol intern "*examples-enabled*") Boolean True)
+
+;(def examples-enabled-var (Var intern (Symbol intern (*ns* '*examples-enabled* nil))))
 
 (comment
   (example (+ 2 (* 3 5)) => (+ 4 13))
@@ -69,7 +74,7 @@
     (throw (ex-info "Missing '=>' in example" {:expr `(quote ~expr)
                                                :sep `(quote ~sep)
                                                :val `(quote ~val)})))
-  (when *examples-enabled*
+  (when (find-var (symbol (str *ns*) "*examples-enabled*"))
     `(let [expr# ~expr
            val# ~val]
        (if (~equiv? expr# val#)

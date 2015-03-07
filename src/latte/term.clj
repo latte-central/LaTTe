@@ -11,7 +11,7 @@
 (ns latte.term
   (:require [latte.utils :refer [example]]))
 
-(def ^:dynamic *examples-enabled* true) ;; `false` to deactivate examples
+(def ^:dynamic *examples-enabled*) ;; activate examples
             
 ;;{
 ;;
