@@ -11,7 +11,18 @@
 (ns latte.term
   (:require [latte.utils :refer [example]]))
 
-(def ^:dynamic *examples-enabled*) ;; activate examples
+(def ^:dynamic *examples-enabled* true)
+
+;;{
+
+;; ## Term protocols
+
+;;}
+
+(defprotocol Unparser
+  (unparse [this]))
+
+;; (def ^:dynamic *examples-enabled* true) ;; to activate in-line examples
             
 ;;{
 ;;
@@ -50,3 +61,9 @@
 
 (example (:level (mk-univ 2)) => 2)
 
+(extend-type Univ
+  Unparser
+  (unparse [u]
+    `(univ ~(:level u))))
+
+(example (unparse (mk-univ 2)) => `(univ 2))

@@ -74,12 +74,14 @@
     (throw (ex-info "Missing '=>' in example" {:expr `(quote ~expr)
                                                :sep `(quote ~sep)
                                                :val `(quote ~val)})))
-  (when (find-var (symbol (str *ns*) "*examples-enabled*"))
-    `(let [expr# ~expr
-           val# ~val]
-       (if (~equiv? expr# val#)
-         val#
-         (throw (ex-info "Example failed" {:expr ~`(quote ~expr)
-                                           :val  ~`(quote ~val) }))))))
+  (when-let [ex-var (find-var (symbol (str *ns*) "*examples-enabled*"))]
+    (when (var-get ex-var)
+      `(let [expr# ~expr
+             val# ~val]
+         (if (~equiv? expr# val#)
+           val#
+           (throw (ex-info "Example failed" {:expr ~`(quote ~expr)
+                                             :val expr#
+                                             :expected  ~`(quote ~val) })))))))
 
 ;;  (macroexpand-1 '(example (+ 2 12) => 13))

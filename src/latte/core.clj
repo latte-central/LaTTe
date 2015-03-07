@@ -3,7 +3,7 @@
             [latte.term :as term :refer [mk-univ]])
   (:gen-class))
 
-(def ^:dynamic *examples-enabled*)
+(def ^:dynamic *examples-enabled* true)
 
 (defn -main
   "I don't do a whole lot ... yet."
