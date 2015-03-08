@@ -1,6 +1,7 @@
 (ns latte.core
   (:require [latte.utils :as utils :refer [example]]
-            [latte.term :as term :refer [mk-univ]])
+            [latte.term :as term :refer [mk-univ]]
+            [latte.termparser :as parser])
   (:gen-class))
 
 (def ^:dynamic *examples-enabled* true)
