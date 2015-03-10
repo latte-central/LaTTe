@@ -98,56 +98,51 @@
 
 ;; ### Variables
 
-;; The variable occurrences of a term range in four distinct sets.
+;; In general, we distinguish among :
 
-;;    - declaration variables referencing type declarations
+;;   - symbolic constants, or *names*,
+;;   - free occurrences of variables, or *free variables*,
+;;   - bound occurrences of variables, or *bound variables* within
+;;     the scope of a *binder*.
 
-;;    - definition variables reference definitional equalities (i.e. definitions)
+;; For free variables, we use our host language, and we will thus
+;; consider all symbolic names as constant (introduced as needed),
+;; and otherwise all variables bound.
 
-;;    - abstraction variables bound by a lambda abstraction
-
-;;    - product variables bound by universal quantification
-
-;; In this section we introduce the declarations and definitions names, t
-;; the last two will be introduced after their corresponding binders.
-
-;;}
-
-;;{
-
-;; #### Declaration variables
+;; The two primitive binders are the `lambda` abstraction
+;; and the dependent product `forall`, to be introduced later on.
 
 ;;}
 
-(defrecord DeclVar [name])
+(defrecord BoundVar [name])
 
-(defn mk-decl-var
-  "Make the `name` declaration variable."
+(defn mk-bound-var
+  "Make the `name` variable bound."
   [name]
-  (->DeclVar name))
+  (->BoundVar name))
 
-(example (:name (mk-decl-var 'my-var))
+(example (:name (mk-bound-var 'my-var))
          => 'my-var)
 
-(defn match-decl-var?
-  [expr decl-env & _ ]
-  (and (symbol? expr)
-       (contains? decl-env expr)))
+;; (defn match-decl-var?
+;;   [expr decl-env & _ ]
+;;   (and (symbol? expr)
+;;        (contains? decl-env expr)))
 
-(parser/register-term-other-parser
- match-decl-var?
- (fn [expr & _]
-   (mk-decl-var expr)))
+;; (parser/register-term-other-parser
+;;  match-decl-var?
+;;  (fn [expr & _]
+;;    (mk-decl-var expr)))
 
-(example (parse 'my-var {'my-var (mk-univ 0)} {} ())
-         => (mk-decl-var 'my-var))
+;; (example (parse 'my-var {'my-var (mk-univ 0)} {} ())
+;;          => (mk-decl-var 'my-var))
 
-(extend-type DeclVar
-  Unparser
-  (unparse [var]
-    (:name var)))
+;; (extend-type DeclVar
+;;   Unparser
+;;   (unparse [var]
+;;     (:name var)))
 
-(example (unparse (mk-decl-var 'my-var)) => 'my-var)
+;; (example (unparse (mk-decl-var 'my-var)) => 'my-var)
 
 ;;{
 
@@ -156,5 +151,3 @@
 ;;}
 
 ;; TODO
-
-
