@@ -90,9 +90,10 @@
 (extend-type Univ
   Unparser
   (unparse [u]
-    `(univ ~(:level u))))
+    (list (symbol "univ") (:level u))))
 
-(example (unparse (mk-univ 2)) => `(univ 2))
+(example (unparse (mk-univ 2)) => '(univ 2))
+
 
 ;;{
 
