@@ -13,6 +13,20 @@
 
 
 
+;; (defn impl-refl
+;;   "Reflexivity of implication, at level `l` (defaults to `0`)."
+;;   ([u] (term (lambda [a ~u] a)))
+;;   ([] (impl-refl 0)))
+
+;; (defterm impl-refl [u 0]
+;;   (lambda [a ~u] a))
+
+;; (defn and-commute
+;;   "Commutativity of cojunction."
+;;   ([u v] (term (lambda [a ~u, b ~v]
+;;                        (lambda [h (forall [x a, y b] (and x y))]
+;;                                [(second h
+  
 (defn -main
   "I don't do a whole lot ... yet."
   [& args]
