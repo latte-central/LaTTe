@@ -97,6 +97,51 @@
 
 ;;{
 
+;; ### Applications
+
+;; An application is a combination of an operator applied to a single operand.
+
+;;}
+
+(defrecord Application [rator rand])
+
+(defn mk-application
+  "Make an application of ope`rator` to ope`rand`."
+  [rator rand]
+  (->Application rator rand))
+
+(example (let [app (mk-application (mk-univ 2) (mk-univ 3))]
+           [ (:level (:rator app)) (:level (:rand app)) ])
+         => [2 3])
+
+(defn match-application-expr?
+  [expr & _]
+  (and (list? expr)
+       (>= (count expr) 2)))
+
+(defn- binarize-application
+  [expr]
+  (cond
+    (< (count expr) 2) (throw (IllegalArgumentException. "(< (count `expr`) 2) : please report"))
+    (= (count expr) 2) expr
+    :else (recur (conj (next (next expr)) (list (first expr) (second expr))))))
+
+(example (binarize-application '(f a b c d))
+         => '((((f a) b) c) d))
+
+(example (binarize-application (map keyword '(f a b c d)))
+         => '((((:f :a) :b) :c) :d))
+
+
+(parser/register-term-other-parser
+ match-application-expr?
+ (fn [expr bind-env]
+   (binarize-application (map #(parse % bind-env) expr))))
+
+;(example (parse '((univ 1) (univ 2) (univ 3)))
+
+;;{
+
 ;; ### Variables
 
 ;; In general, we distinguish among :

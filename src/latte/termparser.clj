@@ -26,20 +26,20 @@
   [pmatch? pfun]
   (swap! *term-other-parsers* (fn [parsers] (conj parsers [pmatch?, pfun]))))
 
-(defn- parse-list-term [expr decl-env def-env bind-env]
+(defn- parse-list-term [expr bind-env]
   (if (empty? expr)
     (throw (Exception. "Parse error: empty-list"))
     (let [parser (get (fetch-term-list-parsers) (first expr) :not-found)]
       (if (= parser :not-found)
         (throw (Exception. (str "Parse error: don't know how to parse '" (first expr) "'-expressions")))
-        (parser expr decl-env def-env bind-env)))))
+        (parser expr bind-env)))))
 
-(defn- parse-other-term [expr parsers decl-env def-env bind-env]
+(defn- parse-other-term [expr parsers bind-env]
   (if (seq parsers)
     (let [[match?, parser] (first parsers)]
-      (if (match? expr decl-env def-env bind-env)
-        (parser expr decl-env def-env bind-env)
-        (recur expr (rest parsers) decl-env def-env bind-env)))
+      (if (match? expr bind-env)
+        (parser expr bind-env)
+        (recur expr (rest parsers) bind-env)))
     (throw (Exception. (str "Parse error: don't know how to parse '" expr "'")))))
 
 (defn parse-list-check-arity
@@ -52,9 +52,18 @@
 (defn parse
   "Parse a term from the expression `expr`,
   or signal a parsing problem."
-  ([expr] (parse expr {} {} ()))
-  ([expr decl-env def-env bind-env]
-   (if (list? expr)
-     (parse-list-term expr decl-env def-env bind-env)
-     (parse-other-term expr (deref *term-other-parsers*) decl-env def-env bind-env))))
+  ([expr] (parse expr []))
+  ([expr bind-env]
+   (let [[parsed?, result]
+     (if (list? expr)
+       (if (empty? expr)
+         (throw (Exception. "Parse error: empty-list"))
+         (if-let [parser (get (fetch-term-list-parsers) (first expr))]
+           [true, (parser expr bind-env)]
+           [false, nil]))
+       ;; not a list
+       [false, nil])]
+     (if parsed?
+       result
+       (parse-other-term expr (deref *term-other-parsers*) bind-env)))))
 
