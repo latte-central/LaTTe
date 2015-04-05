@@ -9,7 +9,7 @@
 ;;}
 
 (ns latte.term
-  (:require [latte.utils :refer [example]]
+  (:require [latte.utils :refer [example append]]
             [latte.termparser :as parser :refer [parse]]))
 
 (def ^:dynamic *examples-enabled* true)
@@ -123,8 +123,8 @@
   [expr]
   (cond
     (< (count expr) 2) (throw (IllegalArgumentException. "(< (count `expr`) 2) : please report"))
-    (= (count expr) 2) expr
-    :else (recur (conj (next (next expr)) (list (first expr) (second expr))))))
+    (= (count expr) 2) (mk-application (first expr) (second expr))
+    :else (recur (conj (next (next expr)) (mk-application (first expr) (second expr))))))
 
 (example (binarize-application '(f a b c d))
          => '((((f a) b) c) d))
@@ -138,7 +138,22 @@
  (fn [expr bind-env]
    (binarize-application (map #(parse % bind-env) expr))))
 
-;(example (parse '((univ 1) (univ 2) (univ 3)))
+(example (parse '((univ 1) (univ 2) (univ 3)))
+         => (mk-application (mk-application (mk-univ 1) (mk-univ 2)) (mk-univ 3)))
+
+(extend-type Application
+  Unparser
+  (unparse [app]
+    (let
+        [urator (unparse (:rator app))
+         urand (unparse (:rand app))]
+      (println (str "application '" (:rator app) "' ?" (instance? Application (:rator app))))
+      (if (instance? Application (:rator app))
+        (append urator urand)
+        (conj urand urator)))))
+
+(example (unparse (parse '((univ 1) (univ 2) (univ 3))))
+
 
 ;;{
 

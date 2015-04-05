@@ -85,3 +85,19 @@
                                              :expected  ~`(quote ~val) })))))))
 
 ;;  (macroexpand-1 '(example (+ 2 12) => 13))
+
+
+;;{
+
+;; ## List utilities
+
+;; Clojure does not consider list as priviledged data structure,
+;; unlink most other Lisp's. However when playing with macros
+;; the lists play a significant role, and thus many utilities
+;; seem to be absent from the standard library.
+
+;; ### Append lists
+
+(defn append
+  [l1 l2] (list* (concat l1 l2)))
+
