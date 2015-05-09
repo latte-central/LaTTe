@@ -94,7 +94,6 @@
 
 (example (unparse (mk-univ 2)) => '(univ 2))
 
-
 ;;{
 
 ;; ### Applications
@@ -127,10 +126,13 @@
     :else (recur (conj (next (next expr)) (mk-application (first expr) (second expr))))))
 
 (example (binarize-application '(f a b c d))
-         => '((((f a) b) c) d))
-
-(example (binarize-application (map keyword '(f a b c d)))
-         => '((((:f :a) :b) :c) :d))
+         => (mk-application
+             (mk-application
+              (mk-application
+               (mk-application 'f 'a)
+               'b)
+              'c)
+             'd))
 
 
 (parser/register-term-other-parser
@@ -146,13 +148,19 @@
   (unparse [app]
     (let
         [urator (unparse (:rator app))
-         urand (unparse (:rand app))]
-      (println (str "application '" (:rator app) "' ?" (instance? Application (:rator app))))
-      (if (instance? Application (:rator app))
-        (append urator urand)
-        (conj urand urator)))))
+         rator (if (instance? Application (:rator app)) urator (list urator))
+         urand (unparse (:rand app))
+         rand (if (instance? Application (:rand app)) urand (list urand))]
+      (append rator rand))))
+
+(example (unparse (parse '((univ 1) (univ 2))))
+         => '((univ 1) (univ 2)))
 
 (example (unparse (parse '((univ 1) (univ 2) (univ 3))))
+         => '((univ 1) (univ 2) (univ 3)))
+
+(example (unparse (parse '(((univ 1) (univ 2)) ((univ 3) (univ 4)))))
+         => '((univ 1) (univ 2) (univ 3) (univ 4)))
 
 
 ;;{
