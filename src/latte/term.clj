@@ -10,9 +10,10 @@
 
 (ns latte.term
   (:require [latte.utils :refer [example append]]
+            [latte.alist :as alist :refer [acons vassoc]]
             [latte.termparser :as parser :refer [parse]]))
 
-(def ^:dynamic *examples-enabled* true)
+(def ^:dynamic *examples-enabled* true) ;; to activate in-line examples
 
 ;;{
 
@@ -23,9 +24,10 @@
 (defprotocol Unparser
   "A protocol for Unparsing term representations
   as clojure expressions."
-  (unparse [expr] "Produce a `parsable` clojure expression from `expr`."))
-
-;; (def ^:dynamic *examples-enabled* true) ;; to activate in-line examples
+  (unparse
+    [expr]
+    "Produce a `parsable` clojure expression from `expr`
+ in optional lexical environement `env`."))
             
 ;;{
 ;;
@@ -89,8 +91,9 @@
 
 (extend-type Univ
   Unparser
-  (unparse [u]
-    (list (symbol "univ") (:level u))))
+  (unparse
+    [u] (list (symbol "univ") (:level u))))
+
 
 (example (unparse (mk-univ 2)) => '(univ 2))
 
@@ -114,7 +117,7 @@
          => [2 3])
 
 (defn match-application-expr?
-  [expr & _]
+  [expr _]
   (and (list? expr)
        (>= (count expr) 2)))
 
@@ -145,13 +148,13 @@
 
 (extend-type Application
   Unparser
-  (unparse [app]
-    (let
-        [urator (unparse (:rator app))
-         rator (if (instance? Application (:rator app)) urator (list urator))
-         urand (unparse (:rand app))
-         rand (if (instance? Application (:rand app)) urand (list urand))]
-      (append rator rand))))
+  (unparse
+    [app]
+     (let [urator (unparse (:rator app))
+           rator (if (instance? Application (:rator app)) urator (list urator))
+           urand (unparse (:rand app))
+           rand (if (instance? Application (:rand app)) urand (list urand))]
+       (append rator rand))))
 
 (example (unparse (parse '((univ 1) (univ 2))))
          => '((univ 1) (univ 2)))
@@ -165,6 +168,117 @@
 
 ;;{
 
+;; ### Abstractions
+
+;; The $\lambda$-abstractions allow to define anonymous fonctions, such as
+;; the identity function for a given type $\tau$, written as: $\lambda x:\tau.x$.
+
+
+;;}
+
+(defrecord Abstraction [var type body])
+
+
+(defn mk-abstraction
+  "Make an abstraction with variable `var` of type
+  `type` bound within `body`."
+  [var type body]
+  (->Abstraction var type body))
+
+(example (:var (mk-abstraction 'x '(univ 0) 'x)) => 'x)
+(example (:type (mk-abstraction 'x '(univ 0) 'x)) => '(univ 0))
+(example (:body (mk-abstraction 'x '(univ 0) 'x)) => 'x)
+
+(parser/register-term-list-parser
+ 'lambda (fn [expr env]
+           (parser/parse-list-check-arity expr 2)
+           (let [[var etype] (second expr)
+                 type (parse etype env)
+                 body (parse (nth expr 2) (acons var 'lambda env))]
+             (if (not (symbol? var))
+               (throw (Exception. (str "Abstraction variable is not a symbol: " var))))
+             (mk-abstraction var type body))))
+
+(example (:var (parse '(lambda [x (univ 2)] (univ 1)))) => 'x)
+
+(example (:type (parse '(lambda [x (univ 2)] (univ 1)))) => (mk-univ 2))
+
+(example (:body (parse '(lambda [x (univ 2)] (univ 1)))) => (mk-univ 1))
+
+(example (try
+           (parse '(lambda [1 (univ 1)] (univ 2)))
+           (catch Exception e (.getMessage e)))
+         => "Abstraction variable is not a symbol: 1")
+
+(extend-type Abstraction
+  Unparser
+  (unparse
+    [e]
+     (list 'lambda [(:var e) (unparse (:type e))]
+           (unparse (:body e)))))
+
+(example (unparse (parse '(lambda [x (univ 1)] (univ 2))))
+         => '(lambda [x (univ 1)] (univ 2)))
+
+
+;;{
+
+;; ### Products
+
+;; The product are the types of abstractions, and moreover represent
+;; the universal quantification in logic.
+
+;; For example, $\forall x:\tau.P$ makes $P$ (presumably a predicate)
+;; true for any $x$ of type $\tau$.
+
+;;}
+
+(defrecord Product [var type body])
+
+(defn mk-product
+  "Make a product with variable `var` of type
+  `type` bound within `body`."
+  [var type body]
+  (->Product var type body))
+
+(example (:var (mk-product 'x '(univ 0) 'x)) => 'x)
+(example (:type (mk-product 'x '(univ 0) 'x)) => '(univ 0))
+(example (:body (mk-product 'x '(univ 0) 'x)) => 'x)
+
+(parser/register-term-list-parser
+ 'forall (fn [expr env]
+           (parser/parse-list-check-arity expr 2)
+           (let [[var etype] (second expr)
+                 type (parse etype env)
+                 body (parse (nth expr 2) (acons var 'forall env))]
+             (if (not (symbol? var))
+               (throw (Exception. (str "Product variable is not a symbol: " var))))
+             (mk-product var type body))))
+
+(example (:var (parse '(forall [x (univ 2)] (univ 1)))) => 'x)
+
+(example (:type (parse '(forall [x (univ 2)] (univ 1)))) => (mk-univ 2))
+
+(example (:body (parse '(forall [x (univ 2)] (univ 1)))) => (mk-univ 1))
+
+(example (try
+           (parse '(forall [1 (univ 1)] (univ 2)))
+           (catch Exception e (.getMessage e)))
+         => "Product variable is not a symbol: 1")
+
+(extend-type Product
+  Unparser
+  (unparse
+    [e]
+     (list 'forall [(:var e) (unparse (:type e))]
+           (unparse (:body e)))))
+
+
+(example (unparse (parse '(forall [x (univ 1)] (univ 2))))
+         => '(forall [x (univ 1)] (univ 2)))
+
+;;{
+
 ;; ### Variables
 
 ;; In general, we distinguish among :
@@ -172,51 +286,100 @@
 ;;   - symbolic constants, or *names*,
 ;;   - free occurrences of variables, or *free variables*,
 ;;   - bound occurrences of variables, or *bound variables* within
-;;     the scope of a *binder*.
+;;     the scope of a *binder*, either a $lambda$-abstraction or a product.
 
-;; For free variables, we use our host language, and we will thus
-;; consider all symbolic names as constant (introduced as needed),
-;; and otherwise all variables bound.
-
-;; The two primitive binders are the `lambda` abstraction
-;; and the dependent product `forall`, to be introduced later on.
+;; For constants and free variables, we rely on our host language,
+;; thus we do not interprete these directly.
+;; We only consider explicit representation for lambda and product
+;; variables
 
 ;;}
-
-(defrecord BoundVar [name])
-
-(defn mk-bound-var
-  "Make the `name` variable bound."
-  [name]
-  (->BoundVar name))
-
-(example (:name (mk-bound-var 'my-var))
-         => 'my-var)
-
-;; (defn match-decl-var?
-;;   [expr decl-env & _ ]
-;;   (and (symbol? expr)
-;;        (contains? decl-env expr)))
-
-;; (parser/register-term-other-parser
-;;  match-decl-var?
-;;  (fn [expr & _]
-;;    (mk-decl-var expr)))
-
-;; (example (parse 'my-var {'my-var (mk-univ 0)} {} ())
-;;          => (mk-decl-var 'my-var))
-
-;; (extend-type DeclVar
-;;   Unparser
-;;   (unparse [var]
-;;     (:name var)))
-
-;; (example (unparse (mk-decl-var 'my-var)) => 'my-var)
 
 ;;{
 
-;; #### Definition variables
+;; #### Abstraction variables
 
 ;;}
 
-;; TODO
+(defrecord LambdaVar [name])
+
+(defn mk-lambda-var
+  "Make the `name` variable bound within a lambda."
+  [name]
+  (->LambdaVar name))
+
+(example (:name (mk-lambda-var 'my-var))
+         => 'my-var)
+
+(defn- match-bound-var?
+  [expr env kind]
+   (and (symbol? expr)
+        (let [binding (alist/assoc expr env)]
+          (and binding
+               (= (second binding) kind)))))
+
+(defn- match-lambda-var?
+  [expr env]
+  (match-bound-var? expr env 'lambda))
+  
+(parser/register-term-other-parser
+ match-lambda-var?
+ (fn [expr env]
+   (mk-lambda-var expr)))
+
+(example (parse 'my-var (list ['my-var 'lambda]))
+         => (mk-lambda-var 'my-var))
+
+(example (parse '(lambda [x (univ 0)] x))
+         => (mk-abstraction 'x (mk-univ 0) (mk-lambda-var 'x)))
+
+
+(extend-type LambdaVar
+  Unparser
+  (unparse [e] (:name e)))
+
+(example (unparse (mk-lambda-var 'my-var)) => 'my-var)
+
+(example (unparse (parse '(lambda [x (univ 0)] x)))
+         => '(lambda [x (univ 0)] x))
+
+;;{
+
+;; #### Product variables
+
+;;}
+
+(defrecord ProductVar [name])
+
+(defn mk-product-var
+  "Make the `name` variable bound within a forall."
+  [name]
+  (->ProductVar name))
+
+(example (:name (mk-product-var 'my-var))
+         => 'my-var)
+
+(defn- match-product-var?
+  [expr env]
+  (match-bound-var? expr env 'forall))
+
+
+(parser/register-term-other-parser
+ match-product-var?
+ (fn [expr env]
+   (mk-product-var expr)))
+
+(example (parse 'my-var (list ['my-var 'forall]))
+         => (mk-product-var 'my-var))
+
+(example (parse '(forall [x (univ 0)] x))
+         => (mk-product 'x (mk-univ 0) (mk-product-var 'x)))
+
+(extend-type ProductVar
+  Unparser
+  (unparse [e] (:name e)))
+
+(example (unparse (mk-product-var 'my-var)) => 'my-var)
+
+(example (unparse (parse '(forall [x (univ 0)] x)))
+         => '(forall [x (univ 0)] x))
