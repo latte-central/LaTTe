@@ -3,8 +3,8 @@
   :url "https://github.com/fredokun/LaTTe.git"
   :license {:name "MIT Licence"
             :url "http://opensource.org/licenses/MIT"}
-  :dependencies [[org.clojure/clojure "1.6.0"]]
-  :plugins [[cider/cider-nrepl "0.9.0-SNAPSHOT"]]
+  :dependencies [[org.clojure/clojure "1.7.0"]]
+  :plugins [[cider/cider-nrepl "0.10.0-SNAPSHOT"]]
   :main ^:skip-aot latte.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})
