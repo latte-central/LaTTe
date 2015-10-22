@@ -9,7 +9,8 @@
 ;;}
 
 (ns latte.term
-  (:require [latte.utils :refer [example append]]
+  (:require [clojure.set]
+            [latte.utils :refer [example append]]
             [latte.alist :as alist :refer [acons vassoc]]
             [latte.termparser :as parser :refer [parse]]))
 
@@ -28,7 +29,15 @@
     [expr]
     "Produce a `parsable` clojure expression from `expr`
  in optional lexical environement `env`."))
-            
+
+
+(defprotocol FreeVars
+  "A protocol for fetching the set of free variables."
+  (free-vars
+   [expr kind]
+   "Return a set of the free variables of `expr` according 
+to their kind: :product, :forall or :open."))
+
 ;;{
 ;;
 ;; ## Lambda-terms
@@ -92,10 +101,14 @@
 (extend-type Univ
   Unparser
   (unparse
-    [u] (list (symbol "univ") (:level u))))
-
+      [u] (list (symbol "univ") (:level u)))
+  FreeVars
+  (free-vars
+   [_ _] #{}))
 
 (example (unparse (mk-univ 2)) => '(univ 2))
+
+(example (free-vars (mk-univ 2) :forall) => #{})
 
 ;;{
 
@@ -154,7 +167,10 @@
            rator (if (instance? Application (:rator app)) urator (list urator))
            urand (unparse (:rand app))
            rand (if (instance? Application (:rand app)) urand (list urand))]
-       (append rator rand))))
+       (append rator rand)))
+  FreeVars
+  (free-vars
+      [app kind] (clojure.set/union (free-vars (:rator app) kind) (free-vars (:rand app) kind))))
 
 (example (unparse (parse '((univ 1) (univ 2))))
          => '((univ 1) (univ 2)))
@@ -165,6 +181,7 @@
 (example (unparse (parse '(((univ 1) (univ 2)) ((univ 3) (univ 4)))))
          => '((univ 1) (univ 2) (univ 3) (univ 4)))
 
+(example (free-vars (parse '((univ 1) (univ 2) (univ 3))) :forall) => #{})
 
 ;;{
 
@@ -194,7 +211,7 @@
            (parser/parse-list-check-arity expr 2)
            (let [[var etype] (second expr)
                  type (parse etype env)
-                 body (parse (nth expr 2) (acons var 'lambda env))]
+                 body (parse (nth expr 2) (acons var :lambda env))]
              (if (not (symbol? var))
                (throw (Exception. (str "Abstraction variable is not a symbol: " var))))
              (mk-abstraction var type body))))
@@ -215,11 +232,18 @@
   (unparse
     [e]
      (list 'lambda [(:var e) (unparse (:type e))]
-           (unparse (:body e)))))
+           (unparse (:body e))))
+  FreeVars
+  (free-vars
+   [e kind] (clojure.set/union
+             (free-vars (:type e) kind)
+             (disj (free-vars (:body e) kind) (:var e)))))
 
 (example (unparse (parse '(lambda [x (univ 1)] (univ 2))))
          => '(lambda [x (univ 1)] (univ 2)))
 
+(example (free-vars (parse '(lambda [x (univ 1)] (univ 2))) :lambda)
+         => #{})
 
 ;;{
 
@@ -250,7 +274,7 @@
            (parser/parse-list-check-arity expr 2)
            (let [[var etype] (second expr)
                  type (parse etype env)
-                 body (parse (nth expr 2) (acons var 'forall env))]
+                 body (parse (nth expr 2) (acons var :forall env))]
              (if (not (symbol? var))
                (throw (Exception. (str "Product variable is not a symbol: " var))))
              (mk-product var type body))))
@@ -266,16 +290,41 @@
            (catch Exception e (.getMessage e)))
          => "Product variable is not a symbol: 1")
 
+(defonce implication-fake-variable (gensym))
+
+(parser/register-term-list-parser
+ '=> (fn [expr env]
+       (parser/parse-list-check-arity expr 2)
+       (let [type (parse (second expr) env)
+             body (parse (nth expr 2) env)]
+         (mk-product implication-fake-variable type body))))
+
+(example (:var (parse '(=> (univ 2) (univ 1)))) => implication-fake-variable)
+
+(example (:type (parse '(forall [x (univ 2)] (univ 1)))) => (mk-univ 2))
+
+(example (:body (parse '(forall [x (univ 2)] (univ 1)))) => (mk-univ 1))
+
 (extend-type Product
   Unparser
   (unparse
-    [e]
+   [e]
+   (if (= (:var e) implication-fake-variable)
+     (list '=> (unparse (:type e)) (unparse (:body e)))
      (list 'forall [(:var e) (unparse (:type e))]
            (unparse (:body e)))))
+  FreeVars
+  (free-vars
+      [e kind] (clojure.set/union
+                (free-vars (:type e) kind)
+                (disj (free-vars (:body e) kind) (:var e)))))
 
 
 (example (unparse (parse '(forall [x (univ 1)] (univ 2))))
          => '(forall [x (univ 1)] (univ 2)))
+
+(example (free-vars (parse '(forall [x (univ 1)] (univ 2))) :forall)
+         => #{})
 
 ;;{
 
@@ -318,30 +367,44 @@
           (and binding
                (= (second binding) kind)))))
 
+(defn- match-free-var?
+  [expr env]
+  (and (symbol? expr)
+       (not (alist/assoc expr env))))
+
 (defn- match-lambda-var?
   [expr env]
-  (match-bound-var? expr env 'lambda))
+  (match-bound-var? expr env :lambda))
   
 (parser/register-term-other-parser
  match-lambda-var?
  (fn [expr env]
    (mk-lambda-var expr)))
 
-(example (parse 'my-var (list ['my-var 'lambda]))
+(example (parse 'my-var (list ['my-var :lambda]))
          => (mk-lambda-var 'my-var))
 
 (example (parse '(lambda [x (univ 0)] x))
          => (mk-abstraction 'x (mk-univ 0) (mk-lambda-var 'x)))
 
-
 (extend-type LambdaVar
   Unparser
-  (unparse [e] (:name e)))
+  (unparse [e] (:name e))
+  FreeVars
+  (free-vars [e kind] (if (= kind :lambda)
+                        #{(:name e)}
+                        #{})))
 
 (example (unparse (mk-lambda-var 'my-var)) => 'my-var)
 
 (example (unparse (parse '(lambda [x (univ 0)] x)))
          => '(lambda [x (univ 0)] x))
+
+(example (free-vars (:body (parse '(lambda [x (univ 0)] x))) :lambda)
+         => #{'x})
+
+(example (free-vars (:body (parse '(lambda [x (univ 0)] x))) :forall)
+         => #{})
 
 ;;{
 
@@ -361,15 +424,14 @@
 
 (defn- match-product-var?
   [expr env]
-  (match-bound-var? expr env 'forall))
-
+  (match-bound-var? expr env :forall))
 
 (parser/register-term-other-parser
  match-product-var?
  (fn [expr env]
    (mk-product-var expr)))
 
-(example (parse 'my-var (list ['my-var 'forall]))
+(example (parse 'my-var (list ['my-var :forall]))
          => (mk-product-var 'my-var))
 
 (example (parse '(forall [x (univ 0)] x))
@@ -377,9 +439,78 @@
 
 (extend-type ProductVar
   Unparser
-  (unparse [e] (:name e)))
+  (unparse [e] (:name e))
+  FreeVars
+  (free-vars [e kind] (if (= kind :forall)
+                        #{(:name e)}
+                        #{})))
 
 (example (unparse (mk-product-var 'my-var)) => 'my-var)
 
 (example (unparse (parse '(forall [x (univ 0)] x)))
          => '(forall [x (univ 0)] x))
+
+
+(example (free-vars (:body (parse '(forall [x (univ 0)] x))) :forall)
+         => #{'x})
+
+(example (free-vars (:body (parse '(forall [x (univ 0)] x))) :lambda)
+         => #{})
+
+;;{
+
+;; #### Open variables
+
+;; Open variables are open to substitution and/or binding
+;; in some external environment.
+
+;;}
+
+(defrecord OpenVar [name])
+
+(defn mk-open-var
+  "Make the `name` variable free and open ."
+  [name]
+  (->OpenVar name))
+
+(example (:name (mk-open-var 'my-var))
+         => 'my-var)
+
+(defn- match-open-var?
+  [expr env]
+  (match-free-var? expr env))
+
+(parser/register-term-other-parser
+ match-open-var?
+ (fn [expr env]
+   (mk-open-var expr)))
+
+(example (parse 'my-var (list))
+         => (mk-open-var 'my-var))
+
+(example (= (parse '(forall [x (univ 0)] (x y)))
+            (mk-product 'x (mk-univ 0) (mk-application
+                                        (mk-product-var 'x)
+                                        (mk-open-var 'y))))
+         => true)
+         
+(extend-type OpenVar
+  Unparser
+  (unparse [e] (:name e))
+  FreeVars
+  (free-vars [e kind] (if (= kind :open)
+                        #{(:name e)}
+                        #{})))
+
+(example (unparse (mk-open-var 'my-var)) => 'my-var)
+
+(example (unparse (parse '(forall [x (univ 0)] y)))
+         => '(forall [x (univ 0)] y))
+
+
+(example (free-vars (parse '(forall [x (univ 0)] (x y))) :open)
+         => #{'y})
+
+(example (free-vars (:body (parse '(forall [x (univ 0)] (x y)))) :lambda)
+         => #{})
+
