@@ -2,7 +2,8 @@
 (ns latte.termparser)
 
 (def ^:dynamic *term-list-parsers* (atom {}))
-(def ^:dynamic *term-other-parsers* (atom []))
+(def ^:dynamic *term-other-parsers* (atom {:parser-keys []
+                                           :parser-defs {}}))
 
 (defn fetch-term-list-parsers
   "Fetch the current parsers for list-based terms."
@@ -14,17 +15,50 @@
   []
   (deref *term-other-parsers*))
 
-(defn register-term-list-parser
+(defn register-term-list-parser!
   "Register the parser function `pfun` for
   list-based term type `typ`."
   [typ pfun]
   (swap! *term-list-parsers* (fn [parsers] (assoc parsers typ pfun))))
 
-(defn register-term-other-parser
+(defn unregister-term-list-parsers!
+  "Unregister the list-based parser type `typ`."
+  [typ]
+  (swap! *term-list-parsers* #(dissoc % type)))
+
+(defn reset-term-list-parsers!
+  "Reset the list-based parsers."
+  []
+  (swap! *term-list-parsers* #({})))
+
+(defn- register-other-aux
+  [typ pmatch? pfun pkeys pdefs]
+  {:parser-keys (if (typ pdefs) pkeys (conj pkeys typ)),
+   :parser-defs (assoc pdefs typ [pmatch?, pfun]) })
+
+(example-def ex-empty-parsers (register-other-aux :test true? #(%) [] {}))
+
+(example (count (:parser-keys ex-empty-parsers))
+         => 1)
+
+(example (count
+          (:parser-keys (register-other-aux :test false? #(%)
+                                            (:parser-keys ex-empty-parsers) (:parser-defs ex-empty-parsers)))))
+           => 1)
+
+(example (let [init (register-other-aux :test true? #(%) [] {})]
+           (count (:parser-keys (register-other-aux :test2 false? #(%) (:parser-keys init) (:parser-defs init)))))
+           => 2)
+
+(defn register-term-other-parser!
   "Register the parser function `pfun` for
-  (non-list) terms recognized by `pmatch?`."
-  [pmatch? pfun]
+  (non-list) terms identified by the keyword `typ` 
+  and recognized by `pmatch?`."
+  [typ pmatch? pfun]
   (swap! *term-other-parsers* (fn [parsers] (conj parsers [pmatch?, pfun]))))
+
+(defn unregister-term-other-parser!
+  
 
 (defn- parse-list-term [expr bind-env]
   (if (empty? expr)

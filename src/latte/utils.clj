@@ -45,7 +45,7 @@
 (comment
 
   ;;  a few macro reminders
-  
+
 (defmacro myquote
   [expr]
   `(quote ~expr))
@@ -82,7 +82,16 @@
            val#
            (throw (ex-info "Example failed" {:expr ~`(quote ~expr)
                                              :val expr#
-                                             :expected  ~`(quote ~val) })))))))
+                                             :expected-expr  ~`(quote ~val)
+                                             :expected-val val#})))))))
+
+(defmacro example-def
+  "Define a private variable (once) only if the examples are enabled."
+  [name expr]
+  (when-let [ex-var (find-var (symbol (str *ns*) "*examples-enabled*"))]
+    (when (var-get ex-var)
+      `(defonce ^:private ~name ~`(quote ~expr)))))
+
 
 ;;  (macroexpand-1 '(example (+ 2 12) => 13))
 

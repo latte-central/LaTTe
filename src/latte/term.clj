@@ -98,6 +98,17 @@ to their kind: :product, :forall or :open."))
            (catch Exception e (.getMessage e)))
            => "Wrong arity: expect 1 argument for 'univ'-expressions, given: 2")
 
+(defn- match-set-expr? [expr _]
+  (and (symbol? expr)
+       (= (name expr) "set")))
+
+(parser/register-term-other-parser
+ match-set-expr?
+ (fn [expr bind-env]
+   (mk-univ 0)))
+
+(example (parse 'set) => (mk-univ 0))
+
 (extend-type Univ
   Unparser
   (unparse
@@ -488,12 +499,11 @@ to their kind: :product, :forall or :open."))
 (example (parse 'my-var (list))
          => (mk-open-var 'my-var))
 
-(example (= (parse '(forall [x (univ 0)] (x y)))
-            (mk-product 'x (mk-univ 0) (mk-application
+(example (parse '(forall [x (univ 0)] (x y)))
+         => (mk-product 'x (mk-univ 0) (mk-application
                                         (mk-product-var 'x)
                                         (mk-open-var 'y))))
-         => true)
-         
+
 (extend-type OpenVar
   Unparser
   (unparse [e] (:name e))
@@ -513,4 +523,5 @@ to their kind: :product, :forall or :open."))
 
 (example (free-vars (:body (parse '(forall [x (univ 0)] (x y)))) :lambda)
          => #{})
+
 
