@@ -1,10 +1,6 @@
 
-(ns typetheory.syntax
+(ns latte.syntax
   (:require [clj-by.example :refer [example do-for-example]])
-  (:require [clojure.spec :as s])
-  (:require [clojure.test.check :as tc])
-  (:require [clojure.test.check.generators :as gen])
-  (:require [clojure.test.check.properties :as prop])
   )
 
 ;;{
@@ -17,193 +13,100 @@
 ;; ## Lambda terms
 ;;}
 
-(s/def ::kind #{:kind})
+(defn kind? [t]
+  (= t :kind))
 
-(example
- (s/valid? ::kind :kind) => true)
+(defn type? [t]
+  (= t :type))
 
-(s/def ::type #{:type})
+(defn sort? [t]
+  (or (kind? t)
+      (type? t)))
 
-(example
- (s/valid? ::type :type) => true)
+(defn var? [t]
+  (symbol? t))
 
-(s/def ::sort (s/or :kind ::kind
-                    :type ::type))
+(defn binder? [t]
+  (and (list? t)
+       (contains? '#{lambda prod} (first t))))
 
-(example
- (s/valid? ::sort :kind) => true)
+(defn app? [t]
+  (and (vector? t)
+       (= (count t) 2)))
 
-(example
- (s/valid? ::sort :type) => true)
-
-(s/def ::var symbol?)
-
-(example
- (s/valid? ::var 'x) => true)
-
-(s/def ::binder #{'lambda 'prod})
-
-(s/def ::binding (s/tuple ::var ::term))
-
-(s/def ::bind (s/cat :binder ::binder :binding ::binding :body ::term))
-
-(s/def ::product (s/cat :prod #{'prod} :binding ::binding :body ::term))
-
-(s/def ::app (s/cat :rator ::term :rand ::term))
-
-(s/def ::ref #{:ref})
-
-(s/def ::refered (s/cat :name symbol? :args (s/* ::term)))
-
-(s/def ::refer (s/tuple ::ref ::refered))
-
-(s/def ::term
-  (s/or :kind ::kind
-        :type ::type
-        :var ::var
-        :bind ::bind
-        :app ::app
-        :refer ::refer))
-
-(example
- (s/conform ::term :kind) => [:kind :kind])
-
-(example
- (s/conform ::term :type) => [:type :type])
-
-(example
- (s/conform ::term 'x) => [:var 'x])
-
-(example
- (s/conform ::term '(x y))
- => '[:app {:rator [:var x], :rand [:var y]}])
-
-(example
- (s/conform ::term '(lambda [x :kind] (x y)))
- => '[:bind {:binder lambda,
-             :binding [x [:kind :kind]],
-             :body [:app {:rator [:var x],
-                          :rand [:var y]}]}])
-
-(example
- (s/conform ::term '(prod [x :kind] (x y)))
- => '[:bind {:binder prod,
-             :binding [x [:kind :kind]],
-             :body [:app {:rator [:var x],
-                          :rand [:var y]}]}])
-
-(example
- (s/valid? ::product '(prod [x :kind] (x y))) => true)
-
-(example
- (s/conform ::term '[:ref (test x [:ref (test2 y z)] t)])
- => '[:refer [:ref {:name test,
-                    :args [[:var x] [:refer [:ref {:name test2,
-                                                   :args [[:var y] [:var z]]}]] [:var t]]}]])
-
-(defmacro conform [s v]
-  `(let [v# (s/conform ~s ~v)]
-     (if (= v# :clojure.spec/invalid)
-       nil
-       v#)))
-
-(example
- (conform ::term '(x y)) => (s/conform ::term '(x y)))
-
-(example
- (conform ::term :toto) => nil)
-
-(defmacro validate [s v]
-  `(if-let [res# (conform ~s ~v)]
-     res#
-     (throw (ex-info (str "Invalid " (quote ~s)) {:value (quote ~v) :explain (s/explain-data ~s ~v)}))))
+(defn ref? [t]
+  (and (list? t)
+       (not (contains? '#{lambda prod} (first t)))))
 
 ;;{
 ;; ## Free and bound variables
 ;;}
 
-(defn free-vars- [[tag t]]
-  (case tag
-    :var #{t}
-    :bind (clojure.set/difference (free-vars- (:body t))
-                                  #{(first (:binding t))})
-    :app (clojure.set/union (free-vars- (:rator t))
-                            (free-vars- (:rand t)))
-    :refer (apply clojure.set/union (map free-vars- (:args (second t))))
-    #{}))
-
 (defn free-vars [t]
-  (free-vars- (validate ::term t)))
+  (cond
+    (var? t) #{t}
+    (binder? t) (let [[_ [x ty] body] t]
+                  (clojure.set/union (free-vars ty)
+                                     (disj (free-vars body) x)))
+    (app? t) (clojure.set/union (free-vars (first t))
+                                (free-vars (second t)))
+    (ref? t) (apply clojure.set/union (map free-vars (rest t)))
+    :else #{}))
 
 (example
- (free-vars 'x) => #{'x}) 
+ (free-vars 'x) => #{'x})
 
 (example
- (free-vars '(x y)) => #{'x 'y})
+ (free-vars '[x y]) => #{'x 'y})
 
 (example
- (free-vars '(lambda [x t] (x (y z)))) => #{'y 'z})
+ (free-vars '(lambda [x t] [x [y z]])) => #{'t 'y 'z})
 
 (example
- (free-vars '(prod [x t] (x (y z)))) => #{'y 'z})
+ (free-vars '(prod [x t] [x [y z]])) => #{'t 'y 'z})
 
 (example
- (free-vars '(lambda [x t] [:ref (test x y z)])) => '#{y z})
-
-(defn vars- [[tag t]]
-  (case tag
-    :var #{t}
-    :bind (recur (:body t))
-    :app (clojure.set/union (vars- (:rator t))
-                            (vars- (:rand t)))
-    :refer (apply clojure.set/union (map vars- (:args (second t))))
-    #{}))
+ (free-vars '(lambda [x t] (test x y z))) => '#{t y z})
 
 (defn vars [t]
-  (vars- (validate ::term t)))
+  (cond
+    (var? t) #{t}
+    (binder? t) (let [[_ [x ty] body] t]
+                  (clojure.set/union (vars ty) (vars body)))
+    (app? t) (clojure.set/union (vars (first t))
+                                (vars (second t)))
+    (ref? t) (apply clojure.set/union (map vars (rest t)))
+    :else #{}))
 
 (example
- (vars 'x) => #{'x}) 
+ (vars 'x) => #{'x})
 
 (example
- (vars '(x y)) => #{'x 'y})
+ (vars '[x y]) => #{'x 'y})
 
 (example
- (vars '(lambda [x t] (x (y z)))) => #{'x 'y 'z})
+ (vars '(lambda [x t] (test x [y z]))) => #{'t 'x 'y 'z})
 
 (example
- (vars '(prod [x t] (x (y z)))) => #{'x 'y 'z})
-
-(example
- (vars '(lambda [x t] [:ref (test x y z)])) => '#{x y z})
+ (vars '(prod [x t] (test x [y z]))) => #{'t 'x 'y 'z})
 
 (defn bound-vars [t]
-  (let [t (validate ::term t)]
-    (clojure.set/difference (vars- t) (free-vars- t))))
+  (clojure.set/difference (vars t) (free-vars t)))
 
 (example
- (bound-vars 'x) => #{}) 
+ (bound-vars 'x) => #{})
 
 (example
- (bound-vars '(x y)) => #{})
+ (bound-vars '[x y]) => #{})
 
 (example
- (bound-vars '(lambda [x t] (x (y z)))) => #{'x})
+ (bound-vars '(lambda [x t] (test x [y z]))) => #{'x})
 
 (example
- (bound-vars '(prod [x t] (x (y z)))) => #{'x})
+ (bound-vars '(lambda [x t] (test t [y z]))) => #{})
 
 (example
- (bound-vars '(lambda [x t] [:ref (test x y z)])) => '#{x})
-
-(def vars-free-union-bound
-  (prop/for-all
-   [t (s/gen ::term)]
-   (= (clojure.set/union (free-vars t) (bound-vars t))
-      (vars t))))
-
-(example
- (:result (tc/quick-check 20 vars-free-union-bound)) => true)
+ (bound-vars '(prod [x t] (test x [y z]))) => #{'x})
 
 ;;{
 ;; ## Substitution
@@ -217,30 +120,34 @@
 (example
  (mk-fresh 'x '#{x x' x''}) => 'x''')
 
-(s/def ::subst (s/map-of ::var ::term))
+(defn subst-
+  ([t sub] (subst- t sub #{}))
+  ([t sub forbid]
+   (cond
+     (var? t) [(get sub t t) (conj forbid t)]
+     (binder? t) (let [[binder [x ty] body] t
+                       [x' sub' forbid']
+                       (if (contains? forbid x)
+                         (let [x' (mk-fresh x forbid)]
+                           [x' (assoc sub x x') (conj forbid x')])
+                         [x (dissoc sub x) forbid])
+                       [ty' forbid''] (subst- ty sub forbid')
+                       [body' forbid'''] (subst- body sub' forbid'')]
+                   ;; (println "term=" (list binder [x' ty'] body') "sub=" sub')
+                   [(list binder [x' ty'] body')
+                    forbid'''])
+     (app? t) (let [[rator forbid'] (subst- (first t) sub forbid)
+                    [rand forbid''] (subst- (second t) sub forbid')]
+                [[rator rand] forbid''])
+     (ref? t) (let [[args forbid'] (reduce (fn [[ts forbid] t]
+                                             (let [[t' forbid'] (subst- t sub forbid)]
+                                               [(conj ts t') forbid'])) ['() forbid] (rest t))]
+                [(conj (into '() args) (first t)) forbid'])
+     :else [t forbid])))
 
-(defn subst- [[tag t] sub forbid]
-  (case tag
-    :var [(get sub t t) forbid]
-    :bind (let [{binder :binder [x ty] :binding body :body} t
-                [x' sub' forbid']
-                (if (contains? forbid x)
-                  (let [x' (mk-fresh x forbid)]
-                    [x' (assoc sub x x') (conj forbid x')])
-                  [x sub forbid])
-                [ty' forbid''] (subst- ty sub forbid')
-                [body' forbid'''] (subst- body sub' forbid'')]
-            [(list binder [x' ty'] body')
-             forbid'''])
-    :app (let [[rator forbid'] (subst- (:rator t) sub forbid)
-               [rand forbid''] (subst- (:rand t) sub forbid')]
-           [(list rator rand) forbid''])
-    [t forbid]))
-
-(defn subst
-  ([t sub] (let [t (validate ::term t)]
-             (first (subst- t sub (free-vars- t)))))
-  ([t k v & kvs] (subst t (apply hash-map (cons k (cons v kvs)))))) 
+(defn subst [t sub]
+  (let [[t' _] (subst- t sub #{})]
+    t'))
 
 (example
  (subst 'x {'x :type}) => :type)
@@ -249,15 +156,15 @@
  (subst 'y {'x :type}) => 'y)
 
 (example
- (subst '(y x) {'x :type}) => '(y :type))
+ (subst '[y x] {'x :type}) => '[y :type])
 
 (example
- (subst '(x (lambda [x :type] (y x))) {'x :type})
- => '(:type (lambda [x' :type] (y x'))))
-
+ (subst '[x (lambda [x :type] (test x y z))] {'x :type, 'y :kind})
+ => '[:type (lambda [x' :type] (test x' :kind z))])
+q
 (example
- (subst '(x (prod [x :type] (y x))) {'x :type, 'y 'x})
- => '(:type (prod [x' :type] (x x'))))
+ (subst '[x (prod [x :type] [y x])] {'x :type, 'y 'x})
+ => '[:type (prod [x' :type] [x x'])])
 ;; and not: '(:type (prod [x :type] (x x)))
 
 
