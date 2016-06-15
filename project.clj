@@ -1,11 +1,10 @@
-(defproject latte "0.0.1"
-  :description "LaTTe : a Laboratory for Type Theory experiments"
+(defproject latte "0.0.2"
+  :description "LaTTe : a Laboratory for Type Theory Experiments"
   :url "https://github.com/fredokun/LaTTe.git"
   :license {:name "MIT Licence"
             :url "http://opensource.org/licenses/MIT"}
-  :dependencies [[org.clojure/clojure "1.7.0"]]
-  :plugins [[cider/cider-nrepl "0.10.0-SNAPSHOT"]]
-  :main ^:skip-aot latte.core
+  :dependencies [[org.clojure/clojure "1.8.0"]
+                 [clj-by-example "0.1.0-SNAPSHOT"]]
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})
 
