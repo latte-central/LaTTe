@@ -6,8 +6,16 @@
 
 (def ^:private +examples-enabled+)
 
+
+(def +reserved-symbols+
+  '#{kind type □ * ∗ ✳ lambda prod forall})
+
+(defn reserved-symbol? [s]
+  (or (contains +reserved-symbols+ s)
+      (= (first (name s)) \_)))
+
 (defn kind? [t]
-  (contains? '#{:kind □ ⎕} t))
+  (contains? '#{:kind □} t))
 
 (defn type? [t]
   (contains? '#{:type * ∗ ✳} t))
@@ -33,6 +41,7 @@
 
 (defn parse-symbol-term [def-env sym bound]
   (cond
+    (reserved-symbol? sym) [:ko {:msg "Symbol is reserved" :term sym}]
     (contains? bound sym) [:ok sym]
     (contains? def-env sym)
     (let [sdef (get def-env sym)]
@@ -90,11 +99,14 @@
         [:ko {:msg "Wrong binding type" :term v :from ty'}]
         (loop [s (butlast v), vars #{}, res []]
           (if (seq s)
-            (if (not (symbol? (first s)))
+            (cond
+              (not (symbol? (first s)))
               [:ko {:msg "Binding variable is not a symbol" :term v :var (first s)}]
-              (if (contains? vars (first s))
-                [:ko {:msg "Duplicate binding variable" :term v :var (first s)}]
-                (recur (rest s) (conj vars (first s)) (conj res [(first s) ty']))))
+              (reserved-symbol? (first s))
+              [:ko {:msg "Wrong binding variable : symbol is reserved" :term v :symbol (first s)}]
+              (contains? vars (first s))
+              [:ko {:msg "Duplicate binding variable" :term v :var (first s)}]
+              :else (recur (rest s) (conj vars (first s)) (conj res [(first s) ty'])))
             [:ok res]))))))
 
 (example
