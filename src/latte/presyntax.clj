@@ -268,5 +268,3 @@
 (example
  (parse-term {} '(lambda [x :type] x :type :kind))
  => '[:ok (lambda [x :type] [[x :type] :kind])])
-
-
