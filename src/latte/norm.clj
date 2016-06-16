@@ -1,16 +1,12 @@
-(ns typetheory.beta
+(ns latte.norm
   (:require [clj-by.example :refer [example do-for-example]])
-  (:require [clojure.spec :as s])
-  (:require [clojure.test.check :as tc])
-  (:require [clojure.test.check.generators :as gen])
-  (:require [clojure.test.check.properties :as prop])
-  (:require [typetheory.syntax :as sx])
+  (:require [latte.syntax :as stx])
   )
 
 ;; (s/exercise ::sx/binder)
 
 ;;{
-;; # Beta-reduction etc.
+;; # Normalization
 ;;}
 
 (def ^:private +examples-enabled+)
@@ -26,114 +22,182 @@
 ;; = ((lambda [z :type] (lambda [y :type] (y z))) x)
 ;;   ~~> (lambda [y :type] (y x)    is correct
 
-
-(s/def ::redex (s/cat :rator (s/spec ::sx/bind)
-                      :rand (s/spec ::sx/term)))
-
-
+(defn redex? [t]
+  (and (stx/app? t)
+       (stx/lambda? (first t))))
 
 (example
- (s/valid? ::redex '((lambda [x :type] x) y)) => true)
-
-(example
- (sx/validate ::redex '((lambda [x :type] (x x)) y))
- => '{:rator {:binder lambda,
-              :binding [x [:type :type]],
-              :body [:app {:rator [:var x],
-                           :rand [:var x]}]},
-      :rand [:var y]})
+ (redex? '[(lambda [x :type] x) y]) => true)
 
 (defn beta-reduction [t]
-  (sx/validate ::sx/term t)
-  (if (s/valid? ::redex t)
-    (let [x (first (second (first t)))
-          body (nth (first t) 2)
-          rand (second t)]
-      (sx/subst body x rand))
-    t))
+  (if (redex? t)
+    (let [[[_ [x _] body] rand] t]
+      (stx/subst body x rand))
+    (throw (ex-info "Cannot beta-reduce. Not a redex" {:term t}))))
 
 (example
- (beta-reduction '((lambda [x :type] (x x)) y))
- => '(y y))
+ (beta-reduction '[(lambda [x :type] [x x]) y])
+ => '[y y])
 
-;;{
-;; ## Normalization
-;;}
+(defn beta-step [t]
+  (cond
+    ;; reduction of a redex
+    (redex? t) [(beta-reduction t) true]
+    ;; binder
+    (stx/binder? t)
+    (let [[binder [x ty] body] t]
+      ;; 1) try reduction in binding type
+      (let [[ty' red?] (beta-step ty)]
+        (if red?
+          [(list binder [x ty'] body) true]
+          ;; 2) try reduction in body
+          (let [[body' red?] (beta-step body)]
+            [(list binder [x ty] body') red?]))))
+    ;; application
+    (stx/app? t)
+    (let [[left right] t
+          ;; 1) try left reduction
+          [left' red?] (beta-step left)]
+      (if red?
+        [[left' right] true]
+        ;; 2) try right reduction
+        (let [[right' red?] (beta-step right)]
+          [[left right'] red?])))
+    ;; reference
+    (stx/ref? t)
+    (let [[def-name & args] t
+          [args' red?] (reduce (fn [[res red?] arg]
+                                 (let [[arg' red?'] (beta-step arg)]
+                                   [(conj res arg') (or red? red?')])) [[] false] args)]
+      [(list* def-name args') red?])
+    ;; other cases
+    :else [t false]))
 
-(defn beta-norm- [t]
-  (if (s/valid? ::redex t)
-    [(beta-reduction t) true]
-    (let [[tag _] (sx/validate ::sx/term t)]
-      (case tag
-        :bind (let [[binder [x ty] body] t]
-                ;; 1) try reduction in binding type
-                (let [[ty' red?] (beta-norm- ty)]
-                  (if red?
-                    [(list binder [x ty'] body) true]
-                    ;; 2) try reduction in body
-                    (let [[body' red?] (beta-norm- body)]
-                      [(list binder [x ty] body') red?]))))
-        :app (let [[left right] t
-                   ;; 1) try left reduction
-                   [left' red?] (beta-norm- left)]
-               (if red?
-                 [(list left' right) true]
-                 ;; 2) try right reduction
-                 (let [[right' red?] (beta-norm- right)]
-                   [(list left right') red?])))
-
-        [t false]))))
-
-(defn beta-norm [t]
-  (let [[t' _] (beta-norm- t)]
+(defn beta-red [t]
+  (let [[t' _] (beta-step t)]
     t'))
 
 (example
- (beta-norm '((lambda [x :type] x) y)) => 'y)
+ (beta-red '[(lambda [x :type] x) y]) => 'y)
 
 (example
- (beta-norm '(((lambda [x :type] x) y) z)) => '(y z))
+ (beta-red '[[(lambda [x :type] x) y] z]) => '[y z])
 
 (example
- (beta-norm '(lambda [y ((lambda [x :kind] x) :type)] y))
+ (beta-red '(lambda [y [(lambda [x :kind] x) :type]] y))
  => '(lambda [y :type] y))
 
 
 (example
- (beta-norm '(z ((lambda [x :type] x) y))) => '(z y))
+ (beta-red '[z [(lambda [x :type] x) y]]) => '[z y])
 
 (example
- (beta-norm '(x y)) => '(x y))
+ (beta-red '[x y]) => '[x y])
 
-(defn normalize [t]
-  (let [[t' red?] (beta-norm- t)]
-    (if red?
-      (recur t')
-      t')))
+;;{
+;; ## Delta-reduction (unfolding of definitions)
+;;}
+
+(defn delta-reduction [def-env t]
+  (if (not (stx/ref? t))
+    (throw (ex-info "Cannot delta-reduce: not a reference term." {:term t}))
+    (let [[name & args] t]
+      (if (not (get def-env name))
+        (throw (ex-info "No such definition" {:term t :def-name name}))
+        (let [sdef (get def-env name)]
+          (if (not= (count args) (:arity sdef))
+            (throw (ex-info "Wrong arity for definition." {:term t :def-name name :expected-arity (:arity sdef)}))
+            (if (:parsed-term sdef)
+              [(stx/subst (:parsed-term sdef) (zipmap (map first (:params sdef)) args)) true]
+              [t false])))))))
 
 (example
- (normalize '(lambda [y ((lambda [x :kind] x) :type)] ((lambda [x :type] x) y)))
+ (delta-reduction '{test {:arity 3
+                          :params [[x :type] [y :kind] [z :type]]
+                          :parsed-term [y (lambda [t :type] [x [z t]])]}}
+                  '(test [a b] c [t (lambda [t] t)]))
+ => '[[c (lambda [t' :type] [[a b] [[t (lambda [t] t)] t']])] true])
+
+(example
+ (delta-reduction '{test {:arity 3
+                          :params [[x :type] [y :kind] [z :type]]}}
+                  '(test [a b] c [t (lambda [t] t)]))
+ => '[(test [a b] c [t (lambda [t] t)]) false])
+
+
+(defn delta-step [def-env t]
+  (cond
+    ;; reduction of a delta-redex
+    (stx/ref? t) (delta-reduction def-env t)
+    ;; binder
+    (stx/binder? t)
+    (let [[binder [x ty] body] t]
+      ;; 1) try reduction in binding type
+      (let [[ty' red?] (delta-step def-env ty)]
+        (if red?
+          [(list binder [x ty'] body) true]
+          ;; 2) try reduction in body
+          (let [[body' red?] (delta-step def-env body)]
+            [(list binder [x ty] body') red?]))))
+    ;; application
+    (stx/app? t)
+    (let [[left right] t
+          ;; 1) try left reduction
+          [left' red?] (delta-step def-env left)]
+      (if red?
+        [[left' right] true]
+        ;; 2) try right reduction
+        (let [[right' red?] (delta-step def-env right)]
+          [[left right'] red?])))
+    ;; reference
+    (stx/ref? t)
+    (let [[def-name & args] t
+          [args' red?] (reduce (fn [[res red?] arg]
+                                 (let [[arg' red?'] (delta-step def-env arg)]
+                                   [(conj res arg') (or red? red?')])) [[] false] args)]
+      [(list* def-name args') red?])
+    ;; other cases
+    :else [t false]))
+
+(example
+ (delta-step {} 'x) => '[x false])
+
+(example
+ (delta-step '{test {:arity 1
+                     :params [[x :type]]
+                     :parsed-term [x x]}}
+             '[y (test [t t])])
+ => '[[y [[t t] [t t]]] true])
+
+;;{
+;; ## Normalization (up-to beta/delta)
+;;}
+
+
+(defn normalize
+  ([t] (normalize {} t))
+  ([def-env t]
+   (let [[t' red?] (beta-step t)]
+     (if red?
+       (recur def-env t')
+       (let [[t'' red?] (delta-step def-env t)]
+         (if red?
+           (recur def-env t'')
+           t''))))))
+
+(example
+ (normalize '(lambda [y [(lambda [x :kind] x) :type]] [(lambda [x :type] x) y]))
  => '(lambda [y :type] y))
-
 
 
 (defn beta-eq? [t1 t2]
   (let [t1' (normalize t1)
         t2' (normalize t2)]
-    (sx/alpha-eq? t1' t2')))
+    (stx/alpha-eq? t1' t2')))
 
 (example
  (beta-eq? '(lambda [z :type] z)
-           '(lambda [y ((lambda [x :kind] x) :type)] ((lambda [x :type] x) y))) => true)
-
-(def beta-eq-refl
-  (prop/for-all
-   [t (s/gen ::sx/term)]
-   (beta-eq? t t)))
-
-(example
- (:result (tc/quick-check 100 beta-eq-refl)) => true)
-
+           '(lambda [y [(lambda [x :kind] x) :type]] [(lambda [x :type] x) y])) => true)
 
 
 

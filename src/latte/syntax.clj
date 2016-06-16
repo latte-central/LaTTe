@@ -30,6 +30,14 @@
   (and (list? t)
        (contains? '#{lambda prod} (first t))))
 
+(defn lambda? [t]
+  (and (list? t)
+       (= (first t) 'lambda)))
+
+(defn prod? [t]
+  (and (list? t)
+       (= (first t) 'prod)))
+
 (defn app? [t]
   (and (vector? t)
        (= (count t) 2)))
@@ -151,9 +159,15 @@
     ;; other cases
     :else [t forbid]))
 
-(defn subst [t sub]
-  (let [[t' _] (subst- t sub #{})]
-    t'))
+(defn subst
+  ([t x u] (subst t {x u}))
+  ([t sub]
+   (let [forbid (clojure.set/union
+                 (apply clojure.set/union (map vars (vals sub)))
+                 (into #{} (keys sub))
+                 (free-vars t))
+         [t' _] (subst- t sub forbid)]
+     t')))
 
 (example
  (subst 'x {'x :type}) => :type)
