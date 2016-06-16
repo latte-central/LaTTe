@@ -1,17 +1,15 @@
 
-(ns typetheory.presyntax
+(ns latte.presyntax
   (:require [clj-by.example :refer [example do-for-example]])
-  (:require [typetheory.syntax :as stx])
   )
 
 (def ^:private +examples-enabled+)
 
-
 (def +reserved-symbols+
-  '#{kind type □ * ∗ ✳ lambda prod forall})
+  '#{kind type □ * ∗ ✳ lambda λ prod forall ∀})
 
 (defn reserved-symbol? [s]
-  (or (contains +reserved-symbols+ s)
+  (or (contains? +reserved-symbols+ s)
       (= (first (name s)) \_)))
 
 (defn kind? [t]
@@ -47,7 +45,7 @@
     (let [sdef (get def-env sym)]
       (if (not= (:arity sdef) 0)
         [:ko {:msg "Definition is not a constant (arity>0)" :term sym :def sdef}]
-        [:ok (list ::stx/ref sym)]))
+        [:ok (list sym)]))
     :else [:ko {:msg "Variable out of scope" :term sym}]))
 
 (example
@@ -59,7 +57,7 @@
 
 (example
  (parse-term {'x {:arity 0}} 'x)
- => '[:ok (:typetheory.syntax/ref x)])
+ => '[:ok (x)])
 
 (example
  (parse-term {'x {:arity 1}} 'x)
@@ -103,7 +101,7 @@
               (not (symbol? (first s)))
               [:ko {:msg "Binding variable is not a symbol" :term v :var (first s)}]
               (reserved-symbol? (first s))
-              [:ko {:msg "Wrong binding variable : symbol is reserved" :term v :symbol (first s)}]
+              [:ko {:msg "Wrong binding variable: symbol is reserved" :term v :symbol (first s)}]
               (contains? vars (first s))
               [:ko {:msg "Duplicate binding variable" :term v :var (first s)}]
               :else (recur (rest s) (conj vars (first s)) (conj res [(first s) ty'])))
@@ -116,6 +114,12 @@
 (example
  (parse-binding {} '[x y z :type] #{})
  => '[:ok [[x :type] [y :type] [z :type]]])
+
+(example
+ (parse-binding {} '[x y forall :type] #{})
+ => '[:ko {:msg "Wrong binding variable: symbol is reserved",
+           :term [x y forall :type],
+           :symbol forall}])
 
 (example
  (parse-binding {} '[x y x :type] #{})
@@ -139,20 +143,23 @@
  (concat [1 2 3] [4 5 6]) => [1 2 3 4 5 6])
 
 (defn parse-binder-term [def-env binder t bound]
-  (if (not= (count t) 3)
-    [:ko {:msg (str "Wrong " binder " form (expecting 3 arguments)") :term t :nb-args (count t)}]
+  (if (< (count t) 3)
+    [:ko {:msg (str "Wrong " binder " form (expecting at least 3 arguments)") :term t :nb-args (count t)}]
     (let [[status bindings] (parse-binding def-env (second t) bound)]
       (if (= status :ko)
         [:ko {:msg (str "Wrong bindings in " binder " form") :term t :from bindings}]
         (let [bound' (reduce (fn [res [x _]]
                                (conj res x)) #{} bindings)]
-          (let [[status body] (parse-term def-env (nth t 2) bound')]
-            (if (= status :ko)
-              [:ko {:msg (str "Wrong body in " binder " form") :term t :from body}]
-              (loop [i (dec (count bindings)), res body]
-                (if (>= i 0)
-                  (recur (dec i) (list binder (bindings i) res))
-                  [:ok res])))))))))
+          (let [body (if (= (count t) 3)
+                       (nth t 2)
+                       (rest (rest t)))]
+            (let [[status body] (parse-term def-env body bound')]
+              (if (= status :ko)
+                [:ko {:msg (str "Wrong body in " binder " form") :term t :from body}]
+                (loop [i (dec (count bindings)), res body]
+                  (if (>= i 0)
+                    (recur (dec i) (list binder (bindings i) res))
+                    [:ok res]))))))))))
 
 (defn parse-lambda-term [def-env t bound]
   (parse-binder-term def-env 'lambda t bound))
@@ -176,12 +183,6 @@
  => '[:ko {:msg "Wrong bindings in lambda form",
            :term (lambda [x] x),
            :from {:msg "Binding must have at least 2 elements", :term [x]}}])
-
- (example
- (parse-term {} '(lambda [x :type] x y))
- => '[:ko {:msg "Wrong lambda form (expecting 3 arguments)",
-           :term (lambda [x :type] x y),
-           :nb-args 4}])
 
 (example
  (parse-term {} '(lambda [x :type] z))
@@ -226,30 +227,29 @@
       (let [[status ts] (parse-terms def-env (rest t) bound)]
         (if (= status :ko)
           [:ko {:msg "Wrong argument" :term t :from ts}]
-          [:ok (conj (conj (into '() ts) def-name) ::stx/ref)])))))
+          [:ok (list* def-name ts)])))))
 
 (example
  (parse-term {'ex {:arity 2}}
              '(ex x :kind) #{'x})
- => '[:ok (:typetheory.syntax/ref ex :kind x)])
-
+ => '[:ok (ex x :kind)])
 
 (defn left-binarize [t]
   (if (< (count t) 2)
     t
-    (loop [s (rest (rest t)), res (list (first t) (second t))]
+    (loop [s (rest (rest t)), res [(first t) (second t)]]
       (if (seq s)
-        (recur (rest s) (list res (first s)))
+        (recur (rest s) [res (first s)])
         res))))
 
 (example
- (left-binarize '(a b)) => '(a b))
+ (left-binarize '(a b)) => '[a b])
 
 (example
- (left-binarize '(a b c)) => '((a b) c))
+ (left-binarize '(a b c)) => '[[a b] c])
 
 (example
- (left-binarize '(a b c d e)) => '((((a b) c) d) e))
+ (left-binarize '(a b c d e)) => '[[[[a b] c] d] e])
 
 (defn parse-application-term [def-env t bound]
   (if (< (count t) 2)
@@ -260,7 +260,13 @@
         [:ok (left-binarize ts)]))))
 
 (example
- (parse-term {} '(x y) '#{x y}) => '[:ok (x y)])
+ (parse-term {} '(x y) '#{x y}) => '[:ok [x y]])
 
 (example
- (parse-term {} '(x y z) '#{x y z}) => '[:ok ((x y) z)])
+ (parse-term {} '(x y z) '#{x y z}) => '[:ok [[x y] z]])
+
+(example
+ (parse-term {} '(lambda [x :type] x :type :kind))
+ => '[:ok (lambda [x :type] [[x :type] :kind])])
+
+
