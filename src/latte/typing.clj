@@ -62,10 +62,11 @@
  (type-of {} [] :kind) => [:ko {:msg "Kind has not type" :term :kind}])
 
 (defn type-check? [def-env env term type]
+  ;; (println "type-check? term=" term "type=" type)
   (let [[status type'] (type-of def-env env term)]
     (if (= status :ok)
       (norm/delta-beta-eq? def-env type type')
-      (throw (ex-info "Cannot check type of term" {:term term})))))
+      (throw (ex-info "Cannot check type of term" {:term term :from type'})))))
 
 ;;{
 ;;
@@ -247,4 +248,47 @@
 ;;      D, E |- (ref e1 e2 ... eM)
 ;;              ::> (prod [xM+1 tM+1] ... (prod [xN tN] t [e1/x1, e2/x2, ...eM/xM]) ...)
 ;;}
+
+(defn type-of-ref [def-env env name args]
+  (let [ddef (get def-env name)]
+    (cond
+      (nil? ddef) [:ko {:msg "No such definition." :def-name name}]
+      (> (count args) (:arity ddef))
+      [:ko {:msg "Too many arguments for definition." :term (list* name args) :arity ddef}]
+      :else
+      (loop [args args, params (:params ddef), sub {}]
+        ;; (println "args=" args "params=" params "sub=" sub)
+        (if (seq args)
+          (let [arg (first args)
+                ty (stx/subst (second (first params)) sub)]
+            ;; (println "arg=" arg "ty=" ty)
+            (if (not (type-check? def-env env arg ty))
+              [:ko {:msg "Wrong argument type"
+                    :term (list* name args)
+                    :arg arg
+                    :expected-type ty}]
+              (recur (rest args) (rest params) (assoc sub (ffirst params) arg))))
+          ;; all args have been checked
+          (loop [params (reverse params), res (:ret-type ddef)]
+            (if (seq params)
+              (recur (rest params) (list 'prod (first params) res))
+              ;; all params have been handled
+              [:ok (stx/subst res sub)])))))))
+
+(example
+ (type-of '{test {:params [[x :type] [y :type]]
+                  :ret-type :type
+                  :arity 2}}
+          '[[a :type] [b :type]]
+          '(test a b))
+ => [:ok :type])
+
+(example
+ (type-of '{test {:params [[x :type] [y :type]]
+                  :ret-type :type
+                  :arity 2}}
+          '[[bool :type] [a :type] [b bool]]
+          '(test a b))
+ => '[:ko {:msg "Wrong argument type", :term (test b), :arg b, :expected-type :type}])
+
 
