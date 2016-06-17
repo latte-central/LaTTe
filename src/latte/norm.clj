@@ -208,16 +208,27 @@
 ;; ## Normalization (up-to beta/delta)
 ;;}
 
+(defn beta-normalize [t]
+  (let [[t' red?] (beta-step t)]
+    (if red?
+      (recur t')
+      t')))
+
+(defn beta-delta-normalize [def-env t]
+  (let [[t' red?] (beta-step t)]
+    (if red?
+      (recur def-env t')
+      (let [[t'' red?] (delta-step def-env t)]
+        (if red?
+          (recur def-env t'')
+          t'')))))
+
 (defn normalize
-  ([t] (normalize {} t))
+  ([t] (beta-normalize t))
   ([def-env t]
-   (let [[t' red?] (beta-step t)]
-     (if red?
-       (recur def-env t')
-       (let [[t'' red?] (delta-step def-env t)]
-         (if red?
-           (recur def-env t'')
-           t''))))))
+   (if (empty? def-env)
+     (beta-normalize t)
+     (beta-delta-normalize def-env t))))
 
 (example
  (normalize '(lambda [y [(lambda [x :kind] x) :type]] [(lambda [x :type] x) y]))
@@ -233,5 +244,8 @@
  (beta-eq? '(lambda [z :type] z)
            '(lambda [y [(lambda [x :kind] x) :type]] [(lambda [x :type] x) y])) => true)
 
-
+(defn delta-beta-eq? [def-env t1 t2]
+  (let [t1' (normalize def-env t1)
+        t2' (normalize def-env t2)]
+    (stx/alpha-eq? t1' t2')))
 
