@@ -98,17 +98,46 @@
 ;; ## Delta-reduction (unfolding of definitions)
 ;;}
 
-(defn delta-reduction [def-env t]
+(defn instantiate-def [params body args]
+  (loop [args args, params params, sub {}]
+    (if (seq args)
+      (if (empty? params)
+        (throw (ex-info "Not enough parameters (please report)" {:args args}))
+        (recur (rest args) (rest params) (assoc sub (ffirst params) (first args))))
+      (loop [params (reverse params), res body]
+        (if (seq params)
+          (recur (rest params) (list 'lambda (first params) res))
+          (stx/subst res sub))))))
+
+(example
+ (instantiate-def '[[x :type] [y :type] [z :type]]
+                  '[[x y] z]
+                  '((lambda [t :type] t) t1 [t2 t3]))
+ => '[[(lambda [t :type] t) t1] [t2 t3]])
+
+(example
+ (instantiate-def '[[x :type] [y :type] [z :type] [t :type]]
+                  '[[x y] [z t]]
+                  '((lambda [t :type] t) t1 [t2 t3]))
+ => '(lambda [t' :type] [[(lambda [t :type] t) t1] [[t2 t3] t']]))
+
+(example
+ (instantiate-def '[[x :type] [y :type] [z :type]]
+                  '[[x y] z]
+                  '())
+ => '(lambda [x :type] (lambda [y :type] (lambda [z :type] [[x y] z]))))
+
+ (defn delta-reduction [def-env t]
   (if (not (stx/ref? t))
     (throw (ex-info "Cannot delta-reduce: not a reference term." {:term t}))
     (let [[name & args] t]
       (if (not (get def-env name))
         (throw (ex-info "No such definition" {:term t :def-name name}))
         (let [sdef (get def-env name)]
-          (if (not= (count args) (:arity sdef))
-            (throw (ex-info "Wrong arity for definition." {:term t :def-name name :expected-arity (:arity sdef)}))
+          (if (> (count args) (:arity sdef))
+            (throw (ex-info "Too many arguments to instantiate definition." {:term t :def-name name :nb-params (count (:arity sdef)) :nb-args (count args)}))
             (if (:parsed-term sdef)
-              [(stx/subst (:parsed-term sdef) (zipmap (map first (:params sdef)) args)) true]
+              [(instantiate-def (:params sdef) (:parsed-term sdef) args) true]
               [t false])))))))
 
 (example
@@ -124,11 +153,15 @@
                   '(test [a b] c [t (lambda [t] t)]))
  => '[(test [a b] c [t (lambda [t] t)]) false])
 
+(example
+ (delta-reduction '{test {:arity 3
+                          :params [[x :type] [y :kind] [z :type]]
+                          :parsed-term [y (lambda [t :type] [x [z t]])]}}
+                  '(test [a b] c))
+ => '[(lambda [z :type] [c (lambda [t :type] [[a b] [z t]])]) true])
 
 (defn delta-step [def-env t]
   (cond
-    ;; reduction of a delta-redex
-    (stx/ref? t) (delta-reduction def-env t)
     ;; binder
     (stx/binder? t)
     (let [[binder [x ty] body] t]
@@ -155,7 +188,9 @@
           [args' red?] (reduce (fn [[res red?] arg]
                                  (let [[arg' red?'] (delta-step def-env arg)]
                                    [(conj res arg') (or red? red?')])) [[] false] args)]
-      [(list* def-name args') red?])
+      (if red?
+        [(list* def-name args') red?]
+        (delta-reduction def-env t)))
     ;; other cases
     :else [t false]))
 
@@ -172,7 +207,6 @@
 ;;{
 ;; ## Normalization (up-to beta/delta)
 ;;}
-
 
 (defn normalize
   ([t] (normalize {} t))
