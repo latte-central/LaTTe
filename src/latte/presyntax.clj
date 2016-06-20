@@ -6,7 +6,7 @@
 (def ^:private +examples-enabled+)
 
 (def +reserved-symbols+
-  '#{kind type □ * ∗ ✳ lambda λ prod forall ∀})
+  '#{kind type □ * ∗ ✳ lambda λ prod forall ∀ _arrow})
 
 (defn reserved-symbol? [s]
   (or (contains? +reserved-symbols+ s)
@@ -46,14 +46,14 @@
       (if (not= (:arity sdef) 0)
         [:ko {:msg "Definition is not a constant (arity>0)" :term sym :def sdef}]
         [:ok (list sym)]))
-    :else [:ko {:msg "Variable out of scope" :term sym}]))
+    ;; free variable
+    :else [:ok sym]))
 
 (example
- (parse-term {} 'x #{'x}) => [:ok 'x])
+ (parse-term {} 'x #{'x}) => '[:ok x])
 
 (example
- (parse-term {} 'x #{'y})
- => '[:ko {:msg "Variable out of scope", :term x}])
+ (parse-term {} 'x #{'y}) => '[:ok x])
 
 (example
  (parse-term {'x {:arity 0}} 'x)
@@ -68,10 +68,14 @@
   (contains? #{'lambda 'λ} t))
 
 (defn product-kw? [t]
-  (contains? #{'prod 'forall '∀} t))
+  (contains? #{'prod 'pi 'Π 'forall '∀} t))
+
+(defn arrow-kw? [t]
+  (contains? #{'imply '--> '-> '=> '==> '→ '➝ '⟶ '⟹} t))
 
 (declare parse-lambda-term
          parse-product-term
+         parse-arrow-term
          parse-defined-term
          parse-application-term)
 
@@ -81,6 +85,7 @@
     (cond
       (lambda-kw? (first t)) (parse-lambda-term def-env t bound)
       (product-kw? (first t)) (parse-product-term def-env t bound)
+      (arrow-kw? (first t)) (parse-arrow-term def-env t bound)
       (contains? def-env (first t)) (parse-defined-term def-env t bound)
       :else (parse-application-term def-env t bound))))
 
@@ -163,7 +168,7 @@
 
 (defn parse-lambda-term [def-env t bound]
   (parse-binder-term def-env 'lambda t bound))
-  
+
 (example
  (parse-term {} '(lambda [x :type] x))
  => '[:ok (lambda [x :type] x)])
@@ -186,10 +191,7 @@
 
 (example
  (parse-term {} '(lambda [x :type] z))
- => '[:ko {:msg "Wrong body in lambda form",
-           :term (lambda [x :type] z),
-           :from {:msg "Variable out of scope", :term z}}])
-
+ => '[:ok (lambda [x :type] z)])
 
 (defn parse-product-term [def-env t bound]
   (parse-binder-term def-env 'prod t bound))
@@ -201,7 +203,6 @@
 (example
  (parse-term {} '(prod [x y :type] x))
  => '[:ok (prod [x :type] (prod [y :type] x))])
-
 
 (defn parse-terms [def-env ts bound]
   (reduce (fn [res t]
@@ -216,7 +217,28 @@
 
 (example
  (parse-terms {} '(x y z) #{'x 'z})
- => '[:ko {:msg "Variable out of scope", :term y}])
+ => '[:ok [x y z]])
+
+(defn parse-arrow-term [def-env t bound]
+  (if (< (count t) 3)
+    [:ko {:msg "Arrow (implies) requires at least 2 arguments"
+          :term t
+          :nb-args (count (rest t))}]
+    (let [[status ts'] (parse-terms def-env (rest t) bound)]
+      (if (= status :ko)
+        [:ko {:msg "Cannot parse arrow." :term t :from ts'}]
+        (loop [ts (rest (reverse ts')), res (last ts')]
+          (if (seq ts)
+            (recur (rest ts) (list 'prod ['_arrow (first ts)] res))
+            res))))))
+
+(example
+ (parse-term {} '(--> :type :type))
+ => '(prod [_arrow :type] :type))
+
+(example
+ (parse-term {} '(--> sigma tau mu))
+ => '(prod [_arrow sigma] (prod [_arrow tau] mu)))
 
 (defn parse-defined-term [def-env t bound]
   (let [def-name (first t)
