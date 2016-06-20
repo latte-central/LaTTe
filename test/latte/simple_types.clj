@@ -19,8 +19,27 @@
 
 (deftest basic-terms
   (is (n/beta-eq?
-       (t/type-of {} '[[sigma :type]]
-                  (s/parse-term {} '(lambda [x sigma] x)))
-       (s/parse-term {} '(--> sigma sigma)))))
+       (t/type-of '[[sigma :type]]
+                  (s/parse '(lambda [x sigma] x)))
+       (s/parse '(--> sigma sigma))))
+
+  (is (n/beta-eq?
+       (t/type-of [['sigma :type] ['tau :type]
+                   ['y (s/parse '(--> sigma tau))] '[x sigma]]
+                  (s/parse '(y x)))
+       'tau))
+
+  (is (n/beta-eq?
+       (t/type-of [['alpha :type] ['beta :type] ['gamma :type]
+                    ['x (s/parse '(--> alpha alpha))]
+                    ['y (s/parse '(--> (--> alpha alpha) beta))]]
+                  (s/parse '(lambda [u gamma] (y x))))
+       (s/parse '(--> gamma beta))))
+  )
+
+
+
+
+
 
 

@@ -230,15 +230,15 @@
         (loop [ts (rest (reverse ts')), res (last ts')]
           (if (seq ts)
             (recur (rest ts) (list 'prod ['_arrow (first ts)] res))
-            res))))))
+            [:ok res]))))))
 
 (example
  (parse-term {} '(--> :type :type))
- => '(prod [_arrow :type] :type))
+ => '[:ok (prod [_arrow :type] :type)])
 
 (example
  (parse-term {} '(--> sigma tau mu))
- => '(prod [_arrow sigma] (prod [_arrow tau] mu)))
+ => '[:ok (prod [_arrow sigma] (prod [_arrow tau] mu))])
 
 (defn parse-defined-term [def-env t bound]
   (let [def-name (first t)
@@ -290,3 +290,13 @@
 (example
  (parse-term {} '(lambda [x :type] x :type :kind))
  => '[:ok (lambda [x :type] [[x :type] :kind])])
+
+
+(defn parse
+  ([t] (parse {} t))
+  ([def-env t] (let [[status t'] (parse-term def-env t)]
+                 (if (= status :ko)
+                   (throw (ex-info "Parse error" t'))
+                   t'))))
+
+

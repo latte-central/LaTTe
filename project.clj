@@ -4,7 +4,5 @@
   :license {:name "MIT Licence"
             :url "http://opensource.org/licenses/MIT"}
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [clj-by-example "0.1.0-SNAPSHOT"]]
-  :target-path "target/%s"
-  :profiles {:uberjar {:aot :all}})
+                 [clj-by-example "0.1.0-SNAPSHOT"]])
 

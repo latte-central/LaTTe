@@ -1,6 +1,7 @@
 
 (ns latte.syntax
   (:require [clj-by.example :refer [example do-for-example]])
+  (:require [clojure.set :as set])
   )
 
 ;;{
@@ -54,11 +55,11 @@
   (cond
     (variable? t) #{t}
     (binder? t) (let [[_ [x ty] body] t]
-                  (clojure.set/union (free-vars ty)
-                                     (disj (free-vars body) x)))
-    (app? t) (clojure.set/union (free-vars (first t))
-                                (free-vars (second t)))
-    (ref? t) (apply clojure.set/union (map free-vars (rest t)))
+                  (set/union (free-vars ty)
+                             (disj (free-vars body) x)))
+    (app? t) (set/union (free-vars (first t))
+                        (free-vars (second t)))
+    (ref? t) (apply set/union (map free-vars (rest t)))
     :else #{}))
 
 (example
@@ -80,10 +81,10 @@
   (cond
     (variable? t) #{t}
     (binder? t) (let [[_ [x ty] body] t]
-                  (clojure.set/union (vars ty) (vars body)))
-    (app? t) (clojure.set/union (vars (first t))
+                  (set/union (vars ty) (vars body)))
+    (app? t) (set/union (vars (first t))
                                 (vars (second t)))
-    (ref? t) (apply clojure.set/union (map vars (rest t)))
+    (ref? t) (apply set/union (map vars (rest t)))
     :else #{}))
 
 (example
@@ -99,7 +100,7 @@
  (vars '(prod [x t] (test x [y z]))) => #{'t 'x 'y 'z})
 
 (defn bound-vars [t]
-  (clojure.set/difference (vars t) (free-vars t)))
+  (set/difference (vars t) (free-vars t)))
 
 (example
  (bound-vars 'x) => #{})
@@ -162,8 +163,8 @@
 (defn subst
   ([t x u] (subst t {x u}))
   ([t sub]
-   (let [forbid (clojure.set/union
-                 (apply clojure.set/union (map vars (vals sub)))
+   (let [forbid (set/union
+                 (apply set/union (map vars (vals sub)))
                  (into #{} (keys sub))
                  (free-vars t))
          [t' _] (subst- t sub forbid)]
