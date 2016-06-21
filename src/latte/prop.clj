@@ -18,8 +18,10 @@
 ;;   "Ex falso sequitur quolibet
 ;;    (proof by contradiction)."
 ;;   [[A :type]]
-;;   (--> absurd A)
-;;   :by (lambda [x : absurd] (absurd A)))
+;;   (--> absurd A))
+
+;; (proof ex-falso :term
+;;   (lambda [x : absurd] (absurd A)))
 
 (defterm neg
   "Logical negation."
