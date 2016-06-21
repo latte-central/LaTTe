@@ -43,9 +43,9 @@
     (contains? bound sym) [:ok sym]
     (contains? def-env sym)
     (let [sdef (get def-env sym)]
-      (if (not= (:arity sdef) 0)
-        [:ko {:msg "Definition is not a constant (arity>0)" :term sym :def sdef}]
-        [:ok (list sym)]))
+      ;;(if (not= (:arity sdef) 0)
+      ;;[:ko {:msg "Definition is not a constant (arity>0)" :term sym :def sdef}]
+        [:ok (list sym)])
     ;; free variable
     :else [:ok sym]))
 
@@ -61,8 +61,7 @@
 
 (example
  (parse-term {'x {:arity 1}} 'x)
- => '[:ko {:msg "Definition is not a constant (arity>0)",
-           :term x, :def {:arity 1}}])
+ => '[:ok (x)])
 
 (defn lambda-kw? [t]
   (contains? #{'lambda 'λ} t))
@@ -244,8 +243,8 @@
   (let [def-name (first t)
         sdef (get def-env (first t))
         arity (count (rest t))]
-    (if (not= (:arity sdef) arity)
-      [:ko {:msg "Wrong arity for defined term." :term t :arity arity :def-arity (:arity sdef)}]
+    (if (< (:arity sdef) arity)
+      [:ko {:msg "Too many arguments for definition." :term t :def-name def-name :arity arity :nb-args (:arity sdef)}]
       (let [[status ts] (parse-terms def-env (rest t) bound)]
         (if (= status :ko)
           [:ko {:msg "Wrong argument" :term t :from ts}]

@@ -269,15 +269,17 @@
                     :expected-type ty}]
               (recur (rest args) (rest params) (assoc sub (ffirst params) arg))))
           ;; all args have been checked
-          (loop [params (reverse params), res (:ret-type ddef)]
+          (loop [params (reverse params), res (:type ddef)]
             (if (seq params)
               (recur (rest params) (list 'prod (first params) res))
               ;; all params have been handled
-              [:ok (stx/subst res sub)])))))))
+              (do
+                ;; (println "[type-of-ref] res = " res " sub = " sub)
+                [:ok (stx/subst res sub)]))))))))
 
 (example
  (type-of-term '{test {:params [[x :type] [y :type]]
-                  :ret-type :type
+                  :type :type
                   :arity 2}}
           '[[a :type] [b :type]]
           '(test a b))
@@ -285,7 +287,7 @@
 
 (example
  (type-of-term '{test {:params [[x :type] [y :type]]
-                  :ret-type :type
+                  :type :type
                   :arity 2}}
           '[[bool :type] [a :type] [b bool]]
           '(test a b))
