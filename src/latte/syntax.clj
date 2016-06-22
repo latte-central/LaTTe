@@ -32,11 +32,11 @@
        (contains? '#{λ Π} (first t))))
 
 (defn lambda? [t]
-  (and (list? t)
+  (and (seq? t)
        (= (first t) 'λ)))
 
 (defn prod? [t]
-  (and (list? t)
+  (and (seq? t)
        (= (first t) 'Π)))
 
 (defn app? [t]
@@ -44,7 +44,7 @@
        (= (count t) 2)))
 
 (defn ref? [t]
-  (and (list? t)
+  (and (seq? t)
        (not (contains? '#{λ Π} (first t)))))
 
 ;;{

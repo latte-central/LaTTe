@@ -175,6 +175,30 @@
                (alter-meta! (var ~def-name)  (fn [m#] (assoc m# :doc ~doc)))
                [:declared :theorem ~name#])))))))
 
+(defmacro proof
+  [thm-name method steps]
+  (let [def-env (fetch-definition-environment)
+        thm (get def-env thm-name)]
+    (when-not thm
+      (throw (ex-info "No such theorem." {:name thm-name})))
+    (case method
+      :term (let [proof (stx/parse def-env steps)
+                  [status ptype] (ty/type-of-term def-env (:params thm) proof)]
+              ;;(println "[proof] parsed proof=" proof " proof-type=" ptype)
+              (if (= status :ko)
+                (throw (ex-info "Proof failed." {:theorem thm-name :error ptype}))
+                (if (not (n/beta-delta-eq? def-env (:type thm) ptype))
+                  (throw (ex-info "Wrong proof." {:theorem thm-name
+                                                  :expected-type (:type thm)
+                                                  :proof-type ptype}))
+                  (let [new-thm (list 'quote (assoc thm :proof proof))
+                        name# (name thm-name)]
+                    `(do (register-definition! ~thm-name ~new-thm)
+                         (alter-var-root (var ~thm-name) (fn [_#] ~new-thm))
+                         [:qed ~name#])))))
+      :script (throw (ex-info "Method :script not yet supported" {:theorem thm-name}))
+      (throw (ex-info "No such proof method." {:theorem thm-name :method method})))))
+
 ;;{
 ;; ## Top-level term parsing
 ;;}
@@ -199,7 +223,7 @@
     (let [def-env (fetch-definition-environment)
           t (stx/parse def-env (last args))
           ctx (parse-context-args def-env (butlast args))]
-      ;; (println "[term] t = " t " ctx = " ctx)
+      ;;(println "[term] t = " t " ctx = " ctx)
       (if (latte.norm/beta-eq? t :kind)
         '□
         (let [ty (ty/type-of def-env ctx t)]

@@ -27,7 +27,7 @@
    (cond
      (kind? t) [:ok '□]
      (type? t) [:ok '✳]
-     (list? t) (parse-compound-term def-env t bound)
+     (sequential? t) (parse-compound-term def-env t bound)
      (symbol? t) (parse-symbol-term def-env t bound)
      :else [:ko {:msg "Cannot parse term" :term t}])))
 

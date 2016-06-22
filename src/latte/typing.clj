@@ -40,6 +40,7 @@
          type-of-ref)
 
 (defn type-of-term [def-env env t]
+  ;;(println "[type-of-term] env=" env " t=" t "(ref?" (stx/ref? t) ") type=" (type t))
   (cond
     (stx/kind? t) [:ko {:msg "Kind has not type" :term t}]
     (stx/type? t) (type-of-type)
@@ -51,10 +52,10 @@
         λ (type-of-abs def-env env x ty body)
         Π (type-of-prod def-env env x ty body)
         (throw (ex-info "No such binder (please report)" {:term t :binder binder}))))
-    ;; applications
-    (stx/app? t) (type-of-app def-env env (first t) (second t))
     ;; references
     (stx/ref? t) (type-of-ref def-env env (first t) (rest t))
+    ;; applications
+    (stx/app? t) (type-of-app def-env env (first t) (second t))
     :else
     (throw (ex-info "Invalid term (please report)" {:term t}))))
 
@@ -304,7 +305,6 @@
      (if (= status :ko)
        (throw (ex-info "Type checking error" ty))
        ty))))
-
 
 (defn proper-type?
   ([t] (proper-type? {} [] t))
