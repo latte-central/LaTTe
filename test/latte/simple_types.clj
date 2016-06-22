@@ -1,6 +1,6 @@
 (ns latte.simple-types
   (:require [clojure.test :as test :refer [deftest is]])
-  (:require [latte.core :as l :refer [=== type-of term]])
+  (:require [latte.core :as l :refer [=== type-of term check-type?]])
   )
 
 ;;{
@@ -20,6 +20,10 @@
                     (lambda [x sigma] x))
            (term [sigma :type] (==> sigma sigma))))
 
+  (is (check-type? [sigma :type]
+                   (lambda [x sigma] x)
+                   (==> sigma sigma)))
+  
   (is (=== (type-of [sigma :type]
                     [tau :type]
                     [y (--> sigma tau)]

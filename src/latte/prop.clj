@@ -1,6 +1,6 @@
 (ns latte.prop
   (:require [clj-by.example :refer [example do-for-example]])
-  (:require [latte.core :as latte :refer [defterm term type-of]])
+  (:require [latte.core :as latte :refer [defterm term type-of defthm]])
   )
 
 
@@ -17,11 +17,11 @@
 (example
  (type-of absurd) => '✳)
 
-;; (defthm ex-falso
-;;   "Ex falso sequitur quolibet
-;;    (proof by contradiction)."
-;;   [[A :type]]
-;;   (--> absurd A))
+(defthm ex-falso
+  "Ex falso sequitur quolibet
+   (proof by contradiction)."
+  [[A :type]]
+  (--> absurd A))
 
 ;; (proof ex-falso :term
 ;;   (lambda [x : absurd] (absurd A)))
