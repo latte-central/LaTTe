@@ -12,9 +12,6 @@
   (forall [α *] α))
 
 (example
- (term absurd) => '(absurd))
-
-(example
  (type-of absurd) => '✳)
 
 (defthm ex-falso
@@ -31,9 +28,6 @@
   "Logical negation."
   [[A :type]]
   (==> A absurd))
-
-(example
- (term neg) => '(neg))
 
 (example
  (type-of neg) => '(Π [A ✳] ✳))
