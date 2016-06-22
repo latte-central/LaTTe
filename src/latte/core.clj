@@ -99,8 +99,9 @@
           (register-term-definition! def-name definition)
           (let [name# (name def-name)]
             `(do
-             (def ~def-name ~quoted-def)
-             [:registered ~name#])))))))
+               (def ~def-name ~quoted-def)
+               (alter-meta! (var ~def-name)  (fn [m#] (assoc m# :doc ~doc)))
+               [:registered ~name#])))))))
 
 (defn parse-context-args [def-env args]
   (loop [args args, ctx []]
@@ -141,4 +142,6 @@
         t2 (stx/parse def-env t2)]
     (n/beta-delta-eq? def-env t1 t2)))
 
+
+(def term= ===)
 
