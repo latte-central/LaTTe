@@ -261,3 +261,18 @@
 
 (def term= ===)
 
+;;{
+;; ## Indentation rules
+;;}
+
+(defmacro lambda
+  {:style/indent [1 :form [1]]} 
+  [bindings body]
+  (list 'quote (list 'λ bindings body)))
+
+(defmacro forall
+  {:style/indent [1 :form [1]]} 
+  [bindings body]
+  (list 'quote (list 'Π bindings body)))
+
+
