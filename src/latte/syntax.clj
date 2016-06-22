@@ -15,10 +15,10 @@
 ;;}
 
 (defn kind? [t]
-  (= t :kind))
+  (= t '□))
 
 (defn type? [t]
-  (= t :type))
+  (= t '✳))
 
 (defn sort? [t]
   (or (kind? t)
@@ -29,15 +29,15 @@
 
 (defn binder? [t]
   (and (list? t)
-       (contains? '#{lambda prod} (first t))))
+       (contains? '#{λ Π} (first t))))
 
 (defn lambda? [t]
   (and (list? t)
-       (= (first t) 'lambda)))
+       (= (first t) 'λ)))
 
 (defn prod? [t]
   (and (list? t)
-       (= (first t) 'prod)))
+       (= (first t) 'Π)))
 
 (defn app? [t]
   (and (vector? t)
@@ -45,7 +45,7 @@
 
 (defn ref? [t]
   (and (list? t)
-       (not (contains? '#{lambda prod} (first t)))))
+       (not (contains? '#{λ Π} (first t)))))
 
 ;;{
 ;; ## Free and bound variables
@@ -69,13 +69,13 @@
  (free-vars '[x y]) => #{'x 'y})
 
 (example
- (free-vars '(lambda [x t] [x [y z]])) => #{'t 'y 'z})
+ (free-vars '(λ [x t] [x [y z]])) => #{'t 'y 'z})
 
 (example
- (free-vars '(prod [x t] [x [y z]])) => #{'t 'y 'z})
+ (free-vars '(Π [x t] [x [y z]])) => #{'t 'y 'z})
 
 (example
- (free-vars '(lambda [x t] (test x y z))) => '#{t y z})
+ (free-vars '(λ [x t] (test x y z))) => '#{t y z})
 
 (defn vars [t]
   (cond
@@ -94,10 +94,10 @@
  (vars '[x y]) => #{'x 'y})
 
 (example
- (vars '(lambda [x t] (test x [y z]))) => #{'t 'x 'y 'z})
+ (vars '(λ [x t] (test x [y z]))) => #{'t 'x 'y 'z})
 
 (example
- (vars '(prod [x t] (test x [y z]))) => #{'t 'x 'y 'z})
+ (vars '(Π [x t] (test x [y z]))) => #{'t 'x 'y 'z})
 
 (defn bound-vars [t]
   (set/difference (vars t) (free-vars t)))
@@ -109,13 +109,13 @@
  (bound-vars '[x y]) => #{})
 
 (example
- (bound-vars '(lambda [x t] (test x [y z]))) => #{'x})
+ (bound-vars '(λ [x t] (test x [y z]))) => #{'x})
 
 (example
- (bound-vars '(lambda [x t] (test t [y z]))) => #{})
+ (bound-vars '(λ [x t] (test t [y z]))) => #{})
 
 (example
- (bound-vars '(prod [x t] (test x [y z]))) => #{'x})
+ (bound-vars '(Π [x t] (test x [y z]))) => #{'x})
 
 ;;{
 ;; ## Substitution
@@ -133,7 +133,7 @@
   (cond
     ;; variables
     (variable? t) [(get sub t t) (conj forbid t)]
-    ;; binders (lambda, prod)
+    ;; binders (λ, Π)
     (binder? t)
     (let [[binder [x ty] body] t
           [x' sub' forbid']
@@ -171,22 +171,22 @@
      t')))
 
 (example
- (subst 'x {'x :type}) => :type)
+ (subst 'x {'x '✳}) => '✳)
 
 (example
- (subst 'y {'x :type}) => 'y)
+ (subst 'y {'x '✳}) => 'y)
 
 (example
- (subst '[y x] {'x :type}) => '[y :type])
+ (subst '[y x] {'x '✳}) => '[y ✳])
 
 (example
- (subst '[x (lambda [x :type] (test x y z))] {'x :type, 'y :kind})
- => '[:type (lambda [x' :type] (test x' :kind z))])
+ (subst '[x (λ [x ✳] (test x y z))] {'x '✳, 'y '□})
+ => '[✳ (λ [x' ✳] (test x' □ z))])
 
 (example
- (subst '[x (prod [x :type] [y x])] {'x :type, 'y 'x})
- => '[:type (prod [x' :type] [x x'])])
-;; and not: '(:type (prod [x :type] (x x)))
+ (subst '[x (Π [x ✳] [y x])] {'x '✳, 'y 'x})
+ => '[✳ (Π [x' ✳] [x x'])])
+;; and not: '(:type (Π [x :type] (x x)))
 
 
 ;;{
@@ -197,7 +197,7 @@
   (cond
     ;; variables
     (variable? t) [(get sub t t) level]
-    ;; binders (lambda, prod)
+    ;; binders (λ, Π)
     (binder? t)
     (let [[binder [x ty] body] t
           x' (symbol (str "_" level))
@@ -227,18 +227,18 @@
  (alpha-norm 'x) => 'x)
 
 (example
- (alpha-norm '(lambda [x :type] x))
- => '(lambda [_1 :type] _1))
+ (alpha-norm '(λ [x ✳] x))
+ => '(λ [_1 ✳] _1))
 
 (example
- (alpha-norm '[x (lambda [x :type] (test x y [x z]))])
- => '[x (lambda [_1 :type] (test _1 y [_1 z]))])
+ (alpha-norm '[x (λ [x ✳] (test x y [x z]))])
+ => '[x (λ [_1 ✳] (test _1 y [_1 z]))])
 
 (defn alpha-eq? [t1 t2]
   (= (alpha-norm t1)
      (alpha-norm t2)))
 
 (example
- (alpha-eq? '(lambda [x :type] x)
-            '(lambda [y :type] y)) => true)
+ (alpha-eq? '(λ [x ✳] x)
+            '(λ [y ✳] y)) => true)
 

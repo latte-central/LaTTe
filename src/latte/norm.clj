@@ -27,7 +27,7 @@
        (stx/lambda? (first t))))
 
 (example
- (redex? '[(lambda [x :type] x) y]) => true)
+ (redex? '[(λ [x ✳] x) y]) => true)
 
 (defn beta-reduction [t]
   (if (redex? t)
@@ -36,7 +36,7 @@
     (throw (ex-info "Cannot beta-reduce. Not a redex" {:term t}))))
 
 (example
- (beta-reduction '[(lambda [x :type] [x x]) y])
+ (beta-reduction '[(λ [x ✳] [x x]) y])
  => '[y y])
 
 (defn beta-step [t]
@@ -78,18 +78,18 @@
     t'))
 
 (example
- (beta-red '[(lambda [x :type] x) y]) => 'y)
+ (beta-red '[(λ [x ✳] x) y]) => 'y)
 
 (example
- (beta-red '[[(lambda [x :type] x) y] z]) => '[y z])
+ (beta-red '[[(λ [x ✳] x) y] z]) => '[y z])
 
 (example
- (beta-red '(lambda [y [(lambda [x :kind] x) :type]] y))
- => '(lambda [y :type] y))
+ (beta-red '(λ [y [(λ [x □] x) ✳]] y))
+ => '(λ [y ✳] y))
 
 
 (example
- (beta-red '[z [(lambda [x :type] x) y]]) => '[z y])
+ (beta-red '[z [(λ [x ✳] x) y]]) => '[z y])
 
 (example
  (beta-red '[x y]) => '[x y])
@@ -106,26 +106,26 @@
         (recur (rest args) (rest params) (assoc sub (ffirst params) (first args))))
       (loop [params (reverse params), res body]
         (if (seq params)
-          (recur (rest params) (list 'lambda (first params) res))
+          (recur (rest params) (list 'λ (first params) res))
           (stx/subst res sub))))))
 
 (example
- (instantiate-def '[[x :type] [y :type] [z :type]]
+ (instantiate-def '[[x ✳] [y ✳] [z ✳]]
                   '[[x y] z]
-                  '((lambda [t :type] t) t1 [t2 t3]))
- => '[[(lambda [t :type] t) t1] [t2 t3]])
+                  '((λ [t ✳] t) t1 [t2 t3]))
+ => '[[(λ [t ✳] t) t1] [t2 t3]])
 
 (example
- (instantiate-def '[[x :type] [y :type] [z :type] [t :type]]
+ (instantiate-def '[[x ✳] [y ✳] [z ✳] [t ✳]]
                   '[[x y] [z t]]
-                  '((lambda [t :type] t) t1 [t2 t3]))
- => '(lambda [t' :type] [[(lambda [t :type] t) t1] [[t2 t3] t']]))
+                  '((λ [t ✳] t) t1 [t2 t3]))
+ => '(λ [t' ✳] [[(λ [t ✳] t) t1] [[t2 t3] t']]))
 
 (example
- (instantiate-def '[[x :type] [y :type] [z :type]]
+ (instantiate-def '[[x ✳] [y ✳] [z ✳]]
                   '[[x y] z]
                   '())
- => '(lambda [x :type] (lambda [y :type] (lambda [z :type] [[x y] z]))))
+ => '(λ [x ✳] (λ [y ✳] (λ [z ✳] [[x y] z]))))
 
  (defn delta-reduction [def-env t]
   (if (not (stx/ref? t))
@@ -142,23 +142,23 @@
 
 (example
  (delta-reduction '{test {:arity 3
-                          :params [[x :type] [y :kind] [z :type]]
-                          :parsed-term [y (lambda [t :type] [x [z t]])]}}
-                  '(test [a b] c [t (lambda [t] t)]))
- => '[[c (lambda [t' :type] [[a b] [[t (lambda [t] t)] t']])] true])
+                          :params [[x ✳] [y □] [z ✳]]
+                          :parsed-term [y (λ [t ✳] [x [z t]])]}}
+                  '(test [a b] c [t (λ [t] t)]))
+ => '[[c (λ [t' ✳] [[a b] [[t (λ [t] t)] t']])] true])
 
 (example
  (delta-reduction '{test {:arity 3
-                          :params [[x :type] [y :kind] [z :type]]}}
-                  '(test [a b] c [t (lambda [t] t)]))
- => '[(test [a b] c [t (lambda [t] t)]) false])
+                          :params [[x ✳] [y □] [z ✳]]}}
+                  '(test [a b] c [t (λ [t] t)]))
+ => '[(test [a b] c [t (λ [t] t)]) false])
 
 (example
  (delta-reduction '{test {:arity 3
-                          :params [[x :type] [y :kind] [z :type]]
-                          :parsed-term [y (lambda [t :type] [x [z t]])]}}
+                          :params [[x ✳] [y □] [z ✳]]
+                          :parsed-term [y (λ [t ✳] [x [z t]])]}}
                   '(test [a b] c))
- => '[(lambda [z :type] [c (lambda [t :type] [[a b] [z t]])]) true])
+ => '[(λ [z ✳] [c (λ [t ✳] [[a b] [z t]])]) true])
 
 (defn delta-step [def-env t]
   (cond
@@ -199,7 +199,7 @@
 
 (example
  (delta-step '{test {:arity 1
-                     :params [[x :type]]
+                     :params [[x ✳]]
                      :parsed-term [x x]}}
              '[y (test [t t])])
  => '[[y [[t t] [t t]]] true])
@@ -231,8 +231,8 @@
      (beta-delta-normalize def-env t))))
 
 (example
- (normalize '(lambda [y [(lambda [x :kind] x) :type]] [(lambda [x :type] x) y]))
- => '(lambda [y :type] y))
+ (normalize '(λ [y [(λ [x □] x) ✳]] [(λ [x ✳] x) y]))
+ => '(λ [y ✳] y))
 
 
 (defn beta-eq? [t1 t2]
@@ -241,10 +241,10 @@
     (stx/alpha-eq? t1' t2')))
 
 (example
- (beta-eq? '(lambda [z :type] z)
-           '(lambda [y [(lambda [x :kind] x) :type]] [(lambda [x :type] x) y])) => true)
+ (beta-eq? '(λ [z ✳] z)
+           '(λ [y [(λ [x □] x) ✳]] [(λ [x ✳] x) y])) => true)
 
-(defn delta-beta-eq? [def-env t1 t2]
+(defn beta-delta-eq? [def-env t1 t2]
   (let [t1' (normalize def-env t1)
         t2' (normalize def-env t2)]
     (stx/alpha-eq? t1' t2')))

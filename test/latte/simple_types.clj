@@ -1,8 +1,6 @@
 (ns latte.simple-types
   (:require [clojure.test :as test :refer [deftest is]])
-  (:require [latte.presyntax :as s])
-  (:require [latte.typing :as t])
-  (:require [latte.norm :as n])
+  (:require [latte.core :as l :refer [=== type-of term]])
   )
 
 ;;{
@@ -18,23 +16,23 @@
 ;;}
 
 (deftest basic-terms
-  (is (n/beta-eq?
-       (t/type-of '[[sigma :type]]
-                  (s/parse '(lambda [x sigma] x)))
-       (s/parse '(--> sigma sigma))))
+  (is (=== (type-of [sigma :type]
+                    (lambda [x sigma] x))
+           (term [sigma :type] (==> sigma sigma))))
 
-  (is (n/beta-eq?
-       (t/type-of [['sigma :type] ['tau :type]
-                   ['y (s/parse '(--> sigma tau))] '[x sigma]]
-                  (s/parse '(y x)))
-       'tau))
+  (is (=== (type-of [sigma :type]
+                    [tau :type]
+                    [y (--> sigma tau)]
+                    [x sigma]
+                    (y x))
+          'tau))
 
-  (is (n/beta-eq?
-       (t/type-of [['alpha :type] ['beta :type] ['gamma :type]
-                    ['x (s/parse '(--> alpha alpha))]
-                    ['y (s/parse '(--> (--> alpha alpha) beta))]]
-                  (s/parse '(lambda [u gamma] (y x))))
-       (s/parse '(--> gamma beta))))
+  (is (=== (type-of [alpha :type] [beta :type] [gamma :type]
+                    [x (--> alpha alpha)]
+                    [y (--> (--> alpha alpha) beta)]
+                    (lambda [u gamma] (y x)))
+           (term [beta :type] [gamma :type]
+                 (--> gamma beta))))
   )
 
 

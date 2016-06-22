@@ -1,6 +1,6 @@
 (ns latte.prop
   (:require [clj-by.example :refer [example do-for-example]])
-  (:require [latte.core :as latte :refer [defterm term]])
+  (:require [latte.core :as latte :refer [defterm term type-of]])
   )
 
 
@@ -12,7 +12,10 @@
   (forall [α *] α))
 
 (example
- (term absurd) => '[(absurd) :type])
+ (term absurd) => '(absurd))
+
+(example
+ (type-of absurd) => '✳)
 
 ;; (defthm ex-falso
 ;;   "Ex falso sequitur quolibet
@@ -30,6 +33,10 @@
 
 
 (example
- (term neg) => '[(neg) (prod [A :type] :type)])
+ (term neg) => '(neg))
+
+(example
+ (type-of neg) => '(Π [A ✳] ✳))
+
 
 

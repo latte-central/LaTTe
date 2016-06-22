@@ -6,7 +6,7 @@
 (def ^:private +examples-enabled+)
 
 (def +reserved-symbols+
-  '#{kind type □ * ∗ ✳ lambda λ prod forall ∀ _arrow})
+  '#{kind type □ * ∗ ✳ lambda λ prod forall ∀ Π})
 
 (defn reserved-symbol? [s]
   (or (contains? +reserved-symbols+ s)
@@ -25,17 +25,17 @@
   ([def-env t] (parse-term def-env t #{}))
   ([def-env t bound]
    (cond
-     (kind? t) [:ok :kind]
-     (type? t) [:ok :type]
+     (kind? t) [:ok '□]
+     (type? t) [:ok '✳]
      (list? t) (parse-compound-term def-env t bound)
      (symbol? t) (parse-symbol-term def-env t bound)
      :else [:ko {:msg "Cannot parse term" :term t}])))
 
 (example
- (parse-term {} :kind) => [:ok :kind])
+ (parse-term {} :kind) => '[:ok □])
 
 (example
- (parse-term {} '*) => [:ok :type])
+ (parse-term {} '*) => '[:ok ✳])
 
 (defn parse-symbol-term [def-env sym bound]
   (cond
@@ -113,11 +113,11 @@
 
 (example
  (parse-binding {} '[x :type] #{})
- => '[:ok [[x :type]]])
+ => '[:ok [[x ✳]]])
 
 (example
  (parse-binding {} '[x y z :type] #{})
- => '[:ok [[x :type] [y :type] [z :type]]])
+ => '[:ok [[x ✳] [y ✳] [z ✳]]])
 
 (example
  (parse-binding {} '[x y forall :type] #{})
@@ -144,7 +144,7 @@
       v)))
 
 (example
- (concat [1 2 3] [4 5 6]) => [1 2 3 4 5 6])
+ (vconcat [1 2 3] [4 5 6]) => [1 2 3 4 5 6])
 
 (defn parse-binder-term [def-env binder t bound]
   (if (< (count t) 3)
@@ -166,42 +166,42 @@
                     [:ok res]))))))))))
 
 (defn parse-lambda-term [def-env t bound]
-  (parse-binder-term def-env 'lambda t bound))
+  (parse-binder-term def-env 'λ t bound))
 
 (example
  (parse-term {} '(lambda [x :type] x))
- => '[:ok (lambda [x :type] x)])
+ => '[:ok (λ [x ✳] x)])
 
 (example
  (parse-term {} '(lambda [x y :type] x))
- => '[:ok (lambda [x :type] (lambda [y :type] x))])
+ => '[:ok (λ [x ✳] (λ [y ✳] x))])
 
 (example
  (parse-term {} '(lambda [x x :type] x))
- => '[:ko {:msg "Wrong bindings in lambda form",
+ => '[:ko {:msg "Wrong bindings in λ form",
            :term (lambda [x x :type] x),
            :from {:msg "Duplicate binding variable", :term [x x :type], :var x}}])
 
 (example
  (parse-term {} '(lambda [x] x))
- => '[:ko {:msg "Wrong bindings in lambda form",
+ => '[:ko {:msg "Wrong bindings in λ form",
            :term (lambda [x] x),
            :from {:msg "Binding must have at least 2 elements", :term [x]}}])
 
 (example
- (parse-term {} '(lambda [x :type] z))
- => '[:ok (lambda [x :type] z)])
+ (parse-term {} '(λ [x :type] z))
+ => '[:ok (λ [x ✳] z)])
 
 (defn parse-product-term [def-env t bound]
-  (parse-binder-term def-env 'prod t bound))
+  (parse-binder-term def-env 'Π t bound))
 
 (example
  (parse-term {} '(forall [x :type] x))
- => '[:ok (prod [x :type] x)])
+ => '[:ok (Π [x ✳] x)])
 
 (example
  (parse-term {} '(prod [x y :type] x))
- => '[:ok (prod [x :type] (prod [y :type] x))])
+ => '[:ok (Π [x ✳] (Π [y ✳] x))])
 
 (defn parse-terms [def-env ts bound]
   (reduce (fn [res t]
@@ -228,16 +228,16 @@
         [:ko {:msg "Cannot parse arrow." :term t :from ts'}]
         (loop [ts (rest (reverse ts')), res (last ts')]
           (if (seq ts)
-            (recur (rest ts) (list 'prod ['_arrow (first ts)] res))
+            (recur (rest ts) (list 'Π ['⇧ (first ts)] res))
             [:ok res]))))))
 
 (example
  (parse-term {} '(--> :type :type))
- => '[:ok (prod [_arrow :type] :type)])
+ => '[:ok (Π [⇧ ✳] ✳)])
 
 (example
  (parse-term {} '(--> sigma tau mu))
- => '[:ok (prod [_arrow sigma] (prod [_arrow tau] mu))])
+ => '[:ok (Π [⇧ sigma] (Π [⇧ tau] mu))])
 
 (defn parse-defined-term [def-env t bound]
   (let [def-name (first t)
@@ -253,7 +253,7 @@
 (example
  (parse-term {'ex {:arity 2}}
              '(ex x :kind) #{'x})
- => '[:ok (ex x :kind)])
+ => '[:ok (ex x □)])
 
 (defn left-binarize [t]
   (if (< (count t) 2)
@@ -288,7 +288,7 @@
 
 (example
  (parse-term {} '(lambda [x :type] x :type :kind))
- => '[:ok (lambda [x :type] [[x :type] :kind])])
+ => '[:ok (λ [x ✳] [[x ✳] □])])
 
 
 (defn parse

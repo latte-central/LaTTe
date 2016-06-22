@@ -48,8 +48,8 @@
     (stx/binder? t)
     (let [[binder [x ty] body] t]
       (case binder
-        lambda (type-of-abs def-env env x ty body)
-        prod (type-of-prod def-env env x ty body)
+        λ (type-of-abs def-env env x ty body)
+        Π (type-of-prod def-env env x ty body)
         (throw (ex-info "No such binder (please report)" {:term t :binder binder}))))
     ;; applications
     (stx/app? t) (type-of-app def-env env (first t) (second t))
@@ -59,13 +59,13 @@
     (throw (ex-info "Invalid term (please report)" {:term t}))))
 
 (example
- (type-of-term {} [] :kind) => [:ko {:msg "Kind has not type" :term :kind}])
+ (type-of-term {} [] '□) => '[:ko {:msg "Kind has not type" :term □}])
 
 (defn type-check? [def-env env term type]
   ;; (println "type-check? term=" term "type=" type)
   (let [[status type'] (type-of-term def-env env term)]
     (if (= status :ok)
-      (norm/delta-beta-eq? def-env type type')
+      (norm/beta-delta-eq? def-env type type')
       (throw (ex-info "Cannot check type of term" {:term term :from type'})))))
 
 ;;{
@@ -75,10 +75,10 @@
 ;;}
 
 (defn type-of-type []
-  [:ok :kind])
+  [:ok '□])
 
 (example
- (type-of-term {} [] :type) => [:ok :kind])
+ (type-of-term {} [] '✳) => '[:ok □])
 
 ;;{
 ;;        ty::>Type or t::>Kind in E
@@ -97,7 +97,7 @@
     [:ko {:msg "No such variable in type environment" :term x}]))
 
 (example
- (type-of-term {} '[[bool :type] [x bool]] 'x) => '[:ok bool])
+ (type-of-term {} '[[bool ✳] [x bool]] 'x) => '[:ok bool])
 
 (example
  (type-of-term {} '[[x bool]] 'x)
@@ -106,7 +106,7 @@
            :from {:msg "No such variable in type environment", :term bool}}])
 
 (example
- (type-of-term {} '[[bool :type] [y bool]] 'x)
+ (type-of-term {} '[[bool ✳] [y bool]] 'x)
  => '[:ko {:msg "No such variable in type environment", :term x}])
 
 ;;{
@@ -127,25 +127,26 @@
             (if (= status :ko)
               [:ko {:msg "Cannot calculate codomain type of product." :term B :from sort2}]
               (let [sort2' (norm/normalize def-env sort2)]
+                ;; (println "sort2' = " sort2' " sort? " (stx/sort? sort2'))
                 (if (not (stx/sort? sort2'))
-                  [:ko {:msg "Not a valid codomain type in product (super-type not a sort)" :term B :type sort2}]
+                  [:ko {:msg "Not a valid codomain type in product (not a sort)" :term B :type sort2}]
                   [:ok sort2'])))))))))
 
 (example
- (type-of-term {} [] '(prod [x :type] x)) => [:ok :type])
+ (type-of-term {} [] '(Π [x ✳] x)) => '[:ok ✳])
 
 (example
- (type-of-term {} [] '(prod [x :type] :type)) => [:ok :kind])
+ (type-of-term {} [] '(Π [x ✳] ✳)) => '[:ok □])
 
 (example
- (type-of-term {} [] '(prod [x :kind] :type))
- => '[:ko {:msg "Cannot calculate domain type of product.", :term :kind,
-           :from {:msg "Kind has not type" :term :kind}}])
+ (type-of-term {} [] '(Π [x □] ✳))
+ => '[:ko {:msg "Cannot calculate domain type of product.", :term □,
+           :from {:msg "Kind has not type" :term □}}])
 
 (example
- (type-of-term {} [] '(prod [x :type] :kind))
- => '[:ko {:msg "Cannot calculate codomain type of product.", :term :kind,
-           :from {:msg "Kind has not type" :term :kind}}])
+ (type-of-term {} [] '(Π [x ✳] □))
+ => '[:ko {:msg "Cannot calculate codomain type of product.", :term □,
+           :from {:msg "Kind has not type" :term □}}])
 
 ;;{
 ;;    E,x:A |- t ::> B  E |- prod x:A. B ::> s
@@ -158,59 +159,61 @@
         [status B] (type-of-term def-env env' t)]
     (if (= status :ko)
       [:ko {:msg "Cannot calculate codomain type of abstraction."
-            :term (list 'lambda [x A] t) :from B}]
-      (let [tprod (list 'prod [x A] B)
+            :term (list 'λ [x A] t) :from B}]
+      (let [tprod (list 'Π [x A] B)
             [status sort] (type-of-term def-env env tprod)]
         (if (= status :ko)
           [:ko {:msg "Not a valid codomain type in abstraction (cannot calculate super-type)."
-                :term (list 'lambda [x A] t)
+                :term (list 'λ [x A] t)
                 :codomain B :from sort}]
           (if (not (stx/sort? (norm/normalize def-env sort)))
             [:ko {:msg "Not a valid codomain type in abstraction (super-type not a sort)."
-                  :term (list 'lambda [x A] t)
+                  :term (list 'λ [x A] t)
                   :codomain B
                   :type sort}]
             [:ok tprod]))))))
 
 (example
- (type-of-term {} '[[bool :type] [t bool] [y bool]]
-          '(lambda [x bool] x))
- => '[:ok (prod [x bool] bool)])
+ (type-of-term {} '[[bool ✳] [t bool] [y bool]]
+          '(λ [x bool] x))
+ => '[:ok (Π [x bool] bool)])
 
 (example
- (type-of-term {} [] '(lambda [x :type] x)) => '[:ok (prod [x :type] :type)])
+ (type-of-term {} [] '(λ [x ✳] x)) => '[:ok (Π [x ✳] ✳)])
 
 (example
- (type-of-term {} '[[y bool]] '(lambda [x bool] x))
- => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (lambda [x bool] x),
+ (type-of-term {} '[[y bool]] '(λ [x bool] x))
+ => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (λ [x bool] x),
            :from {:msg "Cannot calculate type of variable.", :term x,
                   :from {:msg "No such variable in type environment", :term bool}}}])
 
 (example
- (type-of-term {} '[[y :type] [z y]] '(lambda [x z] x))
- => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (lambda [x z] x),
+ (type-of-term {} '[[y ✳] [z y]] '(λ [x z] x))
+
+ 
+ => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (λ [x z] x),
            :from {:msg "Not a correct type (super-type is not a sort)", :term x, :type z, :sort y}}])
 
 (example
- (type-of-term {} '[[y bool]] '(lambda [x :type] y))
- => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (lambda [x :type] y),
+ (type-of-term {} '[[y bool]] '(λ [x ✳] y))
+ => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (λ [x ✳] y),
            :from {:msg "Cannot calculate type of variable.", :term y,
                   :from {:msg "No such variable in type environment", :term bool}}}])
 
 (example
- (type-of-term {} '[[y bool]] '(lambda [x :type] :kind))
- => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (lambda [x :type] :kind),
-           :from {:msg "Kind has not type" :term :kind}}])
+ (type-of-term {} '[[y bool]] '(λ [x ✳] □))
+ => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (λ [x ✳] □),
+           :from {:msg "Kind has not type" :term □}}])
 
 (example
- (type-of-term {} '[[y bool]] '(lambda [x :type] :type))
+ (type-of-term {} '[[y bool]] '(λ [x ✳] ✳))
  => '[:ko {:msg "Not a valid codomain type in abstraction (cannot calculate super-type).",
-           :term (lambda [x :type] :type), :codomain :kind,
-           :from {:msg "Cannot calculate codomain type of product.", :term :kind,
-                  :from {:msg "Kind has not type", :term :kind}}}])
+           :term (λ [x ✳] ✳), :codomain □,
+           :from {:msg "Cannot calculate codomain type of product.", :term □,
+                  :from {:msg "Kind has not type", :term □}}}])
 (example
- (type-of-term {} '[[w :type] [y w] [z y]] '(lambda [x :type] z))
- => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (lambda [x :type] z),
+ (type-of-term {} '[[w ✳] [y w] [z y]] '(λ [x ✳] z))
+ => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (λ [x ✳] z),
            :from {:msg "Not a correct type (super-type is not a sort)", :term z, :type y, :sort w}}])
 
 ;;{
@@ -234,8 +237,8 @@
 
 
 (example
- (type-of-term {} '[[bool :type] [y bool]]
-          '[(lambda [x bool] x) y])
+ (type-of-term {} '[[bool ✳] [y bool]]
+          '[(λ [x bool] x) y])
  => '[:ok bool])
 
 
@@ -271,28 +274,27 @@
           ;; all args have been checked
           (loop [params (reverse params), res (:type ddef)]
             (if (seq params)
-              (recur (rest params) (list 'prod (first params) res))
+              (recur (rest params) (list 'Π (first params) res))
               ;; all params have been handled
               (do
                 ;; (println "[type-of-ref] res = " res " sub = " sub)
                 [:ok (stx/subst res sub)]))))))))
 
 (example
- (type-of-term '{test {:params [[x :type] [y :type]]
-                  :type :type
+ (type-of-term '{test {:params [[x ✳] [y ✳]]
+                  :type ✳
                   :arity 2}}
-          '[[a :type] [b :type]]
+          '[[a ✳] [b ✳]]
           '(test a b))
- => [:ok :type])
+ => '[:ok ✳])
 
 (example
- (type-of-term '{test {:params [[x :type] [y :type]]
-                  :type :type
+ (type-of-term '{test {:params [[x ✳] [y ✳]]
+                  :type ✳
                   :arity 2}}
-          '[[bool :type] [a :type] [b bool]]
+          '[[bool ✳] [a ✳] [b bool]]
           '(test a b))
- => '[:ko {:msg "Wrong argument type", :term (test b), :arg b, :expected-type :type}])
-
+ => '[:ko {:msg "Wrong argument type", :term (test b), :arg b, :expected-type ✳}])
 
 (defn type-of
   ([t] (type-of {} [] t))
@@ -304,3 +306,10 @@
        ty))))
 
 
+(defn proper-type?
+  ([t] (proper-type? {} [] t))
+  ([ctx t] (proper-type? {} ctx t))
+  ([def-env ctx t]
+   (let [ty (type-of def-env ctx t)]
+     (let [sort (norm/beta-delta-normalize def-env ty)]
+       (stx/sort? sort)))))
