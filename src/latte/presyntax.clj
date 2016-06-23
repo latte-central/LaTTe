@@ -137,15 +137,6 @@
  (parse-binding {} '[x y :bad] #{})
  => '[:ko {:msg "Wrong binding type", :term [x y :bad], :from {:msg "Cannot parse term", :term :bad}}])
 
-(defn vconcat [v1 v2]
-  (loop [s v2, v v1]
-    (if (seq s)
-      (recur (rest s) (conj v (first s)))
-      v)))
-
-(example
- (vconcat [1 2 3] [4 5 6]) => [1 2 3 4 5 6])
-
 (defn parse-binder-term [def-env binder t bound]
   (if (< (count t) 3)
     [:ko {:msg (str "Wrong " binder " form (expecting at least 3 arguments)") :term t :nb-args (count t)}]

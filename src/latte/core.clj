@@ -60,18 +60,24 @@
 ;;}
 
 (defn handle-term-definition [tdef def-env params body]
-  (let [params (mapv (fn [[x ty]] [x (stx/parse def-env ty)]) params)
-        body (stx/parse def-env body)]
-    ;; (println "[handle-term-definition] def-env = " def-env " params = " params " body = " body)
-    (let [[status ty] (ty/type-of-term def-env params body)]
-      (if (= status :ko)
-        (throw (ex-info "Type error" {:def tdef
-                                      :error ty}))
-        (assoc tdef
-               :params params
-               :arity (count params)
-               :type ty
-               :parsed-term body)))))
+  (let [[status params] (reduce (fn [[sts params] [x ty]]
+                                  (let [[status ty] (stx/parse-term def-env ty)]
+                                    (if (= status :ko)
+                                      (reduced [:ko ty])
+                                      [:ok (conj params [x ty])]))) [:ok []] params)]
+    (if (= status :ko)
+      [:ko params]
+      (let [[status body] (stx/parse-term def-env body)]
+        (if (= status :ko)
+          [:ko body]
+          (let [[status ty] (ty/type-of-term def-env params body)]
+            (if (= status :ko)
+              [:ko ty]
+              [:ok (assoc tdef
+                          :params params
+                          :arity (count params)
+                          :type ty
+                          :parsed-term body)])))))))
 
 (defn parse-defterm-args [args]
     (when (> (count args) 4)
@@ -106,15 +112,17 @@
           ;; TODO: maybe disallow redefining if type is changed ?
           ;;       otherwise only warn ?
           (println "[Warning] redefinition as term: " def-name))
-        (let [definition (as-> {:tag ::term :name def-name :doc doc} $
-                           (handle-term-definition $ def-env params body))
-              quoted-def (list 'quote definition)]
-          (register-definition! def-name definition)
-          (let [name# (name def-name)]
-            `(do
-               (def ~def-name ~quoted-def)
-               (alter-meta! (var ~def-name)  (fn [m#] (assoc m# :doc ~doc)))
-               [:defined :term ~name#])))))))
+        (let [[status definition] (as-> {:tag ::term :name def-name :doc doc} $
+                                    (handle-term-definition $ def-env params body))]
+          (when (= status :ko)
+            (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
+          (let [quoted-def (list 'quote definition)]
+            (register-definition! def-name definition)
+            (let [name# (name def-name)]
+              `(do
+                 (def ~def-name ~quoted-def)
+                 (alter-meta! (var ~def-name)  (fn [m#] (assoc m# :doc ~doc)))
+                 [:defined :term ~name#]))))))))
 
 ;;{
 ;; ## Theorem definitions
