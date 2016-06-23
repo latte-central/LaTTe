@@ -56,4 +56,3 @@
           :have-name name}]
     [:ok (dissoc def-env name) ctx]))
 
-
