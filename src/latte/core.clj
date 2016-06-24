@@ -1,4 +1,5 @@
 (ns latte.core
+  (:require [latte.utils :as u])
   (:require [latte.presyntax :as stx])
   (:require [latte.typing :as ty])
   (:require [latte.norm :as n])
@@ -59,7 +60,7 @@
 ;; ## Term definitions
 ;;}
 
-(defn handle-term-definition [tdef def-env params body]
+(defn handle-term-definition [tdef def-env ctx params body]
   (let [[status params] (reduce (fn [[sts params] [x ty]]
                                   (let [[status ty] (stx/parse-term def-env ty)]
                                     (if (= status :ko)
@@ -70,7 +71,7 @@
       (let [[status body] (stx/parse-term def-env body)]
         (if (= status :ko)
           [:ko body]
-          (let [[status ty] (ty/type-of-term def-env params body)]
+          (let [[status ty] (ty/type-of-term def-env (u/vconcat params ctx) body)]
             (if (= status :ko)
               [:ko ty]
               [:ok (assoc tdef
@@ -113,7 +114,7 @@
           ;;       otherwise only warn ?
           (println "[Warning] redefinition as term: " def-name))
         (let [[status definition] (as-> {:tag ::term :name def-name :doc doc} $
-                                    (handle-term-definition $ def-env params body))]
+                                    (handle-term-definition $ def-env [] params body))]
           (when (= status :ko)
             (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
           (let [quoted-def (list 'quote definition)]

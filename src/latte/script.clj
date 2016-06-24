@@ -52,35 +52,50 @@
  => '[:ko {:msg "Cannot undo assume: variable not in head of context.",
            :variable x}])
 
-(defn do-have [def-env ctx name params have-type method have-args]
+(defn do-have [def-env ctx name params have-type method have-arg]
   (let [[status term] (case method
-                        (:by :term) (if (seq (rest have-args))
-                                      (throw (ex-info "Too many arguments for have step"
-                                                      {:have-name name :nb-args (count have-args)
-                                                       :method method}))
-                                      (stx/parse-term def-env (first have-args)))
-                        (:discharge :abst :abstr) (throw (ex-info "Method not yet enabled for proof scripts." {:have-name name
-                                                                                                               :method method}))
+                        (:by :term) (stx/parse-term def-env have-arg)
+                        (:from :abst :abstr)
+                        (if-not (and (vector? have-arg)
+                                     (= (count have-arg) 2))
+                          [:ko {:msg "Cannot perform have step: argument is not of the form [var term]"
+                                :have-arg have-arg}]
+                          (if-let [ty (ty/env-fetch ctx (first have-arg))]
+                            (stx/parse-term def-env (list 'lambda [(first have-arg) ty] (second have-arg)))
+                            [:ko {:msg "No such variable in context" :variable (first have-arg)}]))
+                        
                         (throw (ex-info "No such method for proof script." {:have-name name :method method})))]
     (if (= status :ko)
-      [:ko {:msg "Cannot perform have step: incorrect term." :have-name name :reason term}]
+      [:ko {:msg "Cannot perform have step: incorrect term." :have-name name :from term}]
       (let [[status have-type] (stx/parse-term def-env have-type)]
         (if (= status :ko)
-          [:ko {:msg "Cannot perform have step: incorrect type." :habe-name name :reason have-type}]
+          [:ko {:msg "Cannot perform have step: incorrect type." :habe-name name :from have-type}]
           (if-not (ty/type-check? def-env ctx term have-type)
             [:ko {:msg "Cannot perform have step: synthetized term and type do not match."
                   :have-name name
                   :term term :type have-type}]
-            (let [[status tdef] (core/handle-term-definition
-                                 {:tag ::core/defterm :name name :doc "<have step>"}
-                                 def-env
-                                 params
-                                 term)]
-              (if (= status :ko)
-                [:ko {:msg "Cannot perform have step: wrong local definition."
-                      :have-name name
-                      :raeson tdef}]
-                [:ok [(assoc def-env name tdef) ctx]]))))))))
+            (if (nil? name)
+              [:ok [def-env ctx]]
+              (let [[status tdef] (core/handle-term-definition
+                                   {:tag ::core/defterm :name name :doc "<have step>"}
+                                   def-env
+                                   ctx
+                                   params
+                                   term)]
+                (if (= status :ko)
+                  [:ko {:msg "Cannot perform have step: wrong local definition."
+                        :have-name name
+                        :from tdef}]
+                  [:ok [(assoc def-env name tdef) ctx]])))))))))
+
+(example
+ (do-have {}
+          '[[A ✳] [x A]]
+          'step [] 'A :by 'x)
+ => '[:ok [{step {:tag :latte.core/defterm,
+                  :name step, :doc "<have step>", :params [], :arity 0,
+                  :type A, :parsed-term x}}
+           [[A ✳] [x A]]]])
 
 (defn undo-have [def-env ctx name]
   (if-not (contains? def-env name)
