@@ -81,9 +81,9 @@
 ;;                 y B
 ;;                 C :type
 ;;                 z (==> A B C)]
-;;          (have [step1 (==> B C) :by (apply z x)
-;;                 step2 C :by (apply z step1)
+;;          (have [step1 (==> B C) :by (z x)
+;;                 step2 C :by (z step1)
 ;;                 step3 (==> (==> A B C)
-;;                            C) :by (abst z step2)]
-;;            (qed (land A B) :by (abst C step3)))))
+;;                         C) :discharge z step2]
+;;            (qed (land A B) :discharge C step3)))))
 
