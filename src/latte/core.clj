@@ -17,7 +17,7 @@
 (defn latte-definition? [v]
   (and (map? v)
        (contains? v :tag)
-       (contains? #{::term ::theorem ::axiom} (:tag v))))
+       (contains? #{:term :theorem :axiom} (:tag v))))
 
 (defn build-initial-definition-environment!
   []
@@ -113,7 +113,7 @@
           ;; TODO: maybe disallow redefining if type is changed ?
           ;;       otherwise only warn ?
           (println "[Warning] redefinition as term: " def-name))
-        (let [[status definition] (as-> {:tag ::term :name def-name :doc doc} $
+        (let [[status definition] (as-> {:tag :term :name def-name :doc doc} $
                                     (handle-term-definition $ def-env [] params body))]
           (when (= status :ko)
             (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
@@ -174,7 +174,7 @@
           ;; TODO: maybe disallow redefining if type is changed ?
           ;;       otherwise only warn ?
           (println "[Warning] redefinition as theorem: " def-name))
-        (let [definition (as-> {:tag ::theorem :name def-name :doc doc} $
+        (let [definition (as-> {:tag :theorem :name def-name :doc doc} $
                            (handle-thm-declaration $ def-env params ty))
               quoted-def (list 'quote definition)]
           (register-definition! def-name definition)

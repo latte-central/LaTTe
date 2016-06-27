@@ -138,22 +138,22 @@
             (throw (ex-info "Too many arguments to instantiate definition." {:term t :def-name name :nb-params (count (:arity sdef)) :nb-args (count args)}))
             (case (:tag sdef)
               ;; unfolding a defined term
-              ::latte.core/term
+              :term
               (if (:parsed-term sdef)
                 [(instantiate-def (:params sdef) (:parsed-term sdef) args) true]
                 (throw (ex-info "Cannot unfold term reference (please report)"
                                 {:term t :def sdef})))
-              ::latte.core/theorem
+              :theorem
               (if (:proof sdef)
                 [(instantiate-def (:params sdef) (:term (:proof sdef)) args) true]
                 (throw (ex-info "Cannot use theorem with no proof." {:term t :theorem sdef})))
-              ::latte.core/axiom
+              :axiom
               [t false]
               (throw (ex-info "Incorrect tag for definition." {:term t :tag (:tag sdef) :def sdef})))))))))
 
 (example
  (delta-reduction '{test {:arity 3
-                          :tag ::latte.core/term
+                          :tag :term
                           :params [[x ✳] [y □] [z ✳]]
                           :parsed-term [y (λ [t ✳] [x [z t]])]}}
                   '(test [a b] c [t (λ [t] t)]))
@@ -161,14 +161,14 @@
 
 (example
  (delta-reduction '{test {:arity 3
-                          :tag ::latte.core/axiom
+                          :tag :axiom
                           :params [[x ✳] [y □] [z ✳]]}}
                   '(test [a b] c [t (λ [t] t)]))
  => '[(test [a b] c [t (λ [t] t)]) false])
 
 (example
  (delta-reduction '{test {:arity 3
-                          :tag ::latte.core/term
+                          :tag :term
                           :params [[x ✳] [y □] [z ✳]]
                           :parsed-term [y (λ [t ✳] [x [z t]])]}}
                   '(test [a b] c))
@@ -213,7 +213,7 @@
 
 (example
  (delta-step '{test {:arity 1
-                     :tag ::latte.core/term
+                     :tag :term
                      :params [[x ✳]]
                      :parsed-term [x x]}}
              '[y (test [t t])])
