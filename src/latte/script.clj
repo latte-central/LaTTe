@@ -103,3 +103,48 @@
           :have-name name}]
     [:ok (dissoc def-env name) ctx]))
 
+
+(defn evaluate-script [script start-def-env start-ctx def-env ctx cont-stack]
+  (if (seq script)
+    (case (first script)
+      assume
+      (let [[status info] (parse-assume-step script)]
+        (if (= status :ko)
+          [:ko info]
+          (let [{[x ty] :binding body :body} info]
+            (let [[status res] (do-assume def-env ctx x ty)]
+              (if (= status :ko)
+                [:ko res]
+                (recur body start-def-env start-ctx
+                       (first res) (second res) (conj cont-stack (list 'undo-assume x))))))))
+      undo-assume
+      (let [[status res] (undo-assume def-env ctx (second script))]
+        (if (= status :ko)
+          [:ko res]
+          (recur '() start-def-env start-ctx (first res) (second res) cont-stack)))
+      have
+      (let [[status info] (parse-have-step script)]
+        (if (= status :ko)
+          [:ko info]
+          (let [{have-name :have-name params :params
+                 have-type :have-type method :method have-arg :have-arg
+                 body :body} info]
+            (let [[status res] (do-have def-env ctx have-name params have-type method have-arg)]
+              (if (= status :ko)
+                [:ko res]
+                (recur body start-def-env start-ctx (first res) (second res)
+                       (conj cont-stack (list 'undo-have have-name))))))))
+      undo-have
+      (let [[status res] (undo-have def-env ctx (second script))]
+        (if (= status :ko)
+          [:ko res]
+          (recur '() start-def-env start-ctx (first res) (second res) cont-stack)))
+      qed
+      (do-qed start-def-env start-ctx (second script))
+      ;; else
+      (throw (ex-info "Cannot evaluate script" {:script script})))
+    ;; at end of script
+    (if (seq cont-stack)
+      (recur (first cont-stack) start-def-env start-ctx def-env ctx (rest cont-stack))
+      [:ko {:msg "Missing `qed` step in proof."}])))
+            
