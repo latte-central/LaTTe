@@ -229,6 +229,12 @@
       (recur t')
       t')))
 
+(defn delta-normalize [def-env t]
+  (let [[t' red?] (delta-step def-env t)]
+    (if red?
+      (recur def-env t')
+      t')))
+
 (defn beta-delta-normalize [def-env t]
   (let [[t' red?] (beta-step t)]
     (if red?

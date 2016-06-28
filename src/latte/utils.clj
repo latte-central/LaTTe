@@ -25,3 +25,25 @@
 
 (example
  (vcons 1 [2 3 4]) => [1 2 3 4])
+
+(defn pair? [v]
+  (and (vector v)
+       (= (count v) 2)))
+
+(defn vectorn? [v n]
+  (and (vector v)
+       (= (rem (count v) n) 0)))
+
+(example
+ (vectorn? [1 2 3 4] 4) => true)
+
+
+(example
+ (vectorn? [1 2 3 4 5 6 7 8] 4) => true)
+
+(example
+ (vectorn? [1 2 3 4 5 6 7] 4) => false)
+
+
+
+
