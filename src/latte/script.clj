@@ -18,24 +18,24 @@
 
 (defn parse-assume-step [script]
   (cond
-    (not (= (count script) 3))
-    [:ko {:msg "Wrong assume step: 2 arguments needed" :nb-args (dec (count script))}]
+    (< (count script) 3)
+    [:ko {:msg "Wrong assume step: at least 2 arguments needed" :nb-args (dec (count script))}]
     (not (>= (count (second script)) 2))
     [:ko {:msg "Wrong assume step: at least one variable/type binding required." :bindings (second script)}]
     :else
     (let [[x ty & rst] (second script)
-          body (nth script 2)]
+          body (rest (rest script))]
         (if (seq rst)
           [:ok {:binding [x ty] :body (list 'assume (vec rst) body)}]
           [:ok {:binding [x ty] :body body}]))))
 
 (example
  (parse-assume-step '(assume [x :type] body))
- => '[:ok {:binding [x :type], :body body}])
+ => '[:ok {:binding [x :type], :body (body)}])
 
 (example
  (parse-assume-step '(assume [A :type x A] body))
- => '[:ok {:binding [A :type], :body (assume [x A] body)}])
+ => '[:ok {:binding [A :type], :body (assume [x A] (body))}])
 
 (defn do-assume-step [def-env ctx x ty]
   (if (or (not (symbol? x)) (stx/reserved-symbol? x))
@@ -102,7 +102,7 @@
   (let [[status term]
         (case method
           (:by :term) (stx/parse-term def-env have-arg)
-          (:from :abst :abstr)
+          (:from :abst :abstr :discharge)
           (if-not (and (vector? have-arg)
                        (= (count have-arg) 2))
             [:ko {:msg "Cannot perform have step: argument is not of the form [var term]"
@@ -123,7 +123,7 @@
             (if (nil? name)
               [:ok [def-env ctx]]
               (let [[status tdef] (core/handle-term-definition
-                                   {:tag ::core/defterm :name name :doc "<have step>"}
+                                   {:tag :term :name name :doc "<have step>"}
                                    def-env
                                    ctx
                                    params
@@ -138,7 +138,7 @@
  (do-have-step {}
           '[[A ✳] [x A]]
           'step [] 'A :by 'x)
- => '[:ok [{step {:tag :latte.core/defterm,
+ => '[:ok [{step {:tag :term,
                   :name step, :doc "<have step>", :params [], :arity 0,
                   :type A, :parsed-term x}}
            [[A ✳] [x A]]]])
@@ -147,7 +147,7 @@
  (let [{name :have-name params :params have-type :have-type method :method have-arg :have-arg}
        (second (parse-have-step '(have step A :by x)))]
    (do-have-step {} '[[A ✳] [x A]] name params have-type method have-arg))
- => '[:ok [{step {:tag :latte.core/defterm,
+ => '[:ok [{step {:tag :term,
                   :name step, :doc "<have step>", :params [], :arity 0,
                   :type A, :parsed-term x}}
            [[A ✳] [x A]]]])
@@ -156,8 +156,8 @@
   (let [[status term] (stx/parse-term end-def-env term)]
     (if (= status :ko)
       [:ko {:msg "Cannot do QED step: parse error." :error term}]
-      (let [delta-env (select-keys end-def-env (set/difference (keys end-def-env)
-                                                                (keys start-def-env)))
+      (let [delta-env (select-keys end-def-env (set/difference (set (keys end-def-env))
+                                                                (set (keys start-def-env))))
             term (norm/delta-normalize delta-env term)
             fv (free-vars term)
             count-start-ctx (count start-ctx)]
@@ -169,9 +169,23 @@
                 (recur (rest delta-ctx) (dec count-delta-ctx) term)))
             [:ok term]))))))
 
+
+(defn do-showdef-step [def-env arg]
+  (println "[showdef]" arg)
+  (if-let [sdef (get def-env arg)]
+    (do 
+      (println "-----------------------------------------")
+      (clojure.pprint/pprint sdef)
+      (println "-----------------------------------------"))
+    (println "  ==> no such definition")))
+
 (defn evaluate-script [script start-def-env start-ctx def-env ctx cont-stack]
+  ;;(println "[evaluate-script]")
+  ;;(println "---------------------------------------------")
+  ;;(clojure.pprint/pprint script)
+  ;;(println "---------------------------------------------")
   (if (seq script)
-    (if (seq (first script))
+    (if (sequential? (first script))
       (recur (first script) start-def-env start-ctx def-env ctx (conj cont-stack (rest script)))
       (case (first script)
         assume
@@ -201,7 +215,10 @@
                   (recur '() start-def-env start-ctx (first res) (second res) cont-stack))))))
         qed
         (do-qed-step start-def-env def-env start-ctx ctx (second script))
-        ;; else
+        showdef
+        (do (do-showdef-step def-env (second script))
+            (recur '() start-def-env start-ctx def-env ctx cont-stack))
+      ;; else
         (throw (ex-info "Cannot evaluate script" {:script script}))))
     ;; at end of script
     (if (seq cont-stack)

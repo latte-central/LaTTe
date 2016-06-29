@@ -3,6 +3,7 @@
   (:require [latte.presyntax :as stx])
   (:require [latte.typing :as ty])
   (:require [latte.norm :as n])
+  (:require [latte.script :as script])
   )
 
 ;;{
@@ -184,28 +185,36 @@
                (alter-meta! (var ~def-name)  (fn [m#] (assoc m# :doc ~doc)))
                [:declared :theorem ~name#])))))))
 
+(defn proof-from-term [thm-name def-env thm proof-term]
+  (let [proof (stx/parse def-env proof-term)
+        [status ptype] (ty/type-of-term def-env (:params thm) proof)]
+    ;;(println "[proof] parsed proof=" proof " proof-type=" ptype)
+    (if (= status :ko)
+      (throw (ex-info "Proof failed." {:theorem thm-name :error ptype}))
+      (if (not (n/beta-delta-eq? def-env (:type thm) ptype))
+        (throw (ex-info "Wrong proof." {:theorem thm-name
+                                        :expected-type (:type thm)
+                                        :proof-type ptype}))
+        (let [new-thm (list 'quote (assoc thm :proof proof))
+              name# (name thm-name)]
+          `(do (register-definition! ~thm-name ~new-thm)
+               (alter-var-root (var ~thm-name) (fn [_#] ~new-thm))
+               [:qed ~name#]))))))
+
 (defmacro proof
-  [thm-name method steps]
+  [thm-name method & steps]
   (let [def-env (fetch-definition-environment)
         thm (get def-env thm-name)]
     (when-not thm
       (throw (ex-info "No such theorem." {:name thm-name})))
     (case method
-      :term (let [proof (stx/parse def-env steps)
-                  [status ptype] (ty/type-of-term def-env (:params thm) proof)]
-              ;;(println "[proof] parsed proof=" proof " proof-type=" ptype)
-              (if (= status :ko)
-                (throw (ex-info "Proof failed." {:theorem thm-name :error ptype}))
-                (if (not (n/beta-delta-eq? def-env (:type thm) ptype))
-                  (throw (ex-info "Wrong proof." {:theorem thm-name
-                                                  :expected-type (:type thm)
-                                                  :proof-type ptype}))
-                  (let [new-thm (list 'quote (assoc thm :proof proof))
-                        name# (name thm-name)]
-                    `(do (register-definition! ~thm-name ~new-thm)
-                         (alter-var-root (var ~thm-name) (fn [_#] ~new-thm))
-                         [:qed ~name#])))))
-      :script (throw (ex-info "Method :script not yet supported" {:theorem thm-name}))
+      :term (if (seq (rest steps))
+              (throw (ex-info "Wrong proof: only one term required" {:args steps}))
+              (proof-from-term thm-name def-env thm (first steps)))
+      :script (let [[status proof-term] (script/evaluate-script steps def-env (:params thm) def-env (:params thm) '())]
+                (if (= status :ko)
+                  (throw (ex-info (str "Wrong proof script: " (:msg proof-term)) (dissoc proof-term :msg)))
+                  (proof-from-term thm-name def-env thm proof-term)))
       (throw (ex-info "No such proof method." {:theorem thm-name :method method})))))
 
 ;;{
@@ -284,4 +293,7 @@
   [bindings body]
   (list 'quote (list 'Π bindings body)))
 
-
+(defmacro assume
+  {:style/indent [1 :form [1]]} 
+  [bindings & body]
+  (list 'quote (list 'assume bindings body)))
