@@ -119,3 +119,5 @@
          (have concl (land A B) :discharge [C step3])
          (qed concl)))
 
+
+
