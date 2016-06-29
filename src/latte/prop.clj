@@ -13,6 +13,10 @@
   [[A :type]]
   (==> A A))
 
+;; (proof impl-refl
+;;        :term
+;;        (lambda [x A] x))
+
 (proof impl-refl
        :script
        (assume [x A]
