@@ -167,13 +167,17 @@
               (if (contains? fv x)
                 (recur (rest delta-ctx) (dec count-delta-ctx) (list 'lambda [x ty] term))
                 (recur (rest delta-ctx) (dec count-delta-ctx) term)))
-            [:ok term]))))))
+            (do ;;(println "[qed]")
+                ;;(println "-----------------------------------------")
+                ;;(clojure.pprint/pprint term)
+                ;;(println "-----------------------------------------")
+                [:ok term])))))))
 
 
 (defn do-showdef-step [def-env arg]
   (println "[showdef]" arg)
   (if-let [sdef (get def-env arg)]
-    (do 
+    (do
       (println "-----------------------------------------")
       (clojure.pprint/pprint sdef)
       (println "-----------------------------------------"))

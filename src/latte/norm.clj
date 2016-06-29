@@ -132,7 +132,7 @@
     (throw (ex-info "Cannot delta-reduce: not a reference term." {:term t}))
     (let [[name & args] t]
       (if (not (get def-env name))
-        (throw (ex-info "No such definition" {:term t :def-name name}))
+        [t false] ;; No error?  or (throw (ex-info "No such definition" {:term t :def-name name}))
         (let [sdef (get def-env name)]
           (if (> (count args) (:arity sdef))
             (throw (ex-info "Too many arguments to instantiate definition." {:term t :def-name name :nb-params (count (:arity sdef)) :nb-args (count args)}))

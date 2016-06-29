@@ -86,11 +86,29 @@
          (have concl absurd :by (y x))
          (qed concl)))
 
+(defthm impl-neg-neg
+  "The if half of double negation."
+  [[A :type]]
+  (==> A (neg (neg A))))
+
+;; (neg (neg A))
+;; = (==> (neg A) absurd)
+;; = (==> (==> A absurd) absurd) 
+
+(proof impl-neg-neg
+       :script
+       (assume [x A
+                H (neg A)]
+         (have step1 absurd :by (H x))
+         (have step2 (neg (neg A)) :discharge [H step1])
+         (qed step2)))
+
 (defterm land
   "logical conjunction."
   [[A :type] [B :type]]
-  (prod [C :type] (==> (==> A B C)
-                       C)))
+  (forall [C :type]
+    (==> (==> A B C)
+      C)))
 
 (defthm land-intro
   "Introduction rule for logical conjunction."
