@@ -28,7 +28,7 @@
 ;; (proof ex-falso
 ;;        :script
 ;;        (assume [f absurd]
-;;                (have A by (f A))))
+;;           (qed A by (f A))))
 
 (defterm neg
   "Logical negation."
@@ -52,8 +52,9 @@
 
 ;; (proof absurd-intro
 ;;        :script
-;;        (assume [x A] [y (neg A)]
-;;                (have absurd by (y x))))
+;;        (assume [x A
+;;                 y (neg A)]
+;;          (qed absurd by (y x))))
 
 (defterm land
   "logical conjunction."
@@ -81,9 +82,9 @@
 ;;                 y B
 ;;                 C :type
 ;;                 z (==> A B C)]
-;;          (have [step1 (==> B C) :by (z x)
-;;                 step2 C :by (z step1)
-;;                 step3 (==> (==> A B C)
-;;                         C) :discharge z step2]
-;;            (qed (land A B) :discharge C step3)))))
+;;          (have step1 (==> B C) :by (z x))
+;;          (have step2 C :by (z step1))
+;;          (have step3 (==> (==> A B C)
+;;                           C) :discharge [z step2])
+;;          (qed (land A B) :discharge C step3))))
 
