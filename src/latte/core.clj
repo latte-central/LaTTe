@@ -195,9 +195,7 @@
     (when-not thm
       (throw (ex-info "No such theorem." {:name thm-name})))
     (let [[status proof-term]
-          (let [c (p/check-proof def-env (:params thm) (:type thm) method steps)]
-            (println "proof:" c)
-            c)]
+          (p/check-proof def-env (:params thm) (:type thm) method steps)]
       (if (= status :ko)
         (throw (ex-info (str "Proof failed: " (:msg proof-term)) {:theorem thm-name
                                                                   :error (dissoc proof-term :msg)}))
@@ -207,6 +205,22 @@
                (alter-var-root (var ~thm-name) (fn [_#] ~new-thm))
                [:qed ~name#]))))))
 
+(defmacro try-proof
+  "Tries (but does not register) a proof of theorem named `thm-name` using the given proof `method`
+  and `steps`."
+  [thm-name method & steps]
+  (let [def-env (d/fetch-definition-environment)
+        thm (get def-env thm-name)]
+    (if-not thm
+      [:ko {:msg "No such theorem." :name thm-name}]
+      (let [[status proof-term]
+            (p/check-proof def-env (:params thm) (:type thm) method steps)]
+        (if (= status :ko)
+          [:ko {:msg (str "Proof failed: " (:msg proof-term)) :theorem thm-name
+                :error (dissoc proof-term :msg)}]
+          (let [new-thm (list 'quote (assoc thm :proof proof-term))
+                name# (name thm-name)]
+            [:qed ~name#]))))))
 
 ;;{
 ;; ## Indentation rules

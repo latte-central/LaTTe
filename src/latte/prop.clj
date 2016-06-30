@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [and or not])
   (:require [clj-by.example :refer [example do-for-example]])
   (:require [latte.core :as latte :refer [defterm term type-of defthm
-                                          lambda forall assume proof]])
+                                          lambda forall assume proof try-proof]])
   )
 
 
@@ -24,6 +24,14 @@
          (have concl A :by x)
          (qed concl)))
 
+(defthm impl-ignore
+  "A variant of reflexivity."
+  [[A :type] [B :type]]
+  (==> A B A))
+
+(proof impl-ignore
+       :term (lambda [x A] (lambda [y B] x)))
+
 (defthm impl-trans
   "Implication is transitive."
   [[A :type] [B :type] [C :type]]
@@ -40,6 +48,8 @@
          (have step2 C :by (H2 (step1)))
          (have step3 (==> A C) :discharge [x step2])
          (qed step3)))
+
+
 
 (defterm absurd
   "Absurdity."
@@ -139,8 +149,9 @@
          (have step2 C :by ((step1) y))
          (have step3 (==> (==> A B C)
                           C) :discharge [z step2])
-         (have concl (land A B) :discharge [C step3])
+         (have concl (and A B) :discharge [C step3])
          (qed concl)))
+
 
 (defthm and-elim-left
   "Elimination rule for logical conjunction.
@@ -151,15 +162,81 @@
 
 (proof and-elim-left
        :script
-       (assume [H1 (and A B)
-                x A
-                y B]
-         (have <a> (==> (==> A B A) A) :by (H1 A))
-         (assume [H2 (==> A B A)]
-           (have <b> (==> B A) :by (H2 x))
-           (have <c> A :by ((<b>) y))
-           (have <d> (==> (==> A B A) A) :discharge [H2 <c>])
-           (showdef <d>))))
+       (assume [H1 (and A B)]
+               (have <a> (==> (==> A B A) A) :by (H1 A))
+               (have <b> (==> A B A) :by (impl-ignore A B))
+               (have <c> A :by ((<a>) <b>))
+               (qed <c>)))
+
+(defthm and-elim-right
+  "Elimination rule for logical conjunction.
+   This one only keeps the right-side of the conjunction"
+  [[A :type] [B :type]]
+  (==> (and A B)
+       B))
+
+(proof and-elim-right
+       :script
+       (assume [H1 (and A B)]
+               (have <a> (==> (==> A B B) B) :by (H1 B))
+               (have <b> (==> A B B) :by (lambda [x A] (lambda [y B] y)))
+               (have <c> B :by ((<a>) <b>))
+               (qed <c>)))
+
+(defterm or
+  "logical disjunction."
+  [[A :type] [B :type]]
+  (forall [C :type]
+     (==> (==> A C)
+          (==> B C)
+          C)))
+
+;;
+;;
 
 
+(defthm or-intro-left
+  "Introduction rule for logical disjunction.
+This is the introduction by the left operand."
+  [[A :type] [B :type]]
+  (==> A
+       (or A B)))
 
+(proof or-intro-left
+       :script
+       (assume [x A
+                C :type
+                z C
+                H1 (==> B C)
+                H2 (==> A C)]
+           (have <a> (==> (==> B C) C) :discharge [H1 z])
+           (have <b> (==> (==> A C)
+                          (==> B C)
+                          C) :discharge [H2 <a>])
+           (have <c> (or A B) :discharge [C <b>])
+           (showdef <c>)
+           (qed <c>)))
+
+
+(defthm or-elim
+  "Elimination rule for logical disjunction."
+  [[A :type] [B :type]]
+  (==> (or A B)
+       (forall [C :type]
+               (==> (==> A C)
+                    (==> B C)
+                    C))))
+
+(proof or-elim
+       :script
+       (assume [H1 (forall [D :type] (==> (==> A D)
+                                          (==> B D)
+                                          D))
+                C :type
+                H2 (==> A C)
+                H3 (==> B C)]
+          (have <a> (==> (==> A C) (==> B C) C) :by (H1 C))
+          (have <b> (==> (==> B C) C) :by ((<a>) H2))
+          (have <c> C :by ((<b>) H3))
+          (showdef <c>)
+          (qed <c>)))
