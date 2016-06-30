@@ -191,10 +191,6 @@
           (==> B C)
           C)))
 
-;;
-;;
-
-
 (defthm or-intro-left
   "Introduction rule for logical disjunction.
 This is the introduction by the left operand."
@@ -206,17 +202,36 @@ This is the introduction by the left operand."
        :script
        (assume [x A
                 C :type
-                z C
-                H1 (==> B C)
-                H2 (==> A C)]
-           (have <a> (==> (==> B C) C) :discharge [H1 z])
-           (have <b> (==> (==> A C)
-                          (==> B C)
-                          C) :discharge [H2 <a>])
-           (have <c> (or A B) :discharge [C <b>])
-           (showdef <c>)
-           (qed <c>)))
+                H1 (==> A C)
+                H2 (==> B C)]
+         (have <a> C :by (H1 x))
+         (have <b> (==> (==> B C) C) :discharge [H2 <a>])
+         (have <c> (==> (==> A C)
+                        (==> B C)
+                        C) :discharge [H1 <b>])
+         (have <d> (or A B) :discharge [C <c>])
+         (qed <d>)))
 
+(defthm or-intro-right
+  "Introduction rule for logical disjunction.
+This is the introduction by the right operand."
+  [[A :type] [B :type]]
+  (==> B
+       (or A B)))
+
+(proof or-intro-right
+       :script
+       (assume [y B
+                C :type
+                H1 (==> A C)
+                H2 (==> B C)]
+         (have <a> C :by (H2 y))
+         (have <b> (==> (==> B C) C) :discharge [H2 <a>])
+         (have <c> (==> (==> A C)
+                        (==> B C)
+                        C) :discharge [H1 <b>])
+         (have <d> (or A B) :discharge [C <c>])
+         (qed <d>)))
 
 (defthm or-elim
   "Elimination rule for logical disjunction."
@@ -238,5 +253,4 @@ This is the introduction by the left operand."
           (have <a> (==> (==> A C) (==> B C) C) :by (H1 C))
           (have <b> (==> (==> B C) C) :by ((<a>) H2))
           (have <c> C :by ((<b>) H3))
-          (showdef <c>)
           (qed <c>)))
