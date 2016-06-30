@@ -52,7 +52,7 @@
           :script (evaluate-script steps def-env ctx def-env ctx '())
           [:ko {:msg "no such proof method" :method method}])]
     (if (= status :ko)
-      proof-term
+      [:ko proof-term]
       (check-proof-term def-env ctx thm-ty proof-term))))
 
 ;;{

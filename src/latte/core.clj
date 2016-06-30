@@ -194,7 +194,10 @@
         thm (get def-env thm-name)]
     (when-not thm
       (throw (ex-info "No such theorem." {:name thm-name})))
-    (let [[status proof-term] (p/check-proof def-env (:params thm) (:type thm) method steps)]
+    (let [[status proof-term]
+          (let [c (p/check-proof def-env (:params thm) (:type thm) method steps)]
+            (println "proof:" c)
+            c)]
       (if (= status :ko)
         (throw (ex-info (str "Proof failed: " (:msg proof-term)) {:theorem thm-name
                                                                   :error (dissoc proof-term :msg)}))

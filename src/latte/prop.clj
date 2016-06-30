@@ -149,17 +149,17 @@
   (==> (and A B)
        A))
 
-;; (proof and-elim-left
-;;        :script
-;;        (assume [H1 (and A B)
-;;                 x A
-;;                 y B]
-;;          (have <a> (==> (==> A B A) A) :by (H1 A))
-;;          (have <b> (==> A (==> B A))
-         
-;;          (assume [H2 (==> A B A)]
-;;            (have <b> A :by ((<a>) H2))
-;;            (qed <b>))))
+(proof and-elim-left
+       :script
+       (assume [H1 (and A B)
+                x A
+                y B]
+         (have <a> (==> (==> A B A) A) :by (H1 A))
+         (assume [H2 (==> A B A)]
+           (have <b> (==> B A) :by (H2 x))
+           (have <c> A :by ((<b>) y))
+           (have <d> (==> (==> A B A) A) :discharge [H2 <c>])
+           (showdef <d>))))
 
 
 
