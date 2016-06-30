@@ -1,5 +1,5 @@
-(ns latte.script
-  "Declarative proof scripts."
+(ns latte.proof
+  "Proof handling."
 
   (:require [clojure.set :as set])
 
@@ -9,12 +9,55 @@
   (:require [latte.presyntax :as stx])
   (:require [latte.syntax :refer [free-vars]])
   (:require [latte.typing :as ty :refer [type-of-term]])
-  (:require [latte.norm :as norm])
-  (:require [latte.core :as core])
+  (:require [latte.norm :as n])
+  (:require [latte.defs :as d])
 
   )
 
 (def ^:private +examples-enabled+)
+
+;;{
+;; # Proof top-level form
+;;}
+
+
+(declare evaluate-script)
+
+(defn check-proof-term [def-env ctx thm-ty proof-term]
+  (let [[status proof] (stx/parse-term def-env proof-term)]
+    (if (= status :ko)
+      [:ko {:msg (str "wrong proof term,  " (:msg proof))
+            :error (dissoc proof :msg)}]
+      (let [[status ptype] (ty/type-of-term def-env ctx proof)]
+        (if (= status :ko)
+          [:ko {:msg (str "type error, " (:msg ptype))
+                :error (dissoc ptype :msg)}]
+          (if (not (n/beta-delta-eq? def-env thm-ty ptype))
+            [:ko {:msg "proof checking error (type mismatch)"
+                  :expected-type thm-ty
+                  :proof-type ptype}]
+            [:ok proof]))))))
+
+(defn check-proof
+  [def-env ctx thm-ty method steps]
+  (let [[status proof-term]
+        (case method
+          :term (cond
+                  (empty? steps)
+                  [:ko {:msg "missing proof term" :steps steps}]
+                  (seq (rest steps))
+                  [:ko {:msg "too many proof steps, direct method requires a single term" :steps steps}]
+                  :else
+                  [:ok (first steps)])
+          :script (evaluate-script steps def-env ctx def-env ctx '())
+          [:ko {:msg "no such proof method" :method method}])]
+    (if (= status :ko)
+      proof-term
+      (check-proof-term def-env ctx thm-ty proof-term))))
+
+;;{
+;; # Declarative proofs
+;;}
 
 (defn parse-assume-step [script]
   (cond
@@ -122,7 +165,7 @@
                   :term term :type have-type}]
             (if (nil? name)
               [:ok [def-env ctx]]
-              (let [[status tdef] (core/handle-term-definition
+              (let [[status tdef] (d/handle-term-definition
                                    {:tag :term :name name :doc "<have step>"}
                                    def-env
                                    ctx
@@ -158,7 +201,7 @@
       [:ko {:msg "Cannot do QED step: parse error." :error term}]
       (let [delta-env (select-keys end-def-env (set/difference (set (keys end-def-env))
                                                                 (set (keys start-def-env))))
-            term (norm/delta-normalize delta-env term)
+            term (n/delta-normalize delta-env term)
             fv (free-vars term)
             count-start-ctx (count start-ctx)]
         (loop [delta-ctx end-ctx, count-delta-ctx (count end-ctx), term term]

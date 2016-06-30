@@ -1,7 +1,7 @@
 (ns latte.prop
   (:require [clj-by.example :refer [example do-for-example]])
-  (:require [latte.core :as latte :refer [defterm term type-of defthm proof
-                                          lambda forall assume]])
+  (:require [latte.core :as latte :refer [defterm term type-of defthm
+                                          lambda forall assume proof]])
   )
 
 

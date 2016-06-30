@@ -1,85 +1,18 @@
 (ns latte.core
+  "This namespace provides the top-level forms of the LaTTe
+  framework. 
+
+  Users (as opposed to developpers) of the framework should
+  mostly depend on this namespace."
+
   (:require [latte.utils :as u])
   (:require [latte.presyntax :as stx])
   (:require [latte.typing :as ty])
   (:require [latte.norm :as n])
-  (:require [latte.script :as script])
+  (:require [latte.defs :as d])
+  (:require [latte.proof :as p])
   )
 
-;;{
-;; # Definitions
-;;}
-
-
-;;{
-;; ## Definitional environment
-;;}
-
-(defn latte-definition? [v]
-  (and (map? v)
-       (contains? v :tag)
-       (contains? #{:term :theorem :axiom} (:tag v))))
-
-(defn build-initial-definition-environment!
-  []
-  (let [ns-env (ns-map *ns*)]
-    ;; (if (contains? ns-env '+latte-definition-environment+)
-    ;;   (throw (ex-info "Cannot build initial definition environment: already existing" {:namespace (namespace '+latte-definition-environment+)
-    ;;                                                                                    :var '+latte-definition-environment+}))
-    (intern (ns-name *ns*) '+latte-definition-environment+
-            (atom (reduce (fn [def-env [name definition]]
-                            ;; (print "name = " name "def = " definition)
-                            (if (latte-definition? definition)
-                              (do (print "name = " name "def = " definition)
-                                  (println " (... latte definition registered ...)")
-                                  (assoc def-env name definition))
-                              (do ;; (println " (... not a latte definition ...)")
-                                def-env))) {} ns-env)))))
-;;)
-
-(defn fetch-def-env-atom
-  []
-  (let [lvar (let [lv (resolve '+latte-definition-environment+)]
-               (if (not lv)
-                 (do (build-initial-definition-environment!)
-                     (resolve '+latte-definition-environment+))
-                 lv))]
-    ;;(println "Resolved!" lvar)
-    @lvar))
-
-
-(defn fetch-definition-environment
-  []
-  @(fetch-def-env-atom))
-
-(defn register-definition! [name definition]
-   (let [def-atom (fetch-def-env-atom)]
-     (swap! def-atom (fn [def-env]
-                       (assoc def-env name definition)))))
-
-;;{
-;; ## Term definitions
-;;}
-
-(defn handle-term-definition [tdef def-env ctx params body]
-  (let [[status params] (reduce (fn [[sts params] [x ty]]
-                                  (let [[status ty] (stx/parse-term def-env ty)]
-                                    (if (= status :ko)
-                                      (reduced [:ko ty])
-                                      [:ok (conj params [x ty])]))) [:ok []] params)]
-    (if (= status :ko)
-      [:ko params]
-      (let [[status body] (stx/parse-term def-env body)]
-        (if (= status :ko)
-          [:ko body]
-          (let [[status ty] (ty/type-of-term def-env (u/vconcat params ctx) body)]
-            (if (= status :ko)
-              [:ko ty]
-              [:ok (assoc tdef
-                          :params params
-                          :arity (count params)
-                          :type ty
-                          :parsed-term body)])))))))
 
 (defn parse-defterm-args [args]
     (when (> (count args) 4)
@@ -103,10 +36,17 @@
     [def-name doc params body]))
 
 (defmacro defterm
+  "Defines a mathematical term composed of a `name`, and optional (but highly recommended)
+  `docstring`, a vector of `parameters` and a `lambda-term` as definitional content.
+
+  An `ex-info` exception is thrown if the term cannot be defined.
+
+  Note that it is a Clojure `def`, the term is defined in the namespace where the `defterm` 
+  form is invoked."
   [& args]
   (let [[def-name doc params body] (parse-defterm-args args)]
     ;;(println "def-name =" def-name " doc =" doc " params =" params " body =" body)
-    (let [def-env (fetch-definition-environment)]
+    (let [def-env (d/fetch-definition-environment)]
       ;;(println "def env = " def-env)
       (do
         (when (contains? def-env def-name)
@@ -115,32 +55,16 @@
           ;;       otherwise only warn ?
           (println "[Warning] redefinition as term: " def-name))
         (let [[status definition] (as-> {:tag :term :name def-name :doc doc} $
-                                    (handle-term-definition $ def-env [] params body))]
+                                    (d/handle-term-definition $ def-env [] params body))]
           (when (= status :ko)
             (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
           (let [quoted-def (list 'quote definition)]
-            (register-definition! def-name definition)
+            (d/register-definition! def-name definition)
             (let [name# (name def-name)]
               `(do
                  (def ~def-name ~quoted-def)
                  (alter-meta! (var ~def-name)  (fn [m#] (assoc m# :doc ~doc)))
                  [:defined :term ~name#]))))))))
-
-;;{
-;; ## Theorem definitions
-;;}
-
-(defn handle-thm-declaration [tdef def-env params ty]
-  (let [params (mapv (fn [[x ty]] [x (stx/parse def-env ty)]) params)
-        ty (stx/parse def-env ty)]
-    ;; (println "[handle-thm-definition] def-env = " def-env " params = " params " body = " body)
-    (when (not (ty/proper-type? def-env params ty))
-      (throw (ex-info "Theorem is not a proper type" {:theorem (:name tdef) :type ty})))
-    (assoc tdef
-           :params params
-           :arity (count params)
-           :type ty
-           :proof false)))
 
 (defn parse-defthm-args [args]
     (when (> (count args) 4)
@@ -167,7 +91,7 @@
   [& args]
   (let [[def-name doc params ty] (parse-defthm-args args)]
     ;;(println "def-name =" def-name " doc =" doc " params =" params " ty =" ty)
-    (let [def-env (fetch-definition-environment)]
+    (let [def-env (d/fetch-definition-environment)]
       ;;(println "def env = " def-env)
       (do
         (when (contains? def-env def-name)
@@ -176,46 +100,15 @@
           ;;       otherwise only warn ?
           (println "[Warning] redefinition as theorem: " def-name))
         (let [definition (as-> {:tag :theorem :name def-name :doc doc} $
-                           (handle-thm-declaration $ def-env params ty))
+                           (d/handle-thm-declaration $ def-env params ty))
               quoted-def (list 'quote definition)]
-          (register-definition! def-name definition)
+          (d/register-definition! def-name definition)
           (let [name# (name def-name)]
             `(do
                (def ~def-name ~quoted-def)
                (alter-meta! (var ~def-name)  (fn [m#] (assoc m# :doc ~doc)))
                [:declared :theorem ~name#])))))))
 
-(defn proof-from-term [thm-name def-env thm proof-term]
-  (let [proof (stx/parse def-env proof-term)
-        [status ptype] (ty/type-of-term def-env (:params thm) proof)]
-    ;;(println "[proof] parsed proof=" proof " proof-type=" ptype)
-    (if (= status :ko)
-      (throw (ex-info "Proof failed." {:theorem thm-name :error ptype}))
-      (if (not (n/beta-delta-eq? def-env (:type thm) ptype))
-        (throw (ex-info "Wrong proof." {:theorem thm-name
-                                        :expected-type (:type thm)
-                                        :proof-type ptype}))
-        (let [new-thm (list 'quote (assoc thm :proof proof))
-              name# (name thm-name)]
-          `(do (register-definition! ~thm-name ~new-thm)
-               (alter-var-root (var ~thm-name) (fn [_#] ~new-thm))
-               [:qed ~name#]))))))
-
-(defmacro proof
-  [thm-name method & steps]
-  (let [def-env (fetch-definition-environment)
-        thm (get def-env thm-name)]
-    (when-not thm
-      (throw (ex-info "No such theorem." {:name thm-name})))
-    (case method
-      :term (if (seq (rest steps))
-              (throw (ex-info "Wrong proof: only one term required" {:args steps}))
-              (proof-from-term thm-name def-env thm (first steps)))
-      :script (let [[status proof-term] (script/evaluate-script steps def-env (:params thm) def-env (:params thm) '())]
-                (if (= status :ko)
-                  (throw (ex-info (str "Wrong proof script: " (:msg proof-term)) (dissoc proof-term :msg)))
-                  (proof-from-term thm-name def-env thm proof-term)))
-      (throw (ex-info "No such proof method." {:theorem thm-name :method method})))))
 
 ;;{
 ;; ## Top-level term parsing
@@ -238,7 +131,7 @@
       ctx)))
 
 (defmacro term [& args]
-    (let [def-env (fetch-definition-environment)
+    (let [def-env (d/fetch-definition-environment)
           t (stx/parse def-env (last args))
           ctx (parse-context-args def-env (butlast args))]
       ;;(println "[term] t = " t " ctx = " ctx)
@@ -252,14 +145,14 @@
 ;;}
 
 (defmacro type-of [& args]
-  (let [def-env (fetch-definition-environment)
+  (let [def-env (d/fetch-definition-environment)
         t (stx/parse def-env (last args))
         ctx (parse-context-args def-env (butlast args))]
     (let [ty (ty/type-of def-env ctx t)]
       (list 'quote ty))))
 
 (defmacro check-type? [& args]
-  (let [def-env (fetch-definition-environment)
+  (let [def-env (d/fetch-definition-environment)
         t (stx/parse def-env (last (butlast args)))
         ty (stx/parse def-env (last args))
         ctx (parse-context-args def-env (butlast (butlast args)))]
@@ -271,13 +164,46 @@
 ;;}
 
 (defn === [t1 t2]
-  (let [def-env (fetch-definition-environment)
+  (let [def-env (d/fetch-definition-environment)
         t1 (stx/parse def-env t1)
         t2 (stx/parse def-env t2)]
     (n/beta-delta-eq? def-env t1 t2)))
 
 
 (def term= ===)
+
+;;{
+;; ## Proof handling
+;;}
+
+(defmacro proof
+  "Provides a proof of theorem named `thm-name` using the given proof `method`
+  and `steps`.
+
+  There are for now two proof methods available:
+
+    - the `:term` method with one step: a direct proof/lambda-term
+      inhabiting the theorem/type (based on the proof-as-term, proposition-as-type
+      correspondances). This is a low-level proof method.
+
+    - the `:script` method with a declarative proof script. It is a high-level
+  (human-readable) proof method. A low-level proof term is
+  synthetized from the script"
+  [thm-name method & steps]
+  (let [def-env (d/fetch-definition-environment)
+        thm (get def-env thm-name)]
+    (when-not thm
+      (throw (ex-info "No such theorem." {:name thm-name})))
+    (let [[status proof-term] (p/check-proof def-env (:params thm) (:type thm) method steps)]
+      (if (= status :ko)
+        (throw (ex-info (str "Proof failed: " (:msg proof-term)) {:theorem thm-name
+                                                                  :error (dissoc proof-term :msg)}))
+        (let [new-thm (list 'quote (assoc thm :proof proof-term))
+              name# (name thm-name)]
+          `(do (d/register-definition! ~thm-name ~new-thm)
+               (alter-var-root (var ~thm-name) (fn [_#] ~new-thm))
+               [:qed ~name#]))))))
+
 
 ;;{
 ;; ## Indentation rules
