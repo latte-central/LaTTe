@@ -238,9 +238,9 @@
         (clojure.pprint/pprint term)
         (let [[status ty] (ty/type-of-term def-env ctx term)] 
           (if (= status :ko)
-            (clojure.pprint/pprint term)
-            (do (print "\n::")
-                (clojure.pprint/pprint ty))))))) 
+            (clojure.pprint/pprint ty)
+            (do (print "::")
+                (clojure.pprint/pprint ty)))))))
   (println "-----------------------------------------"))
 
 

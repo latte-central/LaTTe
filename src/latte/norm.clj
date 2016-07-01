@@ -99,6 +99,7 @@
 ;;}
 
 (defn instantiate-def [params body args]
+  ;; (println "[instantiate-def] params=" params "body=" body "args=" args)
   (loop [args args, params params, sub {}]
     (if (seq args)
       (if (empty? params)
@@ -127,7 +128,8 @@
                   '())
  => '(λ [x ✳] (λ [y ✳] (λ [z ✳] [[x y] z]))))
 
- (defn delta-reduction [def-env t]
+(defn delta-reduction [def-env t]
+  ;; (println "[delta-reduction] t=" t)
   (if (not (stx/ref? t))
     (throw (ex-info "Cannot delta-reduce: not a reference term." {:term t}))
     (let [[name & args] t]
@@ -145,7 +147,7 @@
                                 {:term t :def sdef})))
               :theorem
               (if (:proof sdef)
-                [(instantiate-def (:params sdef) (:term (:proof sdef)) args) true]
+                [(instantiate-def (:params sdef) (:proof sdef) args) true]
                 (throw (ex-info "Cannot use theorem with no proof." {:term t :theorem sdef})))
               :axiom
               [t false]
@@ -175,6 +177,7 @@
  => '[(λ [z ✳] [c (λ [t ✳] [[a b] [z t]])]) true])
 
 (defn delta-step [def-env t]
+  ;; (println "[delta-step] t=" t)
   (cond
     ;; binder
     (stx/binder? t)
@@ -236,13 +239,13 @@
       t')))
 
 (defn beta-delta-normalize [def-env t]
-  (println "[beta-delta-normalize]:" t)
+  ;; (println "[beta-delta-normalize]:" t)
   (let [[t' red?] (beta-step t)]
-    (println "--beta-->" t' (str "(" red? ")"))
+    ;; (println "--beta-->" t' (str "(" red? ")"))
     (if red?
       (recur def-env t')
       (let [[t'' red?] (delta-step def-env t)]
-        (println "--delta-->" t'' (str "(" red? ")"))
+        ;; (println "--delta-->" t'' (str "(" red? ")"))
         (if red?
           (recur def-env t'')
           t'')))))

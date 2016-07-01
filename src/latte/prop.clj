@@ -270,7 +270,7 @@ This is the introduction by the right operand."
 (proof iff-refl
        :script
        (have <a> (==> A A) :by (impl-refl A))
-       (showterm <a>))
+       (showterm (and-intro <a> <a>)))
 
 
 
