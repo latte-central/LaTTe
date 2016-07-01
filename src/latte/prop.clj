@@ -50,7 +50,6 @@
          (qed step3)))
 
 
-
 (defterm absurd
   "Absurdity."
   []
@@ -254,3 +253,28 @@ This is the introduction by the right operand."
           (have <b> (==> (==> B C) C) :by ((<a>) H2))
           (have <c> C :by ((<b>) H3))
           (qed <c>)))
+
+
+(defterm <=>
+  "Logical equivalence or 'if and only if'."
+  [[A :type] [B :type]]
+  (and (==> A B)
+       (==> B A)))
+
+
+(defthm iff-refl
+  "Reflexivity of equivalence."
+  [[A :type]]
+  (<=> A A))
+
+(proof iff-refl
+       :script
+       (have <a> (==> A A) :by (impl-refl A))
+       (showterm <a>))
+
+
+
+;;        (have <b> (==> (==> A A)
+;;                       (==> A A)
+;;                       (<=> A A)) :by (and-intro <a> <a>)))
+

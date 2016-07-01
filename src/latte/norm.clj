@@ -236,10 +236,13 @@
       t')))
 
 (defn beta-delta-normalize [def-env t]
+  (println "[beta-delta-normalize]:" t)
   (let [[t' red?] (beta-step t)]
+    (println "--beta-->" t' (str "(" red? ")"))
     (if red?
       (recur def-env t')
       (let [[t'' red?] (delta-step def-env t)]
+        (println "--delta-->" t'' (str "(" red? ")"))
         (if red?
           (recur def-env t'')
           t'')))))

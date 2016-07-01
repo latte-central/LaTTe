@@ -51,6 +51,10 @@
   @(fetch-def-env-atom))
 
 (defn register-definition! [name definition]
+  {:pre  [(symbol? name)]}
+  ;; (println "register definition:" name)
+  ;; (clojure.pprint/pprint definition)
+  ;; (println "--------------")
    (let [def-atom (fetch-def-env-atom)]
      (swap! def-atom (fn [def-env]
                        (assoc def-env name definition)))))

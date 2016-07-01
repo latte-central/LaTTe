@@ -199,10 +199,10 @@
       (if (= status :ko)
         (throw (ex-info (str "Proof failed: " (:msg proof-term)) {:theorem thm-name
                                                                   :error (dissoc proof-term :msg)}))
-        (let [new-thm (list 'quote (assoc thm :proof proof-term))
-              name# (name thm-name)]
-          `(do (d/register-definition! ~thm-name ~new-thm)
-               (alter-var-root (var ~thm-name) (fn [_#] ~new-thm))
+        (let [new-thm# (list 'quote (assoc thm :proof proof-term))
+              name# (list 'quote thm-name)]
+          `(do (d/register-definition! ~name# ~new-thm#)
+               (alter-var-root (var ~thm-name) (fn [_#] ~new-thm#))
                [:qed ~name#]))))))
 
 (defmacro try-proof

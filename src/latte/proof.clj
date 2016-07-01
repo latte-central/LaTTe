@@ -226,6 +226,24 @@
       (println "-----------------------------------------"))
     (println "  ==> no such definition")))
 
+(defn do-showterm-step [def-env ctx arg]
+  (println "[showterm]" arg)
+  ;;(println "def-env:")
+  ;;(clojure.pprint/pprint def-env)
+  (println "-----------------------------------------")
+  (let [[status term] (stx/parse-term def-env arg)]
+    (if (= status :ko)
+      (clojure.pprint/pprint term)
+      (let [term (n/beta-delta-normalize def-env term)]
+        (clojure.pprint/pprint term)
+        (let [[status ty] (ty/type-of-term def-env ctx term)] 
+          (if (= status :ko)
+            (clojure.pprint/pprint term)
+            (do (print "\n::")
+                (clojure.pprint/pprint ty))))))) 
+  (println "-----------------------------------------"))
+
+
 (defn evaluate-script [script start-def-env start-ctx def-env ctx cont-stack]
   ;;(println "[evaluate-script]")
   ;;(println "---------------------------------------------")
@@ -264,6 +282,9 @@
         (do-qed-step start-def-env def-env start-ctx ctx (second script))
         showdef
         (do (do-showdef-step def-env (second script))
+            (recur '() start-def-env start-ctx def-env ctx cont-stack))
+        showterm
+        (do (do-showterm-step def-env ctx (second script))
             (recur '() start-def-env start-ctx def-env ctx cont-stack))
       ;; else
         (throw (ex-info "Cannot evaluate script" {:script script}))))
