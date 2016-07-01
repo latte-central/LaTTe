@@ -270,11 +270,10 @@ This is the introduction by the right operand."
 (proof iff-refl
        :script
        (have <a> (==> A A) :by (impl-refl A))
-       (showterm (and-intro <a> <a>)))
-
-
-
-;;        (have <b> (==> (==> A A)
-;;                       (==> A A)
-;;                       (<=> A A)) :by (and-intro <a> <a>)))
+       (have <b> (==> (==> A A)
+                      (==> A A)
+                      (<=> A A)) :by
+             (and-intro (==> A A) (==> A A)))
+       (have <c> (<=> A A) :by ((<b>) <a> <a>))
+       (qed <c>))
 
