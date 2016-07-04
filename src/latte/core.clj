@@ -5,6 +5,8 @@
   Users (as opposed to developpers) of the framework should
   mostly depend on this namespace."
 
+  (:require [clojure.pprint :as pp])
+
   (:require [latte.utils :as u])
   (:require [latte.presyntax :as stx])
   (:require [latte.typing :as ty])
@@ -35,6 +37,13 @@
       (throw (ex-info "Parameters of defterm must be a vector." {:def-name def-name :params params})))
     [def-name doc params body]))
 
+(defn mk-doc [content explanation]
+  (str "\n"
+       (with-out-str
+         (pp/pprint content))
+       "\n"
+       explanation))
+
 (defmacro defterm
   "Defines a mathematical term composed of a `name`, and optional (but highly recommended)
   `docstring`, a vector of `parameters` and a `lambda-term` as definitional content.
@@ -63,7 +72,9 @@
             (let [name# (name def-name)]
               `(do
                  (def ~def-name ~quoted-def)
-                 (alter-meta! (var ~def-name)  (fn [m#] (assoc m# :doc ~doc)))
+                 (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
+                                                               :doc (mk-doc (quote ~body) ~doc)
+                                                               :arglists (list (quote ~params)))))
                  [:defined :term ~name#]))))))))
 
 (defn parse-defthm-args [args]
@@ -106,7 +117,9 @@
           (let [name# (name def-name)]
             `(do
                (def ~def-name ~quoted-def)
-               (alter-meta! (var ~def-name)  (fn [m#] (assoc m# :doc ~doc)))
+               (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
+                                                             :doc (mk-doc (quote ~ty) ~doc)
+                                                             :arglists (list (quote ~params)))))
                [:declared :theorem ~name#])))))))
 
 
