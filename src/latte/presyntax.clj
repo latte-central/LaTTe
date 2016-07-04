@@ -84,7 +84,8 @@
       (lambda-kw? (first t)) (parse-lambda-term def-env t bound)
       (product-kw? (first t)) (parse-product-term def-env t bound)
       (arrow-kw? (first t)) (parse-arrow-term def-env t bound)
-      (defenv/registered-definition? def-env (first t)) (parse-defined-term def-env t bound)
+      (and (symbol? (first t))
+           (defenv/registered-definition? def-env (first t))) (parse-defined-term def-env t bound)
       :else (parse-application-term def-env t bound))))
 
 (defn parse-binding [def-env v bound]

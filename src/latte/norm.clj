@@ -137,6 +137,7 @@
     (throw (ex-info "Cannot delta-reduce: not a reference term." {:term t}))
     (let [[name & args] t
           [status sdef] (defenv/fetch-definition def-env name)]
+      ;; (println "[delta-reduction] term=" t "def=" sdef)
       (if (= status :ko)
         [t false] ;; No error?  or (throw (ex-info "No such definition" {:term t :def-name name}))
         (if (> (count args) (:arity sdef))
@@ -254,11 +255,8 @@
           t'')))))
 
 (defn normalize
-  ([t] (beta-normalize t))
-  ([def-env t]
-   (if (empty? def-env)
-     (beta-normalize t)
-     (beta-delta-normalize def-env t))))
+  ([t] (beta-delta-normalize {} t))
+  ([def-env t] (beta-delta-normalize def-env t)))
 
 (example
  (normalize '(λ [y [(λ [x □] x) ✳]] [(λ [x ✳] x) y]))

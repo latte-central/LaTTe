@@ -255,6 +255,7 @@
 ;;}
 
 (defn type-of-ref [def-env env name args]
+  ;;(println "[type-of-ref] def-env=" def-env "env=" env "name=" name "args=" args)
   (let [[status ddef] (defenv/fetch-definition def-env name)]
     (cond
       (= status :ko) [:ko ddef]

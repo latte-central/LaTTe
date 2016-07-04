@@ -55,7 +55,6 @@
   []
   (forall [α *] α))
 
-
 (defthm ex-falso
   "Ex falso sequitur quodlibet
    (proof by contradiction, elimination for absurdity)."
@@ -347,7 +346,6 @@ This is the introduction by the right operand."
        (<=> B C)
        (<=> A C)))
 
-
 (proof iff-trans
        :script
        (assume [H1 (<=> A B)
@@ -359,5 +357,5 @@ This is the introduction by the right operand."
          (have <e> (==> B A) :by ((iff-elim-only-if A B) H1))
          (have <f> (==> C A) :by ((impl-trans C B A) <d> <e>))
          (have <g> (<=> A C) :by ((iff-intro A C) <c> <f>))
+         (showterm <g>)
          (qed <g>)))
-

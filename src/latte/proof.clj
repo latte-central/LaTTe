@@ -27,11 +27,13 @@
 (declare evaluate-script)
 
 (defn check-proof-term [def-env ctx thm-ty proof-term]
+  ;; (println "[check-proof-term] def-env=" def-env "ctx=" ctx "thm-ty=" thm-ty "proof-term=" proof-term)
   (let [[status proof] (stx/parse-term def-env proof-term)]
     (if (= status :ko)
       [:ko {:msg (str "wrong proof term,  " (:msg proof))
             :error (dissoc proof :msg)}]
       (let [[status ptype] (ty/type-of-term def-env ctx proof)]
+        ;; (println "[check-proof-term] type-of-proof=" ptype)
         (if (= status :ko)
           [:ko {:msg (str "type error, " (:msg ptype))
                 :error (dissoc ptype :msg)}]
@@ -249,10 +251,10 @@
 
 
 (defn evaluate-script [script start-def-env start-ctx def-env ctx cont-stack]
-  ;;(println "[evaluate-script]")
-  ;;(println "---------------------------------------------")
-  ;;(clojure.pprint/pprint script)
-  ;;(println "---------------------------------------------")
+  ;; (println "[evaluate-script] ctx=" ctx)
+  ;; (println "---------------------------------------------")
+  ;; (clojure.pprint/pprint script)
+  ;; (println "---------------------------------------------")
   (if (seq script)
     (if (sequential? (first script))
       (recur (first script) start-def-env start-ctx def-env ctx (conj cont-stack (rest script)))

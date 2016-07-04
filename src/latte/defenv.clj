@@ -13,10 +13,12 @@
 
 
 (defn fetch-definition [locals sym]
+  ;;(println "[fetch-definition] locals=" locals "sym=" sym)
   (if-let [ldef (get locals sym)]
     [:ok ldef]
     (if-let [rgdef (resolve sym)]
       (let [gdef @rgdef]
+        ;; (println "[fetch-definition] " gdef)
         (if (latte-definition? gdef)
           [:ok gdef]
           [:ko {:msg "Not a LaTTe definition" :def sym}]))
