@@ -263,7 +263,7 @@ This is the introduction by the right operand."
 
 
 (defthm iff-refl
-  "Reflexivity of equivalence."
+  "Reflexivity of logical equivalence."
   [[A :type]]
   (<=> A A))
 
@@ -276,4 +276,92 @@ This is the introduction by the right operand."
              (and-intro (==> A A) (==> A A)))
        (have <c> (<=> A A) :by ((<b>) <a> <a>))
        (qed <c>))
+
+(defthm iff-intro
+  "Introduction rule for logical equivalence."
+  [[A :type] [B :type]]
+  (==> (==> A B)
+       (==> B A)
+       (<=> A B)))
+
+
+(proof iff-intro
+       :script
+       (assume [H1 (==> A B)
+                H2 (==> B A)]
+         (have <a> (==> (==> A B)
+                        (==> B A)
+                        (<=> A B)) :by (and-intro (==> A B) (==> B A)))
+         (have <b> (<=> A B) :by ((<a>) H1 H2))
+         (qed <b>)))
+
+(defthm iff-elim-if
+  "Elimination rule for logical equivalence.
+   This one only keeps the if part of the equivalence."
+  [[A :type] [B :type]]
+  (==> (<=> A B)
+       (==> A B)))
+
+(proof iff-elim-if
+       :script
+       (assume [H (<=> A B)]
+         (have <a> (==> (<=> A B)
+                        (==> A B)) :by (and-elim-left (==> A B) (==> B A)))
+         (have <b> (==> A B) :by ((<a>) H))
+         (qed <b>)))
+
+(defthm iff-elim-only-if
+  "Elimination rule for logical equivalence.
+   This one only keeps the only-if part of the equivalence."
+  [[A :type] [B :type]]
+  (==> (<=> A B)
+       (==> B A)))
+
+(proof iff-elim-only-if
+       :script
+       (assume [H (<=> A B)]
+         (have <a> (==> (<=> A B)
+                        (==> B A)) :by (and-elim-right (==> A B) (==> B A)))
+         (have <b> (==> B A) :by ((<a>) H))
+         (qed <b>)))
+
+
+(defthm iff-sym
+  "Symmetry of logical equivalence."
+  [[A :type] [B :type]]
+  (==> (<=> A B)
+       (<=> B A)))
+
+
+(proof iff-sym
+        :script
+        (assume [H (<=> A B)]
+          (have <a> (==> B A) :by ((iff-elim-only-if A B) H))
+          (have <b> (==> A B) :by ((iff-elim-if A B) H))
+          (have <c> (==> (==> B A)
+                         (==> A B)
+                         (<=> B A)) :by (iff-intro B A))
+          (have <d> (<=> B A) :by ((<c>) <a> <b>))
+          (qed <d>)))
+
+(defthm iff-trans
+  "Transitivity of logical equivalence."
+  [[A :type] [B :type] [C :type]]
+  (==> (<=> A B)
+       (<=> B C)
+       (<=> A C)))
+
+
+(proof iff-trans
+       :script
+       (assume [H1 (<=> A B)
+                H2 (<=> B C)]
+         (have <a> (==> A B) :by ((iff-elim-if A B) H1))
+         (have <b> (==> B C) :by ((iff-elim-if B C) H2))
+         (have <c> (==> A C) :by ((impl-trans A B C) <a> <b>))
+         (have <d> (==> C B) :by ((iff-elim-only-if B C) H2))
+         (have <e> (==> B A) :by ((iff-elim-only-if A B) H1))
+         (have <f> (==> C A) :by ((impl-trans C B A) <d> <e>))
+         (have <g> (<=> A C) :by ((iff-intro A C) <c> <f>))
+         (qed <g>)))
 
