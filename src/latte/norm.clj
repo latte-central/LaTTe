@@ -90,7 +90,6 @@
  (beta-red '(λ [y [(λ [x □] x) ✳]] y))
  => '(λ [y ✳] y))
 
-
 (example
  (beta-red '[z [(λ [x ✳] x) y]]) => '[z y])
 
@@ -102,7 +101,7 @@
 ;;}
 
 (defn instantiate-def [params body args]
-  ;; (println "[instantiate-def] params=" params "body=" body "args=" args)
+  ;;(println "[instantiate-def] params=" params "body=" body "args=" args)
   (loop [args args, params params, sub {}]
     (if (seq args)
       (if (empty? params)
@@ -115,9 +114,9 @@
 
 (example
  (instantiate-def '[[x ✳] [y ✳] [z ✳]]
-                  '[[x y] z]
+                  '[[x y] [z x]]
                   '((λ [t ✳] t) t1 [t2 t3]))
- => '[[(λ [t ✳] t) t1] [t2 t3]])
+ => '[[(λ [t ✳] t) t1] [[t2 t3] (λ [t ✳] t)]])
 
 (example
  (instantiate-def '[[x ✳] [y ✳] [z ✳] [t ✳]]
@@ -162,6 +161,14 @@
                           :tag :term
                           :params [[x ✳] [y □] [z ✳]]
                           :parsed-term [y (λ [t ✳] [x [z t]])]}}
+                  '(test [a b] c [t (λ [t] t)]))
+ => '[[c (λ [t' ✳] [[a b] [[t (λ [t] t)] t']])] true])
+
+(example
+ (delta-reduction '{test {:arity 3
+                          :tag :theorem
+                          :params [[x ✳] [y □] [z ✳]]
+                          :proof [y (λ [t ✳] [x [z t]])]}}
                   '(test [a b] c [t (λ [t] t)]))
  => '[[c (λ [t' ✳] [[a b] [[t (λ [t] t)] t']])] true])
 
@@ -225,6 +232,14 @@
                      :parsed-term [x x]}}
              '[y (test [t t])])
  => '[[y [[t t] [t t]]] true])
+
+(example
+ (delta-step '{test {:arity 2
+                     :tag :term
+                     :params [[x ✳] [y ✳]]
+                     :parsed-term [x [y x]]}}
+             '[y (test [t t] u)])
+ => '[[y [[t t] [u [t t]]]] true])
 
 ;;{
 ;; ## Normalization (up-to beta/delta)

@@ -158,7 +158,9 @@
             (if-let [ty (ty/env-fetch ctx (first have-arg))]
               (stx/parse-term def-env (list 'lambda [(first have-arg) ty] (second have-arg)))
               [:ko {:msg "No such variable in context" :variable (first have-arg)}]))
+          ;; else
           [:ko {:msg "No such method for proof script." :have-name name :method method}])]
+    ;; check synthetized term
     (if (= status :ko)
       [:ko {:msg "Cannot perform have step: incorrect term." :have-name name :from term}]
       (let [[status have-type] (stx/parse-term def-env have-type)]

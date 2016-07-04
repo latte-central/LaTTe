@@ -249,6 +249,11 @@
              '(ex x :kind) #{'x})
  => '[:ok (ex x □)])
 
+(example
+ (parse-term {'ex {:arity 3}}
+             '(ex x y z) '#{x y z})
+ => '[:ok (ex x y z)])
+
 (defn left-binarize [t]
   (if (< (count t) 2)
     t
@@ -279,6 +284,9 @@
 
 (example
  (parse-term {} '(x y z) '#{x y z}) => '[:ok [[x y] z]])
+
+(example
+ (parse-term {} '(x y z t) '#{x y z t}) => '[:ok [[[x y] z] t]])
 
 (example
  (parse-term {} '(lambda [x :type] x :type :kind))

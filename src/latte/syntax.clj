@@ -180,8 +180,8 @@
  (subst '[y x] {'x '✳}) => '[y ✳])
 
 (example
- (subst '[x (λ [x ✳] (test x y z))] {'x '✳, 'y '□})
- => '[✳ (λ [x' ✳] (test x' □ z))])
+ (subst '[x (λ [x ✳] (test x y z y))] {'x '✳, 'y '□})
+ => '[✳ (λ [x' ✳] (test x' □ z □))])
 
 (example
  (subst '[x (Π [x ✳] [y x])] {'x '✳, 'y 'x})

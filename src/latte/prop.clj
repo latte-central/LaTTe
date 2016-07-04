@@ -48,8 +48,7 @@
          (have step2 C :by (H2 (step1)))
          (have step3 (==> A C) :discharge [x step2])
          (qed step3)))
-
-
+         
 (defterm absurd
   "Absurdity."
   []
@@ -74,7 +73,6 @@
   "Logical negation."
   [[A :type]]
   (==> A absurd))
-
 
 (defthm absurd-intro
   "Introduction rule for absurdity."
@@ -108,9 +106,10 @@
        :script
        (assume [x A
                 H (not A)]
-         (have step1 absurd :by (H x))
-         (have step2 (not (not A)) :discharge [H step1])
-         (qed step2)))
+          (have step1 absurd :by (H x))
+          (qed step1)))               
+;;(have step2 (not (not A)) :discharge [H step1])
+;;(qed step2)))
 
 (defterm and
   "logical conjunction."
@@ -279,7 +278,6 @@ This is the introduction by the right operand."
        (==> B A)
        (<=> A B)))
 
-
 (proof iff-intro
        :script
        (assume [H1 (==> A B)
@@ -351,11 +349,19 @@ This is the introduction by the right operand."
        (assume [H1 (<=> A B)
                 H2 (<=> B C)]
          (have <a> (==> A B) :by ((iff-elim-if A B) H1))
+         (showterm <a>)
          (have <b> (==> B C) :by ((iff-elim-if B C) H2))
          (have <c> (==> A C) :by ((impl-trans A B C) <a> <b>))
+         ;; (showterm <c>)
          (have <d> (==> C B) :by ((iff-elim-only-if B C) H2))
          (have <e> (==> B A) :by ((iff-elim-only-if A B) H1))
          (have <f> (==> C A) :by ((impl-trans C B A) <d> <e>))
          (have <g> (<=> A C) :by ((iff-intro A C) <c> <f>))
-         (showterm <g>)
          (qed <g>)))
+
+(term [A :type] [B :type] [C :type] [H1 (<=> A B)] [H2 (<=> B C)]
+      (λ [x A]
+         [[[H2 (Π [⇧ B] C)] (λ [x (Π [⇧ B] C)] (λ [y (Π [⇧ C] B)] x))]
+          [[[H1 (Π [⇧ A] B)] (λ [x (Π [⇧ A] B)] (λ [y (Π [⇧ B] A)] x))] x]]))
+
+(type-of [A :type] [B :type] [C :type] (impl-trans A B C))
