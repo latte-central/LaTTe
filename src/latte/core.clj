@@ -11,10 +11,15 @@
   (:require [latte.presyntax :as stx])
   (:require [latte.typing :as ty])
   (:require [latte.norm :as n])
+  (:require [latte.defenv :as defenv])
   (:require [latte.defs :as d])
   (:require [latte.proof :as p])
   )
 
+
+;;{
+;; ## Definitions (defined terms)
+;;}
 
 (defn parse-defterm-args [args]
     (when (> (count args) 4)
@@ -55,27 +60,28 @@
   [& args]
   (let [[def-name doc params body] (parse-defterm-args args)]
     ;;(println "def-name =" def-name " doc =" doc " params =" params " body =" body)
-    (let [def-env (d/fetch-definition-environment)]
-      ;;(println "def env = " def-env)
+    (when (defenv/registered-definition? {} def-name)
       (do
-        (when (contains? def-env def-name)
-          ;;(throw (ex-info "Cannot redefine term." {:name def-name})))
-          ;; TODO: maybe disallow redefining if type is changed ?
-          ;;       otherwise only warn ?
-          (println "[Warning] redefinition as term: " def-name))
-        (let [[status definition] (as-> {:tag :term :name def-name :doc doc} $
-                                    (d/handle-term-definition $ def-env [] params body))]
-          (when (= status :ko)
-            (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
-          (let [quoted-def (list 'quote definition)]
-            (d/register-definition! def-name definition)
-            (let [name# (name def-name)]
-              `(do
-                 (def ~def-name ~quoted-def)
-                 (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
-                                                               :doc (mk-doc (quote ~body) ~doc)
-                                                               :arglists (list (quote ~params)))))
-                 [:defined :term ~name#]))))))))
+        ;;(throw (ex-info "Cannot redefine term." {:name def-name})))
+        ;; TODO: maybe disallow redefining if type is changed ?
+        ;;       otherwise only warn ?
+        (println "[Warning] redefinition as term: " def-name)))
+    (let [[status definition] (as-> {:tag :term :name def-name :doc doc} $
+                                (d/handle-term-definition $ {} [] params body))]
+      (when (= status :ko)
+        (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
+      (let [quoted-def (list 'quote definition)]
+        (let [name# (name def-name)]
+          `(do
+             (def ~def-name ~quoted-def)
+             (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
+                                                           :doc (mk-doc (quote ~body) ~doc)
+                                                           :arglists (list (quote ~params)))))
+             [:defined :term ~name#]))))))
+
+;;{
+;; ## Definitions of theorems
+;;}
 
 (defn parse-defthm-args [args]
     (when (> (count args) 4)
@@ -102,26 +108,68 @@
   [& args]
   (let [[def-name doc params ty] (parse-defthm-args args)]
     ;;(println "def-name =" def-name " doc =" doc " params =" params " ty =" ty)
-    (let [def-env (d/fetch-definition-environment)]
-      ;;(println "def env = " def-env)
+    (when (defenv/registered-definition? {} def-name)
       (do
-        (when (contains? def-env def-name)
-          ;;(throw (ex-info "Cannot redefine term." {:name def-name})))
-          ;; TODO: maybe disallow redefining if type is changed ?
-          ;;       otherwise only warn ?
-          (println "[Warning] redefinition as theorem: " def-name))
-        (let [definition (as-> {:tag :theorem :name def-name :doc doc} $
-                           (d/handle-thm-declaration $ def-env params ty))
-              quoted-def (list 'quote definition)]
-          (d/register-definition! def-name definition)
-          (let [name# (name def-name)]
-            `(do
-               (def ~def-name ~quoted-def)
-               (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
-                                                             :doc (mk-doc (quote ~ty) ~doc)
-                                                             :arglists (list (quote ~params)))))
-               [:declared :theorem ~name#])))))))
+        ;;(throw (ex-info "Cannot redefine term." {:name def-name})))
+        ;; TODO: maybe disallow redefining if type is changed ?
+        ;;       otherwise only warn ?
+        (println "[Warning] redefinition as theorem: " def-name)))
+    (let [definition (as-> {:tag :theorem :name def-name :doc doc} $
+                       (d/handle-thm-declaration $ {} params ty))
+          quoted-def (list 'quote definition)]
+      (let [name# (name def-name)]
+        `(do
+           (def ~def-name ~quoted-def)
+           (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
+                                                         :doc (mk-doc (quote ~ty) ~doc)
+                                                         :arglists (list (quote ~params)))))
+           [:declared :theorem ~name#])))))
 
+;;{
+;; ## Definitions of axioms
+;;}
+
+(defn parse-defaxiom-args [args]
+    (when (> (count args) 4)
+      (throw (ex-info "Too many arguments for defaxiom" {:max-arity 4 :nb-args (count args)})))
+    (when (< (count args) 2)
+      (throw (ex-info "Not enough arguments for defaxiom" {:min-arity 2 :nb-args (count args)})))
+  (let [body (last args)
+        params (if (= (count args) 2)
+                 []
+                 (last (butlast args)))
+        doc (if (= (count args) 4)
+              (nth args 1)
+              "No documentation.")
+        def-name (first args)]
+    (when (not (symbol? def-name))
+      (throw (ex-info "Name of defaxiom must be a symbol." {:def-name def-name})))
+    (when (not (string? doc))
+      (throw (ex-info "Documentation string for defaxiom must be ... a string." {:def-name def-name :doc doc})))
+    (when (not (vector? params))
+      (throw (ex-info "Parameters of defaxiom must be a vector." {:def-name def-name :params params})))
+    [def-name doc params body]))
+
+(defmacro defaxiom
+  [& args]
+  (let [[def-name doc params ty] (parse-defaxiom-args args)]
+    ;;(println "def-name =" def-name " doc =" doc " params =" params " ty =" ty)
+    (when (defenv/registered-definition? {} def-name)
+      (do
+        ;;(throw (ex-info "Cannot redefine term." {:name def-name})))
+        ;; TODO: maybe disallow redefining if type is changed ?
+        ;;       otherwise only warn ?
+        (println "[Warning] redefinition as axiom: " def-name)))
+    (let [definition (as-> {:tag :axiom :name def-name :doc doc} $
+                       (d/handle-axiom-declaration $ {} params ty))
+          quoted-def (list 'quote definition)]
+      (let [name# (name def-name)]
+        `(do
+           (def ~def-name ~quoted-def)
+           (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
+                                                         :doc (mk-doc (quote ~ty) ~doc)
+                                                         :arglists (list (quote ~params)))))
+           [:declared :axiom ~name#])))))
 
 ;;{
 ;; ## Top-level term parsing
@@ -144,7 +192,7 @@
       ctx)))
 
 (defmacro term [& args]
-    (let [def-env (d/fetch-definition-environment)
+    (let [def-env {}
           t (stx/parse def-env (last args))
           ctx (parse-context-args def-env (butlast args))]
       ;;(println "[term] t = " t " ctx = " ctx)
@@ -158,14 +206,14 @@
 ;;}
 
 (defmacro type-of [& args]
-  (let [def-env (d/fetch-definition-environment)
+  (let [def-env {}
         t (stx/parse def-env (last args))
         ctx (parse-context-args def-env (butlast args))]
     (let [ty (ty/type-of def-env ctx t)]
       (list 'quote ty))))
 
 (defmacro check-type? [& args]
-  (let [def-env (d/fetch-definition-environment)
+  (let [def-env {}
         t (stx/parse def-env (last (butlast args)))
         ty (stx/parse def-env (last args))
         ctx (parse-context-args def-env (butlast (butlast args)))]
@@ -177,7 +225,7 @@
 ;;}
 
 (defn === [t1 t2]
-  (let [def-env (d/fetch-definition-environment)
+  (let [def-env {}
         t1 (stx/parse def-env t1)
         t2 (stx/parse def-env t2)]
     (n/beta-delta-eq? def-env t1 t2)))
@@ -203,9 +251,9 @@
   (human-readable) proof method. A low-level proof term is
   synthetized from the script"
   [thm-name method & steps]
-  (let [def-env (d/fetch-definition-environment)
-        thm (get def-env thm-name)]
-    (when-not thm
+  (let [def-env {}
+        [status thm] (defenv/fetch-definition def-env thm-name)]
+    (when (= status :ko)
       (throw (ex-info "No such theorem." {:name thm-name})))
     (let [[status proof-term]
           (p/check-proof def-env (:params thm) (:type thm) method steps)]
@@ -214,17 +262,17 @@
                                                                   :error (dissoc proof-term :msg)}))
         (let [new-thm# (list 'quote (assoc thm :proof proof-term))
               name# (list 'quote thm-name)]
-          `(do (d/register-definition! ~name# ~new-thm#)
-               (alter-var-root (var ~thm-name) (fn [_#] ~new-thm#))
-               [:qed ~name#]))))))
+          `(do 
+             (alter-var-root (var ~thm-name) (fn [_#] ~new-thm#))
+             [:qed ~name#]))))))
 
 (defmacro try-proof
   "Tries (but does not register) a proof of theorem named `thm-name` using the given proof `method`
   and `steps`."
   [thm-name method & steps]
-  (let [def-env (d/fetch-definition-environment)
-        thm (get def-env thm-name)]
-    (if-not thm
+  (let [def-env {}
+        [status thm] (defenv/fetch-definition def-env thm-name)]
+    (if (= status :ko)
       [:ko {:msg "No such theorem." :name thm-name}]
       (let [[status proof-term]
             (p/check-proof def-env (:params thm) (:type thm) method steps)]

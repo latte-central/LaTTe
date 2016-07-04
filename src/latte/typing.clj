@@ -2,6 +2,7 @@
   (:require [clj-by.example :refer [example do-for-example]])
   (:require [latte.syntax :as stx])
   (:require [latte.norm :as norm])
+  (:require [latte.defenv :as defenv])
   )
 
 (def ^:private +examples-enabled+)
@@ -254,9 +255,9 @@
 ;;}
 
 (defn type-of-ref [def-env env name args]
-  (let [ddef (get def-env name)]
+  (let [[status ddef] (defenv/fetch-definition def-env name)]
     (cond
-      (nil? ddef) [:ko {:msg "No such definition." :def-name name}]
+      (= status :ko) [:ko ddef]
       (> (count args) (:arity ddef))
       [:ko {:msg "Too many arguments for definition." :term (list* name args) :arity ddef}]
       :else

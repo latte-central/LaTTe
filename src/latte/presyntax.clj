@@ -1,6 +1,8 @@
 
 (ns latte.presyntax
   (:require [clj-by.example :refer [example do-for-example]])
+
+  (:require [latte.defenv :as defenv])
   )
 
 (def ^:private +examples-enabled+)
@@ -41,13 +43,10 @@
   (cond
     (reserved-symbol? sym) [:ko {:msg "Symbol is reserved" :term sym}]
     (contains? bound sym) [:ok sym]
-    (contains? def-env sym)
-    (let [sdef (get def-env sym)]
-      ;;(if (not= (:arity sdef) 0)
-      ;;[:ko {:msg "Definition is not a constant (arity>0)" :term sym :def sdef}]
-        [:ok (list sym)])
+    (defenv/registered-definition? def-env sym) [:ok (list sym)]
+    :else
     ;; free variable
-    :else [:ok sym]))
+    [:ok sym]))
 
 (example
  (parse-term {} 'x #{'x}) => '[:ok x])
@@ -85,7 +84,7 @@
       (lambda-kw? (first t)) (parse-lambda-term def-env t bound)
       (product-kw? (first t)) (parse-product-term def-env t bound)
       (arrow-kw? (first t)) (parse-arrow-term def-env t bound)
-      (contains? def-env (first t)) (parse-defined-term def-env t bound)
+      (defenv/registered-definition? def-env (first t)) (parse-defined-term def-env t bound)
       :else (parse-application-term def-env t bound))))
 
 (defn parse-binding [def-env v bound]
@@ -232,10 +231,13 @@
 
 (defn parse-defined-term [def-env t bound]
   (let [def-name (first t)
-        sdef (get def-env (first t))
-        arity (count (rest t))]
-    (if (< (:arity sdef) arity)
+        arity (count (rest t))
+        [status sdef] (defenv/fetch-definition def-env def-name)]
+    (cond
+      (= status :ko) [:ko sdef]
+      (< (:arity sdef) arity)
       [:ko {:msg "Too many arguments for definition." :term t :def-name def-name :arity arity :nb-args (:arity sdef)}]
+      :else
       (let [[status ts] (parse-terms def-env (rest t) bound)]
         (if (= status :ko)
           [:ko {:msg "Wrong argument" :term t :from ts}]

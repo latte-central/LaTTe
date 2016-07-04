@@ -1,63 +1,10 @@
 (ns latte.defs
+  "Handling definitions."
+
   (:require [latte.utils :as u])
   (:require [latte.presyntax :as stx])
   (:require [latte.typing :as ty])
   )
-
-;;{
-;; # Definitions
-;;}
-
-
-;;{
-;; ## Definitional environment
-;;}
-
-(defn latte-definition? [v]
-  (and (map? v)
-       (contains? v :tag)
-       (contains? #{:term :theorem :axiom} (:tag v))))
-
-(defn build-initial-definition-environment!
-  []
-  (let [ns-env (ns-map *ns*)]
-    ;; (if (contains? ns-env '+latte-definition-environment+)
-    ;;   (throw (ex-info "Cannot build initial definition environment: already existing" {:namespace (namespace '+latte-definition-environment+)
-    ;;                                                                                    :var '+latte-definition-environment+}))
-    (intern (ns-name *ns*) '+latte-definition-environment+
-            (atom (reduce (fn [def-env [name definition]]
-                            ;; (print "name = " name "def = " definition)
-                            (if (latte-definition? definition)
-                              (do (print "name = " name "def = " definition)
-                                  (println " (... latte definition registered ...)")
-                                  (assoc def-env name definition))
-                              (do ;; (println " (... not a latte definition ...)")
-                                def-env))) {} ns-env)))))
-;;)
-
-(defn fetch-def-env-atom
-  []
-  (let [lvar (let [lv (resolve '+latte-definition-environment+)]
-               (if (not lv)
-                 (do (build-initial-definition-environment!)
-                     (resolve '+latte-definition-environment+))
-                 lv))]
-    ;;(println "Resolved!" lvar)
-    @lvar))
-
-
-(defn fetch-definition-environment
-  []
-  @(fetch-def-env-atom))
-
-(defn register-definition! [name definition]
-  {:pre  [(symbol? name)]}
-  ;; (println "register definition:" name)
-  ;; (clojure.pprint/pprint definition)
-  ;; (println "--------------")
-   (let [def-atom (fetch-def-env-atom)]
-     (swap! def-atom (fn [def-env]
-                       (assoc def-env name definition)))))
 
 ;;{
 ;; ## Term definitions
@@ -98,3 +45,19 @@
            :arity (count params)
            :type ty
            :proof false)))
+
+;;{
+;; ## Theorem definitions
+;;}
+
+(defn handle-axiom-declaration [tdef def-env params ty]
+  (let [params (mapv (fn [[x ty]] [x (stx/parse def-env ty)]) params)
+        ty (stx/parse def-env ty)]
+    ;; (println "[handle-axiom-definition] def-env = " def-env " params = " params " body = " body)
+    (when (not (ty/proper-type? def-env params ty))
+      (throw (ex-info "Axiom is not a proper type" {:theorem (:name tdef) :type ty})))
+    (assoc tdef
+           :params params
+           :arity (count params)
+           :type ty)))
+

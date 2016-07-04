@@ -1,4 +1,7 @@
 (ns latte.prop
+  "Basic definitions and theorems for (intuitionistic) propositional logic.
+  Most natural deduction rules are provided as theorems in this namespace."
+  
   (:refer-clojure :exclude [and or not])
   (:require [clj-by.example :refer [example do-for-example]])
   (:require [latte.core :as latte :refer [defterm term type-of defthm

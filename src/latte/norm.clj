@@ -1,6 +1,9 @@
 (ns latte.norm
+  "Normalization and equivalence."
+
   (:require [clj-by.example :refer [example do-for-example]])
   (:require [latte.syntax :as stx])
+  (:require [latte.defenv :as defenv])
   )
 
 ;; (s/exercise ::sx/binder)
@@ -41,8 +44,6 @@
 
 (defn beta-step [t]
   (cond
-    ;; reduction of a redex
-    (redex? t) [(beta-reduction t) true]
     ;; binder
     (stx/binder? t)
     (let [[binder [x ty] body] t]
@@ -55,14 +56,16 @@
             [(list binder [x ty] body') red?]))))
     ;; application
     (stx/app? t)
-    (let [[left right] t
-          ;; 1) try left reduction
-          [left' red?] (beta-step left)]
-      (if red?
-        [[left' right] true]
-        ;; 2) try right reduction
-        (let [[right' red?] (beta-step right)]
-          [[left right'] red?])))
+    (if (stx/lambda? (first t))
+      [(beta-reduction t) true]
+      (let [[left right] t
+            ;; 1) try left reduction
+            [left' red?] (beta-step left)]
+        (if red?
+          [[left' right] true]
+          ;; 2) try right reduction
+          (let [[right' red?] (beta-step right)]
+            [[left right'] red?]))))
     ;; reference
     (stx/ref? t)
     (let [[def-name & args] t
@@ -132,12 +135,12 @@
   ;; (println "[delta-reduction] t=" t)
   (if (not (stx/ref? t))
     (throw (ex-info "Cannot delta-reduce: not a reference term." {:term t}))
-    (let [[name & args] t]
-      (if (not (get def-env name))
+    (let [[name & args] t
+          [status sdef] (defenv/fetch-definition def-env name)]
+      (if (= status :ko)
         [t false] ;; No error?  or (throw (ex-info "No such definition" {:term t :def-name name}))
-        (let [sdef (get def-env name)]
-          (if (> (count args) (:arity sdef))
-            (throw (ex-info "Too many arguments to instantiate definition." {:term t :def-name name :nb-params (count (:arity sdef)) :nb-args (count args)}))
+        (if (> (count args) (:arity sdef))
+          (throw (ex-info "Too many arguments to instantiate definition." {:term t :def-name name :nb-params (count (:arity sdef)) :nb-args (count args)}))
             (case (:tag sdef)
               ;; unfolding a defined term
               :term
@@ -151,7 +154,7 @@
                 (throw (ex-info "Cannot use theorem with no proof." {:term t :theorem sdef})))
               :axiom
               [t false]
-              (throw (ex-info "Incorrect tag for definition." {:term t :tag (:tag sdef) :def sdef})))))))))
+              (throw (ex-info "Incorrect tag for definition." {:term t :tag (:tag sdef) :def sdef}))))))))
 
 (example
  (delta-reduction '{test {:arity 3

@@ -6,6 +6,9 @@
   (:require [clj-by.example :refer [example do-for-example]])
 
   (:require [latte.utils :as u])
+
+  (:require [latte.defenv :as defenv])
+
   (:require [latte.presyntax :as stx])
   (:require [latte.syntax :refer [free-vars]])
   (:require [latte.typing :as ty :refer [type-of-term]])
@@ -219,12 +222,13 @@
 
 (defn do-showdef-step [def-env arg]
   (println "[showdef]" arg)
-  (if-let [sdef (get def-env arg)]
-    (do
-      (println "-----------------------------------------")
-      (clojure.pprint/pprint sdef)
-      (println "-----------------------------------------"))
-    (println "  ==> no such definition")))
+  (let [[status sdef] (defenv/fetch-definition def-env arg)]
+    (if (= status :ok)
+      (do
+        (println "-----------------------------------------")
+        (clojure.pprint/pprint sdef)
+        (println "-----------------------------------------"))
+      (println "  ==> no such definition"))))
 
 (defn do-showterm-step [def-env ctx arg]
   (println "[showterm]" arg)
