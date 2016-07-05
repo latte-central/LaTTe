@@ -133,17 +133,38 @@
 ;; (have ty method arg)
 
 
+(defn parse-have-name [have-name]
+  (let [[status have-name] (cond
+                             (symbol? have-name) [:ok have-name]
+                             (and (sequential? have-name)
+                                  (seq have-name)
+                                  (empty? (rest have-name))
+                                  (symbol? (first have-name))) [:ok (first have-name)]
+                             :else
+                             [:ko {:msg "wrong name" :name have-name}])]
+    (if (= status :ko)
+      [:ko have-name]
+      (if (stx/reserved-symbol? have-name)
+        [:ko {:msg "name is reserved" :name have-name}]
+        [:ok have-name]))))
+
 (defn parse-have-step [script]
   (case (count script)
     4 (let [[ty meth arg] (rest script)]
         [:ok {:have-name nil, :params [],
               :have-type ty, :method meth, :have-arg arg}])
-    5 (let [[step ty meth arg] (rest script)]
-        [:ok {:have-name step, :params [],
-              :have-type ty, :method meth, :have-arg arg}])
-    6 (let [[step params ty meth arg] (rest script)]
-        [:ok {:have-name step, :params params,
-              :have-type ty, :method meth, :have-arg arg}])
+    5 (let [[step ty meth arg] (rest script)
+            [status have-name] (parse-have-name step)]
+        (if (= status :ko)
+          [:ko have-name]
+          [:ok {:have-name have-name, :params [],
+                :have-type ty, :method meth, :have-arg arg}]))
+    6 (let [[step params ty meth arg] (rest script)
+            [status have-name] (parse-have-name step)]
+        (if (= status :ko)
+          [:ko have-name]
+          [:ok {:have-name have-name, :params params,
+                :have-type ty, :method meth, :have-arg arg}]))
     [:ko {:msg "Wrong have step:  3, 4 or 5 arguments needed" :nb-args (dec (count script))}]))
 
 (defn do-have-step [def-env ctx name params have-type method have-arg]
