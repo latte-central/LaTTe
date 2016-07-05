@@ -48,7 +48,7 @@
          (have step2 C :by (H2 (step1)))
          (have step3 (==> A C) :discharge [x step2])
          (qed step3)))
-         
+
 (defterm absurd
   "Absurdity."
   []
@@ -107,7 +107,7 @@
        (assume [x A
                 H (not A)]
           (have step1 absurd :by (H x))
-          (qed step1)))               
+          (qed step1)))
 ;;(have step2 (not (not A)) :discharge [H step1])
 ;;(qed step2)))
 
@@ -349,20 +349,13 @@ This is the introduction by the right operand."
        (assume [H1 (<=> A B)
                 H2 (<=> B C)]
          (have <a> (==> A B) :by ((iff-elim-if A B) H1))
-         (showterm <a>)
          (have <b> (==> B C) :by ((iff-elim-if B C) H2))
-         (showterm <b>)
-         (have <c> (==> A C) :by ((impl-trans A B C) <a> <b>))
-         (showterm <c>)
-         (have <d> (==> C B) :by ((iff-elim-only-if B C) H2))
-         (have <e> (==> B A) :by ((iff-elim-only-if A B) H1))
-         (have <f> (==> C A) :by ((impl-trans C B A) <d> <e>))
-         (have <g> (<=> A C) :by ((iff-intro A C) <c> <f>))
-         (qed <g>)))
-
-(term [A :type] [B :type] [C :type] [H1 (<=> A B)] [H2 (<=> B C)]
-      (λ [x A]
-         [[[H2 (Π [⇧ B] C)] (λ [x (Π [⇧ B] C)] (λ [y (Π [⇧ C] B)] x))]
-          [[[H1 (Π [⇧ A] B)] (λ [x (Π [⇧ A] B)] (λ [y (Π [⇧ B] A)] x))] x]]))
-
-(type-of [A :type] [B :type] [C :type] (impl-trans A B C))
+         (have <c> _ :by (impl-trans A B C))
+         (have <d> (==> A C) :by ((<c>) <a> <b>))
+         (have <e> (==> C B) :by ((iff-elim-only-if B C) H2))
+         (have <f> (==> B A) :by ((iff-elim-only-if A B) H1))
+         (have <g> _ :by (impl-trans C B A))
+         (have <h> (==> C A) :by ((<g>) <e> <f>))
+         (have <i> _ :by (iff-intro A C))
+         (have <k> (<=> A C) :by ((<i>) <d> <h>))
+         (qed <k>)))

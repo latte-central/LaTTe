@@ -147,6 +147,7 @@
     [:ko {:msg "Wrong have step:  3, 4 or 5 arguments needed" :nb-args (dec (count script))}]))
 
 (defn do-have-step [def-env ctx name params have-type method have-arg]
+  ;; (println "[do-have-step] name=" name "have-arg=" have-arg)
   (let [[status term]
         (case method
           (:by :term) (stx/parse-term def-env have-arg)
@@ -163,13 +164,24 @@
     ;; check synthetized term
     (if (= status :ko)
       [:ko {:msg "Cannot perform have step: incorrect term." :have-name name :from term}]
-      (let [[status have-type] (stx/parse-term def-env have-type)]
+      (let [[status have-type] (if (and (symbol? have-type)
+                                        (= (clojure.core/name have-type) "_"))
+                                 [:ok nil]
+                                 (stx/parse-term def-env have-type))]
         (if (= status :ko)
-          [:ko {:msg "Cannot perform have step: incorrect type." :have-name name :from have-type}]
-          (if-not (ty/type-check? def-env ctx term have-type)
-            [:ko {:msg "Cannot perform have step: synthetized term and type do not match."
-                  :have-name name
-                  :term term :type have-type}]
+          [:ko {:msg "Cannot perform have step: type mismatch." :have-name name :from have-type}]
+          (let [[status have-type]
+                (if (nil? have-type)
+                  (let [[status have-type] (ty/type-of-term def-env ctx term)]
+                    (if (= status :ko)
+                      [:ko (assoc (dissoc have-type :msg)
+                                  :msg (str "Cannot perform have step: " (:msg have-type)))]
+                      [:ok have-type]))
+                  (if-not (ty/type-check? def-env ctx term have-type)
+                    [:ko {:msg "Cannot perform have step: synthetized term and type do not match."
+                          :have-name name
+                          :term term :type have-type}]
+                    [:ok have-type]))]
             (if (nil? name)
               [:ok [def-env ctx]]
               (let [[status tdef] (d/handle-term-definition

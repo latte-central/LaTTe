@@ -1,5 +1,7 @@
 (ns latte.typing
   (:require [clj-by.example :refer [example do-for-example]])
+
+  (:require [latte.utils :as u])
   (:require [latte.syntax :as stx])
   (:require [latte.norm :as norm])
   (:require [latte.defenv :as defenv])
@@ -16,6 +18,7 @@
 ;;}
 
 (defn env-fetch [env x]
+  ;; (println "[env-fetch] env=" env "x=" x)
   (if (seq env)
     (if (= (first (first env)) x)
       (second (first env))
@@ -23,7 +26,7 @@
     nil))
 
 (defn env-put [env x t]
-  (conj env [x t]))
+  (cons [x t] env))
 
 (defn mk-env [& args]
   args)
@@ -41,7 +44,7 @@
          type-of-ref)
 
 (defn type-of-term [def-env env t]
-  ;;(println "[type-of-term] env=" env " t=" t "(ref?" (stx/ref? t) ") type=" (type t))
+  ;; (println "[type-of-term] env=" env " t=" t)
   (cond
     (stx/kind? t) [:ko {:msg "Kind has not type" :term t}]
     (stx/type? t) (type-of-type)
