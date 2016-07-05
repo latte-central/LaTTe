@@ -40,6 +40,7 @@
  (parse-term {} '*) => '[:ok ✳])
 
 (defn parse-symbol-term [def-env sym bound]
+  ;;(println "[parse-symbol-term] sym=" sym)
   (cond
     (reserved-symbol? sym) [:ko {:msg "Symbol is reserved" :term sym}]
     (contains? bound sym) [:ok sym]
@@ -78,6 +79,7 @@
          parse-application-term)
 
 (defn parse-compound-term [def-env t bound]
+  ;; (println "[parse-compound-term] t=" t)
   (if (empty? t)
     [:ko {:msg "Compound term is empty" :term t}]
     (cond

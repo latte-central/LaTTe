@@ -44,7 +44,7 @@
          type-of-ref)
 
 (defn type-of-term [def-env env t]
-  ;; (println "[type-of-term] env=" env " t=" t)
+  ;;(println "[type-of-term] env=" env " t=" t)
   (cond
     (stx/kind? t) [:ko {:msg "Kind has not type" :term t}]
     (stx/type? t) (type-of-type)
