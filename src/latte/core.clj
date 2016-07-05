@@ -250,6 +250,7 @@
     - the `:script` method with a declarative proof script. It is a high-level
   (human-readable) proof method. A low-level proof term is
   synthetized from the script"
+  {:style/indent [2 :form :form [1]]}
   [thm-name method & steps]
   (let [def-env {}
         [status thm] (defenv/fetch-definition def-env thm-name)]
@@ -260,15 +261,15 @@
       (if (= status :ko)
         (throw (ex-info (str "Proof failed: " (:msg proof-term)) {:theorem thm-name
                                                                   :error (dissoc proof-term :msg)}))
-        (let [new-thm# (list 'quote (assoc thm :proof proof-term))
-              name# (list 'quote thm-name)]
-          `(do 
+        (let [new-thm# (list 'quote (assoc thm :proof `~proof-term))]
+          `(do
              (alter-var-root (var ~thm-name) (fn [_#] ~new-thm#))
-             [:qed ~name#]))))))
+             [:qed (quote ~thm-name)]))))))
 
 (defmacro try-proof
   "Tries (but does not register) a proof of theorem named `thm-name` using the given proof `method`
   and `steps`."
+  {:style/indent [2 :form :form [1]]}
   [thm-name method & steps]
   (let [def-env {}
         [status thm] (defenv/fetch-definition def-env thm-name)]
@@ -290,14 +291,16 @@
 (defmacro lambda
   {:style/indent [1 :form [1]]} 
   [bindings body]
-  (list 'quote (list 'λ bindings body)))
+  `((quote  λ) ~bindings ~body))
 
 (defmacro forall
   {:style/indent [1 :form [1]]} 
   [bindings body]
-  (list 'quote (list 'Π bindings body)))
+  `((quote Π) ~bindings ~body))
 
 (defmacro assume
   {:style/indent [1 :form [1]]} 
   [bindings & body]
-  (list 'quote (list 'assume bindings body)))
+  `((quote assume) ~bindings ~body))
+
+

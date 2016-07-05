@@ -8,7 +8,7 @@
   (:require [latte.core :as latte :refer [defterm term type-of defthm defaxiom
                                           lambda forall assume proof try-proof]])
 
-  (:require [latte.prop :refer [or not and ex-falso absurd impl-refl]])
+  (:require [latte.prop :as p :refer [or not and]])
   )
 
 
@@ -26,7 +26,6 @@ This axiom can be assumed for classical
   [[A :type]]
   (==> (not (not A)) A))
 
-
 (proof double-negation-thm
        :script
        (assume [H (not (not A))]
@@ -34,14 +33,16 @@ This axiom can be assumed for classical
          (have (a) (==> (==> A A)
                         (==> (not A) A)
                         A) :by ((em) A))
-         (have (b) (==> A A) :by (impl-refl A))
+         (have (b) (==> A A) :by (p/impl-refl A))
          (have (c) (==> (==> (not A) A)
                         A) :by ((a) (b)))
          (assume [z (not A)]
-           (have (d) absurd :by (H z))
-           (have (e) (==> absurd A) :by (ex-falso A))
+           (have (d) p/absurd :by (H z))
+           (have (e) (==> p/absurd A) :by (p/ex-falso A))
            (have (f) A :by ((e) (d)))
            (have (g) (==> (not A) A) :discharge [z (f)]))
          (have (h) A :by ((c) (g)))
          (qed (h))))
+
+
 
