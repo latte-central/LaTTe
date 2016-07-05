@@ -34,7 +34,7 @@ This axiom can be assumed for classical
          (have (a) (==> (==> A A)
                         (==> (not A) A)
                         A) :by ((em) A))
-         (have (b) _ :by (impl-refl A))
+         (have (b) (==> A A) :by (impl-refl A))
          (have (c) (==> (==> (not A) A)
                         A) :by ((a) (b)))
          (assume [z (not A)]
