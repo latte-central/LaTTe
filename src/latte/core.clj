@@ -70,14 +70,13 @@
                                 (d/handle-term-definition $ {} [] params body))]
       (when (= status :ko)
         (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
-      (let [quoted-def (list 'quote definition)]
-        (let [name# (name def-name)]
-          `(do
-             (def ~def-name ~quoted-def)
-             (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
-                                                           :doc (mk-doc (quote ~body) ~doc)
-                                                           :arglists (list (quote ~params)))))
-             [:defined :term ~name#]))))))
+      (let [quoted-def# (list 'quote `~definition)]
+        `(do
+           (def ~def-name ~quoted-def#)
+           (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
+                                                         :doc (mk-doc (quote ~body) ~doc)
+                                                         :arglists (list (quote ~params)))))
+           [:defined :term (quote ~def-name)])))))
 
 ;;{
 ;; ## Definitions of theorems
@@ -116,14 +115,13 @@
         (println "[Warning] redefinition as theorem: " def-name)))
     (let [definition (as-> {:tag :theorem :name def-name :doc doc} $
                        (d/handle-thm-declaration $ {} params ty))
-          quoted-def (list 'quote definition)]
-      (let [name# (name def-name)]
-        `(do
-           (def ~def-name ~quoted-def)
-           (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
-                                                         :doc (mk-doc (quote ~ty) ~doc)
-                                                         :arglists (list (quote ~params)))))
-           [:declared :theorem ~name#])))))
+          quoted-def# (list 'quote `~definition)]
+      `(do
+         (def ~def-name ~quoted-def#)
+         (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
+                                                       :doc (mk-doc (quote ~ty) ~doc)
+                                                       :arglists (list (quote ~params)))))
+         [:declared :theorem (quote ~def-name)]))))
 
 ;;{
 ;; ## Definitions of axioms
@@ -162,15 +160,13 @@
         (println "[Warning] redefinition as axiom: " def-name)))
     (let [definition (as-> {:tag :axiom :name def-name :doc doc} $
                        (d/handle-axiom-declaration $ {} params ty))
-          quoted-def (list 'quote definition)]
-      (let [name# (name def-name)]
-        `(do
-           (def ~def-name ~quoted-def)
-           (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
-                                                         :doc (mk-doc (quote ~ty) ~doc)
-                                                         :arglists (list (quote ~params)))))
-           [:declared :axiom ~name#])))))
-
+          quoted-def# (list 'quote `~definition)]
+      `(do
+         (def ~def-name ~quoted-def#)
+         (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
+                                                       :doc (mk-doc (quote ~ty) ~doc)
+                                                       :arglists (list (quote ~params)))))
+         [:declared :axiom (quote ~def-name)]))))
 ;;{
 ;; ## Top-level term parsing
 ;;}

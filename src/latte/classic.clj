@@ -7,7 +7,7 @@
 
   (:require [latte.core :as latte :refer [defthm defaxiom proof]])
 
-  (:require [latte.prop :as p :refer [or not and absurd]])
+  (:require [latte.prop :as p :refer [or not and]])
   )
 
 
@@ -42,6 +42,8 @@ This axiom can be assumed for classical
            (have (g) (==> (not A) A) :discharge [z (f)]))
          (have (h) A :by ((c) (g)))
          (qed (h))))
+
+
 
 
 
