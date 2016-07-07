@@ -167,6 +167,7 @@
                                                        :doc (mk-doc (quote ~ty) ~doc)
                                                        :arglists (list (quote ~params)))))
          [:declared :axiom (quote ~def-name)]))))
+
 ;;{
 ;; ## Top-level term parsing
 ;;}
@@ -285,12 +286,12 @@
 ;;}
 
 (defmacro lambda
-  {:style/indent [1 :form [1]]} 
+  {:style/indent [1 :form :form]} 
   [bindings body]
   `((quote  λ) ~bindings ~body))
 
 (defmacro forall
-  {:style/indent [1 :form [1]]} 
+  {:style/indent [1 :form :form]} 
   [bindings body]
   `((quote Π) ~bindings ~body))
 
@@ -299,4 +300,8 @@
   [bindings & body]
   `((quote assume) ~bindings ~body))
 
+(defmacro have
+  {:style/indent [1]}
+  [& args]
+  `((quote have) ~@args))
 
