@@ -274,9 +274,11 @@
  (left-binarize '(a b c d e)) => '[[[[a b] c] d] e])
 
 (defn parse-application-term [def-env t bound]
+  ;; (println "[parse-application-term] t=" t)
   (if (< (count t) 2)
     [:ko {:msg "Application needs at least 2 terms" :term t :nb-terms (count t)}]
     (let [[status ts] (parse-terms def-env t bound)]
+      ;; (println "   ==> " (left-binarize ts))
       (if (= status :ko)
         [:ko {:msg "Parse error in operand of application" :term t :from ts}]
         [:ok (left-binarize ts)]))))

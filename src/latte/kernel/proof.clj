@@ -274,6 +274,7 @@
   ;;(clojure.pprint/pprint def-env)
   (println "-----------------------------------------")
   (let [[status term] (stx/parse-term def-env arg)]
+    ;; (println "[showterm] parsed=" term)
     (if (= status :ko)
       (clojure.pprint/pprint term)
       (let [term (n/beta-delta-normalize def-env term)]
@@ -285,6 +286,11 @@
                 (clojure.pprint/pprint ty)))))))
   (println "-----------------------------------------"))
 
+(defn do-showctx-step [def-env ctx]
+  (println "[showctx]")
+  (println "-----------------------------------------")
+  (clojure.pprint/pprint ctx)
+  (println "-----------------------------------------"))
 
 (defn evaluate-script [script start-def-env start-ctx def-env ctx cont-stack]
   ;; (println "[evaluate-script] ctx=" ctx)
@@ -327,6 +333,9 @@
             (recur '() start-def-env start-ctx def-env ctx cont-stack))
         showterm
         (do (do-showterm-step def-env ctx (second script))
+            (recur '() start-def-env start-ctx def-env ctx cont-stack))
+        showctx
+        (do (do-showctx-step def-env ctx)
             (recur '() start-def-env start-ctx def-env ctx cont-stack))
       ;; else
         (throw (ex-info "Cannot evaluate script" {:script script}))))

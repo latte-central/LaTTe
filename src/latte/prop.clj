@@ -249,7 +249,12 @@ This is the introduction by the right operand."
     (qed (d))))
 
 (defthm or-elim
-  "Elimination rule for logical disjunction."
+  "Elimination rule for logical disjunction.
+
+Remark: this rule is not very useful since it only
+reflects the definition of `or`. This is unlike for classical logic, 
+which offers a much simpler elimination process.
+"
   [[A :type] [B :type]]
   (==> (or A B)
        (forall [C :type]
@@ -279,13 +284,6 @@ characteristic of or-elimination."
   (==> (or A B)
        (or B A)))
 
-;; (defterm or
-;;   "logical disjunction."
-;;   [[A :type] [B :type]]
-;;   (forall [C :type]
-;;     (==> (==> A C)
-;;          (==> B C)
-;;          C)))
 
 (proof or-sym :script
   (assume [H1 (or A B)
@@ -300,6 +298,27 @@ characteristic of or-elimination."
                    D) :discharge [H3 (c)])
     (have (e) (or B A) :discharge [D (d)])
     (qed (e))))
+
+(defthm or-not-impl-elim
+  "An alternative elimination rule for disjunction."
+  [[A :type] [B :type]]
+  (==> (or A B)
+       (==> (not A) B)))
+
+
+(proof or-not-impl-elim :script
+  (assume [H (or A B)
+           Hn (not A)
+           x A]
+    (have (a) absurd :by (Hn x))
+    (have (b) B :by ((a) B))
+    (have (c) (==> A B) :discharge [x (b)])
+    (have (d) (==> B B) :by (impl-refl B))
+    (have (e) (==> (==> A B)
+                   (==> B B)
+                   B) :by (H B))
+    (have (f) B :by ((e) (c) (d)))
+    (qed (f))))
 
 (defterm <=>
   "Logical equivalence or 'if and only if'."

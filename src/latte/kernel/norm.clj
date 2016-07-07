@@ -257,17 +257,14 @@
       (recur def-env t')
       t')))
 
+;; XXX : this is a critical function... need to be checked
 (defn beta-delta-normalize [def-env t]
-  ;; (println "[beta-delta-normalize]:" t)
-  (let [[t' red?] (beta-step t)]
-    ;; (println "--beta-->" t' (str "(" red? ")"))
+  ;; (println "[beta-delta-normalize]:")
+  (let [t' (delta-normalize def-env t)
+        [t'' red?] (beta-step t')]
     (if red?
-      (recur def-env t')
-      (let [[t'' red?] (delta-step def-env t)]
-        ;; (println "--delta-->" t'' (str "(" red? ")"))
-        (if red?
-          (recur def-env t'')
-          t'')))))
+      (recur def-env t'')
+      t'')))
 
 (defn normalize
   ([t] (beta-delta-normalize {} t))
