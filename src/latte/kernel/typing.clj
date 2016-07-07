@@ -1,10 +1,10 @@
-(ns latte.typing
+(ns latte.kernel.typing
   (:require [clj-by.example :refer [example do-for-example]])
 
-  (:require [latte.utils :as u])
-  (:require [latte.syntax :as stx])
-  (:require [latte.norm :as norm])
-  (:require [latte.defenv :as defenv])
+  (:require [latte.kernel.utils :as u])
+  (:require [latte.kernel.syntax :as stx])
+  (:require [latte.kernel.norm :as norm])
+  (:require [latte.kernel.defenv :as defenv])
   )
 
 (def ^:private +examples-enabled+)

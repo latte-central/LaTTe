@@ -1,5 +1,5 @@
 
-(ns latte.syntax
+(ns latte.kernel.syntax
   (:require [clj-by.example :refer [example do-for-example]])
   (:require [clojure.set :as set])
   )

@@ -7,13 +7,13 @@
 
   (:require [clojure.pprint :as pp])
 
-  (:require [latte.utils :as u])
-  (:require [latte.presyntax :as stx])
-  (:require [latte.typing :as ty])
-  (:require [latte.norm :as n])
-  (:require [latte.defenv :as defenv])
-  (:require [latte.defs :as d])
-  (:require [latte.proof :as p])
+  (:require [latte.kernel.utils :as u])
+  (:require [latte.kernel.presyntax :as stx])
+  (:require [latte.kernel.typing :as ty])
+  (:require [latte.kernel.norm :as n])
+  (:require [latte.kernel.defenv :as defenv])
+  (:require [latte.kernel.defs :as d])
+  (:require [latte.kernel.proof :as p])
   )
 
 
@@ -196,7 +196,7 @@
           t (stx/parse def-env (last args))
           ctx (parse-context-args def-env (butlast args))]
       ;;(println "[term] t = " t " ctx = " ctx)
-      (if (latte.norm/beta-eq? t :kind)
+      (if (latte.kernel.norm/beta-eq? t :kind)
         '□
         (let [ty (ty/type-of def-env ctx t)]
           (list 'quote t)))))

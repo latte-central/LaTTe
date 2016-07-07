@@ -1,4 +1,4 @@
-(ns latte.utils
+(ns latte.kernel.utils
   (:require [clj-by.example :refer [example do-for-example]])
   )
 

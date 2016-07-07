@@ -5,10 +5,9 @@
 
   (:refer-clojure :exclude [and or not])
 
-  (:require [latte.core :as latte :refer [defterm term type-of defthm defaxiom
-                                          lambda forall assume proof try-proof]])
+  (:require [latte.core :as latte :refer [defthm defaxiom proof]])
 
-  (:require [latte.prop :as p :refer [or not and]])
+  (:require [latte.prop :as p :refer [or not and absurd]])
   )
 
 

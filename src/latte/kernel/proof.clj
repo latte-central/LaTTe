@@ -1,19 +1,18 @@
-(ns latte.proof
+(ns latte.kernel.proof
   "Proof handling."
 
   (:require [clojure.set :as set])
 
   (:require [clj-by.example :refer [example do-for-example]])
 
-  (:require [latte.utils :as u])
+  (:require [latte.kernel.utils :as u])
 
-  (:require [latte.defenv :as defenv])
-
-  (:require [latte.presyntax :as stx])
-  (:require [latte.syntax :refer [free-vars]])
-  (:require [latte.typing :as ty :refer [type-of-term]])
-  (:require [latte.norm :as n])
-  (:require [latte.defs :as d])
+  (:require [latte.kernel.defenv :as defenv])
+  (:require [latte.kernel.presyntax :as stx])
+  (:require [latte.kernel.syntax :refer [free-vars]])
+  (:require [latte.kernel.typing :as ty :refer [type-of-term]])
+  (:require [latte.kernel.norm :as n])
+  (:require [latte.kernel.defs :as d])
 
   )
 

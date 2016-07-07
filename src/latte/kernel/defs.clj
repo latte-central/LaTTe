@@ -1,9 +1,9 @@
-(ns latte.defs
+(ns latte.kernel.defs
   "Handling definitions."
 
-  (:require [latte.utils :as u])
-  (:require [latte.presyntax :as stx])
-  (:require [latte.typing :as ty])
+  (:require [latte.kernel.utils :as u])
+  (:require [latte.kernel.presyntax :as stx])
+  (:require [latte.kernel.typing :as ty])
   )
 
 ;;{

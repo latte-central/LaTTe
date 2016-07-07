@@ -1,4 +1,4 @@
-(ns latte.defenv
+(ns latte.kernel.defenv
   "The definitional environment."
   )
 

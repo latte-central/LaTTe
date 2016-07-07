@@ -1,9 +1,9 @@
-(ns latte.norm
+(ns latte.kernel.norm
   "Normalization and equivalence."
 
   (:require [clj-by.example :refer [example do-for-example]])
-  (:require [latte.syntax :as stx])
-  (:require [latte.defenv :as defenv])
+  (:require [latte.kernel.syntax :as stx])
+  (:require [latte.kernel.defenv :as defenv])
   )
 
 ;; (s/exercise ::sx/binder)
