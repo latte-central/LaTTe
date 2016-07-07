@@ -94,7 +94,10 @@
     (qed (a))))
 
 (defthm impl-not-not
-  "The if half of double negation."
+  "The if half of double negation.
+
+This can be seen as an introduction rule for ¬¬ (not-not) propositions.
+Note that double-negation is a law of classical (non-intuitionistic) logic."
   [[A :type]]
   (==> A (not (not A))))
 
