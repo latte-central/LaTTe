@@ -167,7 +167,8 @@
     [:ko {:msg "Wrong have step:  3, 4 or 5 arguments needed" :nb-args (dec (count script))}]))
 
 (defn do-have-step [def-env ctx name params have-type method have-arg]
-  ;; (println "[do-have-step] name=" name "have-arg=" have-arg)
+  ;;(println "[do-have-step] name=" name "have-arg=" have-arg)
+  ;;(println "   ctx=" ctx)
   (let [[status term]
         (case method
           (:by :term) (stx/parse-term def-env have-arg)

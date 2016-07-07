@@ -59,7 +59,7 @@
   form is invoked."
   [& args]
   (let [[def-name doc params body] (parse-defterm-args args)]
-    ;;(println "def-name =" def-name " doc =" doc " params =" params " body =" body)
+    ;; (println "def-name =" def-name " doc =" doc " params =" params " body =" body)
     (when (defenv/registered-definition? {} def-name)
       (do
         ;;(throw (ex-info "Cannot redefine term." {:name def-name})))
@@ -185,8 +185,9 @@
             (throw (ex-info "Binding variable  must be a symbol." {:argument (first args) :variable x})))
           (when (not (ty/proper-type? def-env ctx ty'))
             (throw (ex-info "Binding type is not a type." {:argument (first args) :binding-type ty})))
-          (recur (rest args) (conj ctx [x ty']))))
-      ctx)))
+          (recur (rest args) (cons [x ty'] ctx))))
+      (do ;; (println "[parse-context-args] ctx=" ctx)
+          ctx))))
 
 (defmacro term [& args]
     (let [def-env {}
@@ -214,6 +215,7 @@
         t (stx/parse def-env (last (butlast args)))
         ty (stx/parse def-env (last args))
         ctx (parse-context-args def-env (butlast (butlast args)))]
+    ;;(println "[check-type?] ctx=" ctx)
     (let [tty (ty/type-of def-env ctx t)]
       (n/beta-delta-eq? def-env ty tty))))
 
@@ -226,7 +228,6 @@
         t1 (stx/parse def-env t1)
         t2 (stx/parse def-env t2)]
     (n/beta-delta-eq? def-env t1 t2)))
-
 
 (def term= ===)
 
@@ -253,8 +254,8 @@
         [status thm] (defenv/fetch-definition def-env thm-name)]
     (when (= status :ko)
       (throw (ex-info "No such theorem." {:name thm-name})))
-    (let [[status proof-term]
-          (p/check-proof def-env (:params thm) (:type thm) method steps)]
+    (let [[status proof-term]          
+          (p/check-proof def-env (reverse (:params thm)) (:type thm) method steps)]
       (if (= status :ko)
         (throw (ex-info (str "Proof failed: " (:msg proof-term)) {:theorem thm-name
                                                                   :error (dissoc proof-term :msg)}))
@@ -273,7 +274,7 @@
     (if (= status :ko)
       [:ko {:msg "No such theorem." :name thm-name}]
       (let [[status proof-term]
-            (p/check-proof def-env (:params thm) (:type thm) method steps)]
+            (p/check-proof def-env (reverse (:params thm)) (:type thm) method steps)]
         (if (= status :ko)
           [:ko {:msg (str "Proof failed: " (:msg proof-term)) :theorem thm-name
                 :error (dissoc proof-term :msg)}]

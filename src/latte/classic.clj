@@ -9,7 +9,7 @@ be done in a qualified way, i.e. favor `classic/not-not-impl`
 
   (:refer-clojure :exclude [and or not])
 
-  (:require [latte.core :as latte :refer [defthm defaxiom proof]])
+  (:require [latte.core :as latte :refer [defthm defaxiom proof assume have]])
 
   (:require [latte.prop :as p :refer [or not and <=>]])
   )
@@ -49,6 +49,7 @@ This can be seen as an elimination rule for ¬¬ (not-not) propositions."
            (have (g) (==> (not A) A) :discharge [z (f)]))
          (have (h) A :by ((c) (g)))
          (qed (h))))
+
 
 (defthm not-not
   "The double-negation law of classical logic."

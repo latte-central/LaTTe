@@ -44,7 +44,7 @@
   (cond
     (reserved-symbol? sym) [:ko {:msg "Symbol is reserved" :term sym}]
     (contains? bound sym) [:ok sym]
-    (defenv/registered-definition? def-env sym) [:ok (list sym)]
+    (defenv/registered-definition? def-env sym) [:ok (list (defenv/qualify-def def-env sym))]
     :else
     ;; free variable
     [:ok sym]))
@@ -86,7 +86,7 @@
       (lambda-kw? (first t)) (parse-lambda-term def-env t bound)
       (product-kw? (first t)) (parse-product-term def-env t bound)
       (arrow-kw? (first t)) (parse-arrow-term def-env t bound)
-      (and (symbol? (first t))
+      (and (or (symbol? (first t)) (var? (first t)))
            (defenv/registered-definition? def-env (first t))) (parse-defined-term def-env t bound)
       :else (parse-application-term def-env t bound))))
 
@@ -244,7 +244,7 @@
       (let [[status ts] (parse-terms def-env (rest t) bound)]
         (if (= status :ko)
           [:ko {:msg "Wrong argument" :term t :from ts}]
-          [:ok (list* def-name ts)])))))
+          [:ok (list* (defenv/qualify-def def-env def-name) ts)])))))
 
 (example
  (parse-term {'ex {:arity 2}}

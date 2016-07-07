@@ -62,5 +62,3 @@ Remark: this is a second-order, intuitionistic definition that
                 (==> (forall [z T] (==> (P z) A))
                      A)) :discharge [A (c)])
     (qed (d))))
-
-
