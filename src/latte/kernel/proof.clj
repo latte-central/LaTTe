@@ -197,24 +197,26 @@
                       [:ko (assoc (dissoc have-type :msg)
                                   :msg (str "Cannot perform have step: " (:msg have-type)))]
                       [:ok have-type]))
-                  (if-not (ty/type-check? def-env ctx term have-type)
-                    [:ko {:msg "Cannot perform have step: synthetized term and type do not match."
-                          :have-name name
-                          :term term :type have-type}]
-                    [:ok have-type]))]
-            (if (nil? name)
-              [:ok [def-env ctx]]
-              (let [[status tdef] (d/handle-term-definition
-                                   {:tag :term :name name :doc "<have step>"}
-                                   def-env
-                                   ctx
-                                   params
-                                   term)]
-                (if (= status :ko)
-                  [:ko {:msg "Cannot perform have step: wrong local definition."
-                        :have-name name
-                        :from tdef}]
-                  [:ok [(assoc def-env name tdef) ctx]])))))))))
+                  (let [res (ty/type-check? def-env ctx term have-type)]
+                    (if-not res
+                      [:ko {:msg "Cannot perform have step: synthetized term and type do not match."
+                            :have-name name
+                            :term term :type have-type}]
+                      [:ok have-type])))]
+            (cond (= status :ko) [:ko have-type]
+                  (nil? name) [:ok [def-env ctx]]
+                  :else
+                  (let [[status tdef] (d/handle-term-definition
+                                       {:tag :term :name name :doc "<have step>"}
+                                       def-env
+                                       ctx
+                                       params
+                                       term)]
+                    (if (= status :ko)
+                      [:ko {:msg "Cannot perform have step: wrong local definition."
+                            :have-name name
+                            :from tdef}]
+                      [:ok [(assoc def-env name tdef) ctx]])))))))))
 
 (example
  (do-have-step {}

@@ -117,7 +117,7 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
   [[A :type] [B :type]]
   (forall [C :type]
     (==> (==> A B C)
-      C)))
+         C)))
 
 (defthm and-intro
   "Introduction rule for logical conjunction."
@@ -176,13 +176,35 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
     (have (c) B :by ((a) (b)))
     (qed (c))))
 
+;; (defterm and
+;;   "logical conjunction."
+;;   [[A :type] [B :type]]
+;;   (forall [C :type]
+;;     (==> (==> A B C)
+;;       C)))
+
+(defthm and-sym
+  "Symmetry of conjunction."
+  [[A :type] [B :type]]
+  (==> (and A B)
+       (and B A)))
+
+(proof and-sym :script
+  (assume [H (and A B)]
+    (have (a) A :by ((and-elim-left A B) H))
+    (have (b) B :by ((and-elim-right A B) H))
+    (have (c) (==> B A
+                   (and B A)) :by (and-intro B A))
+    (have (d) (and B A) :by ((c) (b) (a)))
+    (qed (d))))
+
 (defterm or
   "logical disjunction."
   [[A :type] [B :type]]
   (forall [C :type]
     (==> (==> A C)
-      (==> B C)
-      C)))
+         (==> B C)
+         C)))
 
 (defthm or-intro-left
   "Introduction rule for logical disjunction.
@@ -232,14 +254,14 @@ This is the introduction by the right operand."
   (==> (or A B)
        (forall [C :type]
          (==> (==> A C)
-           (==> B C)
-           C))))
+              (==> B C)
+              C))))
 
 (proof or-elim
     :script
   (assume [H1 (forall [D :type] (==> (==> A D)
-                                  (==> B D)
-                                  D))
+                                     (==> B D)
+                                     D))
            C :type
            H2 (==> A C)
            H3 (==> B C)]
@@ -248,6 +270,36 @@ This is the introduction by the right operand."
     (have (c) C :by ((b) H3))
     (qed (c))))
 
+(defthm or-sym
+  "Symmetry of disjunction.
+
+Remark: the proof for this theorem illustrates the non-trivial
+characteristic of or-elimination."
+  [[A :type] [B :type]]
+  (==> (or A B)
+       (or B A)))
+
+;; (defterm or
+;;   "logical disjunction."
+;;   [[A :type] [B :type]]
+;;   (forall [C :type]
+;;     (==> (==> A C)
+;;          (==> B C)
+;;          C)))
+
+(proof or-sym :script
+  (assume [H1 (or A B)
+           D :type
+           H2 (==> A D)
+           H3 (==> B D)]
+    (have (a) _ :by (H1 D))
+    (have (b) D :by ((a) H2 H3))
+    (have (c) (==> (==> A D) D) :discharge [H2 (b)])
+    (have (d) (==> (==> B D)
+                   (==> A D)
+                   D) :discharge [H3 (c)])
+    (have (e) (or B A) :discharge [D (d)])
+    (qed (e))))
 
 (defterm <=>
   "Logical equivalence or 'if and only if'."
@@ -357,5 +409,3 @@ This is the introduction by the right operand."
     (have (i) _ :by (iff-intro A C))
     (have (k) (<=> A C) :by ((i) (d) (h)))
     (qed (k))))
-
-

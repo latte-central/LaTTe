@@ -67,8 +67,9 @@
  (type-of-term {} [] '□) => '[:ko {:msg "Kind has not type" :term □}])
 
 (defn type-check? [def-env env term type]
-  ;; (println "type-check? term=" term "type=" type)
+  ;;(println "[type-check?] term=" term "type=" type)
   (let [[status type'] (type-of-term def-env env term)]
+    ;;(println "  ==> " status "type'=" type' "vs. type=" type)
     (if (= status :ok)
       (norm/beta-delta-eq? def-env type type')
       (throw (ex-info "Cannot check type of term" {:term term :from type'})))))
