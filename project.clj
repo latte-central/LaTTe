@@ -7,6 +7,6 @@
                  [clj-by-example "0.1.0-SNAPSHOT"]]
   :codox {:metadata {:doc/format :markdown}
           :namespaces [latte.core latte.prop latte.classic
-                       latte.quant latte.equal]}
+                       latte.quant latte.equal latte.subset]}
   :plugins [[lein-codox "0.9.5"]])
 
