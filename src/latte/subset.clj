@@ -12,10 +12,10 @@
   are not considered as types (hence type inhabitation
   and set elemthood are distinct notions).
 
-  The advantage is that it is quite a workable approach in
+  The advantage is that it is quite an effective approach in
   practice,
   and that it does not require any extension to the kernel
-  such as sigma-types."
+  such as dependent pairs and sigma-types."
 
   (:refer-clojure :exclude [and or not set])
   
