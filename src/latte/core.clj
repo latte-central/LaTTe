@@ -42,11 +42,12 @@
       (throw (ex-info "Parameters of defterm must be a vector." {:def-name def-name :params params})))
     [def-name doc params body]))
 
-(defn mk-doc [content explanation]
+(defn mk-doc [kind content explanation]
   (str "\n"
        (with-out-str
          (pp/pprint content))
-       "\n"
+       "\n(" kind ")"
+       "\n\n"
        explanation))
 
 (defmacro defterm
@@ -74,7 +75,7 @@
         `(do
            (def ~def-name ~quoted-def#)
            (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
-                                                         :doc (mk-doc (quote ~body) ~doc)
+                                                         :doc (mk-doc "definition" (quote ~body) ~doc)
                                                          :arglists (list (quote ~params)))))
            [:defined :term (quote ~def-name)])))))
 
@@ -119,7 +120,7 @@
       `(do
          (def ~def-name ~quoted-def#)
          (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
-                                                       :doc (mk-doc (quote ~ty) ~doc)
+                                                       :doc (mk-doc "theorem" (quote ~ty) ~doc)
                                                        :arglists (list (quote ~params)))))
          [:declared :theorem (quote ~def-name)]))))
 
@@ -164,7 +165,7 @@
       `(do
          (def ~def-name ~quoted-def#)
          (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
-                                                       :doc (mk-doc (quote ~ty) ~doc)
+                                                       :doc (mk-doc "axiom" (quote ~ty) ~doc)
                                                        :arglists (list (quote ~params)))))
          [:declared :axiom (quote ~def-name)]))))
 
