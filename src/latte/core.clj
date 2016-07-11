@@ -46,7 +46,7 @@
   (str "\n"
        (with-out-str
          (pp/pprint content))
-       "\n(" kind ")"
+       "\n**" kind "**"
        "\n\n"
        explanation))
 
@@ -75,7 +75,7 @@
         `(do
            (def ~def-name ~quoted-def#)
            (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
-                                                         :doc (mk-doc "definition" (quote ~body) ~doc)
+                                                         :doc (mk-doc "Definition" (quote ~body) ~doc)
                                                          :arglists (list (quote ~params)))))
            [:defined :term (quote ~def-name)])))))
 
@@ -120,7 +120,7 @@
       `(do
          (def ~def-name ~quoted-def#)
          (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
-                                                       :doc (mk-doc "theorem" (quote ~ty) ~doc)
+                                                       :doc (mk-doc "Theorem" (quote ~ty) ~doc)
                                                        :arglists (list (quote ~params)))))
          [:declared :theorem (quote ~def-name)]))))
 
@@ -165,7 +165,7 @@
       `(do
          (def ~def-name ~quoted-def#)
          (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
-                                                       :doc (mk-doc "axiom" (quote ~ty) ~doc)
+                                                       :doc (mk-doc "Axiom" (quote ~ty) ~doc)
                                                        :arglists (list (quote ~params)))))
          [:declared :axiom (quote ~def-name)]))))
 
