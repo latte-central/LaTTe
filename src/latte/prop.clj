@@ -112,6 +112,21 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
     (have (a) absurd :by (H x))
     (qed (a))))
 
+
+(defterm truth
+  "Logical truth."
+  []
+  (not absurd))
+
+(defthm truth-is-true
+  "The truth is true (really ?)."
+  []
+  truth)
+
+(proof truth-is-true :script
+  (have a truth :by (impl-refl absurd))
+  (qed a))
+
 (defterm and
   "logical conjunction."
   [[A :type] [B :type]]
