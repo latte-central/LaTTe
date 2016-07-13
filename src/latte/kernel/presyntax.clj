@@ -8,7 +8,7 @@
 (def ^:private +examples-enabled+)
 
 (def +reserved-symbols+
-  '#{kind type □ * ∗ ✳ lambda λ prod forall ∀ Π})
+  '#{kind type □ * ∗ ✳ lambda λ prod forall ∀ Π exist ∃})
 
 (defn reserved-symbol? [s]
   (or (contains? +reserved-symbols+ s)
@@ -72,9 +72,13 @@
 (defn arrow-kw? [t]
   (contains? #{'imply '--> '-> '=> '==> '→ '➝ '⟶ '⟹} t))
 
+(defn exist-kw? [t]
+  (contains? #{'exist '∃} t))
+
 (declare parse-lambda-term
          parse-product-term
          parse-arrow-term
+         parse-exist-term
          parse-defined-term
          parse-application-term)
 
@@ -86,6 +90,7 @@
       (lambda-kw? (first t)) (parse-lambda-term def-env t bound)
       (product-kw? (first t)) (parse-product-term def-env t bound)
       (arrow-kw? (first t)) (parse-arrow-term def-env t bound)
+      (exist-kw? (first t)) (parse-exist-term def-env t bound)
       (and (or (symbol? (first t)) (var? (first t)))
            (defenv/registered-definition? def-env (first t))) (parse-defined-term def-env t bound)
       :else (parse-application-term def-env t bound))))
@@ -231,6 +236,29 @@
 (example
  (parse-term {} '(--> sigma tau mu))
  => '[:ok (Π [⇧ sigma] (Π [⇧ tau] mu))])
+
+(defn parse-exist-term [def-env t bound]
+  (if (< (count t) 3)
+    [:ko {:msg (str "Wrong exist form (expecting at least 3 arguments)") :term t :nb-args (count t)}]
+    (let [[status bindings] (parse-binding def-env (second t) bound)]
+      (if (= status :ko)
+        [:ko {:msg (str "Wrong bindings in exist form") :term t :from bindings}]
+        (let [bound' (reduce (fn [res [x _]]
+                               (conj res x)) #{} bindings)]
+          (let [body (if (= (count t) 3)
+                       (nth t 2)
+                       (rest (rest t)))]
+            (let [[status body] (parse-term def-env body bound')]
+              (if (= status :ko)
+                [:ko {:msg (str "Wrong body in exist form") :term t :from body}]
+                (loop [i (dec (count bindings)), res body]
+                  (if (>= i 0)
+                    (recur (dec i) (list #'latte.quant/ex (second (bindings i)) (list 'λ (bindings i) res)))
+                    [:ok res]))))))))))
+
+(example
+ (parse-term {} '(exist [x T] P))
+ => [:ok (list #'latte.quant/ex 'T '(λ [x T] P))])
 
 (defn parse-defined-term [def-env t bound]
   (let [def-name (first t)
