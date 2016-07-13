@@ -253,12 +253,12 @@
                 [:ko {:msg (str "Wrong body in exist form") :term t :from body}]
                 (loop [i (dec (count bindings)), res body]
                   (if (>= i 0)
-                    (recur (dec i) (list #'latte.quant/ex (second (bindings i)) (list 'λ (bindings i) res)))
+                    (recur (dec i) (list (resolve 'latte.quant/ex) (second (bindings i)) (list 'λ (bindings i) res)))
                     [:ok res]))))))))))
 
 (example
  (parse-term {} '(exist [x T] P))
- => [:ok (list #'latte.quant/ex 'T '(λ [x T] P))])
+ => [:ok (list (resolve 'latte.quant/ex) 'T '(λ [x T] P))])
 
 (defn parse-defined-term [def-env t bound]
   (let [def-name (first t)

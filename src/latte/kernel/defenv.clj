@@ -9,7 +9,7 @@
 (defn latte-definition? [v]
   (and (map? v)
        (contains? v :tag)
-       (contains? #{:term :theorem :axiom} (:tag v))))
+       (contains? #{:definition :theorem :axiom} (:tag v))))
 
 
 (defn fetch-definition [locals sym]

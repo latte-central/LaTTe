@@ -4,7 +4,7 @@
 
   (:refer-clojure :exclude [and or not])
 
-  (:require [latte.core :as latte :refer [defterm term type-of defthm
+  (:require [latte.core :as latte :refer [definition term type-of defthm
                                           lambda forall assume proof try-proof]])
   )
 
@@ -48,7 +48,7 @@
     (have (c) (==> A C) :discharge [x (b)])
     (qed (c))))
 
-(defterm absurd
+(definition absurd
   "Absurdity."
   []
   (forall [α *] α))
@@ -69,7 +69,7 @@
     (have (a) A :by (f A))
     (qed (a))))
 
-(defterm not
+(definition not
   "Logical negation."
   [[A :type]]
   (==> A absurd))
@@ -113,7 +113,7 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
     (qed (a))))
 
 
-(defterm truth
+(definition truth
   "Logical truth."
   []
   (not absurd))
@@ -127,7 +127,7 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
   (have a truth :by (impl-refl absurd))
   (qed a))
 
-(defterm and
+(definition and
   "logical conjunction."
   [[A :type] [B :type]]
   (forall [C :type]
@@ -191,7 +191,7 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
     (have (c) B :by ((a) (b)))
     (qed (c))))
 
-;; (defterm and
+;; (definition and
 ;;   "logical conjunction."
 ;;   [[A :type] [B :type]]
 ;;   (forall [C :type]
@@ -213,7 +213,7 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
     (have (d) (and B A) :by ((c) (b) (a)))
     (qed (d))))
 
-(defterm or
+(definition or
   "logical disjunction."
   [[A :type] [B :type]]
   (forall [C :type]
@@ -335,7 +335,7 @@ characteristic of or-elimination."
     (have (f) B :by ((e) (c) (d)))
     (qed (f))))
 
-(defterm <=>
+(definition <=>
   "Logical equivalence or 'if and only if'."
   [[A :type] [B :type]]
   (and (==> A B)

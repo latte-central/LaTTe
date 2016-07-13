@@ -208,7 +208,7 @@
                   (nil? name) [:ok [def-env ctx]]
                   :else
                   (let [[status tdef] (d/handle-term-definition
-                                       {:tag :term :name name :doc "<have step>"}
+                                       {:tag :definition :name name :doc "<have step>"}
                                        def-env
                                        ctx
                                        params
@@ -223,7 +223,7 @@
  (do-have-step {}
           '[[A ✳] [x A]]
           'step [] 'A :by 'x)
- => '[:ok [{step {:tag :term,
+ => '[:ok [{step {:tag :definition,
                   :name step, :doc "<have step>", :params [], :arity 0,
                   :type A, :parsed-term x}}
            [[A ✳] [x A]]]])
@@ -232,7 +232,7 @@
  (let [{name :have-name params :params have-type :have-type method :method have-arg :have-arg}
        (second (parse-have-step '(have step A :by x)))]
    (do-have-step {} '[[A ✳] [x A]] name params have-type method have-arg))
- => '[:ok [{step {:tag :term,
+ => '[:ok [{step {:tag :definition,
                   :name step, :doc "<have step>", :params [], :arity 0,
                   :type A, :parsed-term x}}
            [[A ✳] [x A]]]])

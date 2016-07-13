@@ -8,12 +8,12 @@
   The elimination rule for ∀ (for all) is application, and introduction
   is through lambda-abstraction."
 
-  (:require [latte.core :as latte :refer [defterm defthm proof forall exist
+  (:require [latte.core :as latte :refer [definition defthm proof forall exist
                                           assume have]])
   )
 
 
-(defterm ex
+(definition ex
   "The encoding for the existential quantifier.
 
 `(ex T P)` encodes the existential quantification

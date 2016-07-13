@@ -143,7 +143,7 @@
           (throw (ex-info "Too many arguments to instantiate definition." {:term t :def-name name :nb-params (count (:arity sdef)) :nb-args (count args)}))
             (case (:tag sdef)
               ;; unfolding a defined term
-              :term
+              :definition
               (if (:parsed-term sdef)
                 [(instantiate-def (:params sdef) (:parsed-term sdef) args) true]
                 (throw (ex-info "Cannot unfold term reference (please report)"
@@ -158,7 +158,7 @@
 
 (example
  (delta-reduction '{test {:arity 3
-                          :tag :term
+                          :tag :definition
                           :params [[x ✳] [y □] [z ✳]]
                           :parsed-term [y (λ [t ✳] [x [z t]])]}}
                   '(test [a b] c [t (λ [t] t)]))
@@ -181,7 +181,7 @@
 
 (example
  (delta-reduction '{test {:arity 3
-                          :tag :term
+                          :tag :definition
                           :params [[x ✳] [y □] [z ✳]]
                           :parsed-term [y (λ [t ✳] [x [z t]])]}}
                   '(test [a b] c))
@@ -227,7 +227,7 @@
 
 (example
  (delta-step '{test {:arity 1
-                     :tag :term
+                     :tag :definition
                      :params [[x ✳]]
                      :parsed-term [x x]}}
              '[y (test [t t])])
@@ -235,7 +235,7 @@
 
 (example
  (delta-step '{test {:arity 2
-                     :tag :term
+                     :tag :definition
                      :params [[x ✳] [y ✳]]
                      :parsed-term [x [y x]]}}
              '[y (test [t t] u)])

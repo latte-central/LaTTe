@@ -3,12 +3,12 @@
 
   (:refer-clojure :exclude [and or not])
 
-  (:require [latte.core :as latte :refer [defterm defthm forall assume have proof]])
+  (:require [latte.core :as latte :refer [definition defthm forall assume have proof]])
 
   (:require [latte.prop :as p :refer [<=> and or not]])
   )
 
-(defterm equal
+(definition equal
   "The intuitionistic, second-order definition of equality.
 This corresponds to Leibniz's *indiscernibility of identicals*."
   [[T :type] [x T] [y T]]

@@ -19,24 +19,24 @@
 
   (:refer-clojure :exclude [and or not set])
 
-  (:require [latte.core :as latte :refer [defterm defthm forall assume have proof lambda]])
+  (:require [latte.core :as latte :refer [definition defthm forall assume have proof lambda]])
 
   (:require [latte.prop :as p :refer [<=> and or not]])
 
   (:require [latte.equal :as eq :refer [equal]])
   )
 
-(defterm set
+(definition set
   "The set (or subset of a type) constructor."
   [[T :type]]
   (==> T :type))
 
-(defterm elem
+(definition elem
   "Set membership."
   [[T :type] [x T] [s (set T)]]
   (s x))
 
-(defterm subseteq
+(definition subseteq
   "Subset or equal relation."
   [[T :type] [s1 (set T)] [s2 (set T)]]
   (forall [x T]
@@ -79,7 +79,7 @@
       (have d (subseteq T s1 s3) :discharge [x (c)]))
     (qed d)))
 
-(defterm seteq
+(definition seteq
   "Equality on sets."
   [[T :type] [s1 (set T)] [s2 (set T)]]
   (and (subseteq T s1 s2)
@@ -139,7 +139,7 @@
     (qed d)))
 
 
-(defterm union
+(definition union
   "Set union."
   [[T :type] [s1 (set T)] [s2 (set T)]]
   (lambda [x T]
@@ -184,7 +184,7 @@
              (a) (b)))
   (qed c))
 
-(defterm intersection
+(definition intersection
   "Set intersection."
   [[T :type] [s1 (set T)] [s2 (set T)]]
   (lambda [x T]
@@ -250,7 +250,7 @@
   (qed c))
 
 
-(defterm fullset
+(definition fullset
   "The full set of a type
 (all the inhabitants of the type are element
 of the full set)."
@@ -269,7 +269,7 @@ of the full set)."
     (have b _ :discharge [x (a)])
     (qed b)))
 
-(defterm emptyset
+(definition emptyset
   "The empty set of a type."
   [[T :type]]
   (lambda [x T] p/absurd))

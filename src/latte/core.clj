@@ -21,11 +21,11 @@
 ;; ## Definitions (defined terms)
 ;;}
 
-(defn parse-defterm-args [args]
+(defn parse-definition-args [args]
     (when (> (count args) 4)
-      (throw (ex-info "Too many arguments for defterm" {:max-arity 4 :nb-args (count args)})))
+      (throw (ex-info "Too many arguments for definition" {:max-arity 4 :nb-args (count args)})))
     (when (< (count args) 2)
-      (throw (ex-info "Not enough arguments for defterm" {:min-arity 2 :nb-args (count args)})))
+      (throw (ex-info "Not enough arguments for definition" {:min-arity 2 :nb-args (count args)})))
   (let [body (last args)
         params (if (= (count args) 2)
                  []
@@ -35,11 +35,11 @@
               "No documentation.")
         def-name (first args)]
     (when (not (symbol? def-name))
-      (throw (ex-info "Name of defterm must be a symbol." {:def-name def-name})))
+      (throw (ex-info "Name of definition must be a symbol." {:def-name def-name})))
     (when (not (string? doc))
-      (throw (ex-info "Documentation string for defterm must be ... a string." {:def-name def-name :doc doc})))
+      (throw (ex-info "Documentation string for definition must be ... a string." {:def-name def-name :doc doc})))
     (when (not (vector? params))
-      (throw (ex-info "Parameters of defterm must be a vector." {:def-name def-name :params params})))
+      (throw (ex-info "Parameters of definition must be a vector." {:def-name def-name :params params})))
     [def-name doc params body]))
 
 (defn mk-doc [kind content explanation]
@@ -50,16 +50,16 @@
        "\n\n"
        explanation))
 
-(defmacro defterm
+(defmacro definition
   "Defines a mathematical term composed of a `name`, and optional (but highly recommended)
   `docstring`, a vector of `parameters` and a `lambda-term` as definitional content.
 
   An `ex-info` exception is thrown if the term cannot be defined.
 
-  Note that it is a Clojure `def`, the term is defined in the namespace where the `defterm` 
+  Note that it is a Clojure `def`, the term is defined in the namespace where the `definition` 
   form is invoked."
   [& args]
-  (let [[def-name doc params body] (parse-defterm-args args)]
+  (let [[def-name doc params body] (parse-definition-args args)]
     ;; (println "def-name =" def-name " doc =" doc " params =" params " body =" body)
     (when (defenv/registered-definition? {} def-name)
       (do
@@ -67,7 +67,7 @@
         ;; TODO: maybe disallow redefining if type is changed ?
         ;;       otherwise only warn ?
         (println "[Warning] redefinition as term: " def-name)))
-    (let [[status definition] (as-> {:tag :term :name def-name :doc doc} $
+    (let [[status definition] (as-> {:tag :definition :name def-name :doc doc} $
                                 (d/handle-term-definition $ {} [] params body))]
       (when (= status :ko)
         (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
@@ -236,6 +236,23 @@
 ;; ## Proof handling
 ;;}
 
+(defmacro try-proof
+  "Tries (but does not register) a proof of theorem named `thm-name` using the given proof `method`
+  and `steps`."
+  [thm-name method & steps]
+  (let [def-env {}
+        [status thm] (defenv/fetch-definition def-env thm-name)]
+    (if (= status :ko)
+      [:ko {:msg "No such theorem." :name thm-name}]
+      (let [[status proof-term]
+            (p/check-proof def-env (reverse (:params thm)) (:type thm) method steps)]
+        (if (= status :ko)
+          [:ko {:msg (str "Proof failed: " (:msg proof-term))
+                :theorem thm-name
+                :error (dissoc proof-term :msg)}]
+          `(do
+             [:ok {:qed (quote ~thm-name)}]))))))
+
 (defmacro proof
   "Provides a proof of theorem named `thm-name` using the given proof `method`
   and `steps`.
@@ -255,7 +272,7 @@
         [status thm] (defenv/fetch-definition def-env thm-name)]
     (when (= status :ko)
       (throw (ex-info "No such theorem." {:name thm-name})))
-    (let [[status proof-term]          
+    (let [[status proof-term]
           (p/check-proof def-env (reverse (:params thm)) (:type thm) method steps)]
       (if (= status :ko)
         (throw (ex-info (str "Proof failed: " (:msg proof-term)) {:theorem thm-name
@@ -265,23 +282,6 @@
              (alter-var-root (var ~thm-name) (fn [_#] ~new-thm#))
              [:qed (quote ~thm-name)]))))))
 
-(defmacro try-proof
-  "Tries (but does not register) a proof of theorem named `thm-name` using the given proof `method`
-  and `steps`."
-  {:style/indent [2 :form :form [1]]}
-  [thm-name method & steps]
-  (let [def-env {}
-        [status thm] (defenv/fetch-definition def-env thm-name)]
-    (if (= status :ko)
-      [:ko {:msg "No such theorem." :name thm-name}]
-      (let [[status proof-term]
-            (p/check-proof def-env (reverse (:params thm)) (:type thm) method steps)]
-        (if (= status :ko)
-          [:ko {:msg (str "Proof failed: " (:msg proof-term)) :theorem thm-name
-                :error (dissoc proof-term :msg)}]
-          (let [new-thm (list 'quote (assoc thm :proof proof-term))
-                name# (name thm-name)]
-            [:qed ~name#]))))))
 
 ;;{
 ;; ## Indentation rules
