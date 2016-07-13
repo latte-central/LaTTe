@@ -8,8 +8,13 @@
   The elimination rule for ∀ (for all) is application, and introduction
   is through lambda-abstraction."
 
-  (:require [latte.core :as latte :refer [definition defthm proof forall exist
+  (:refer-clojure :exclude [and or not])
+
+  (:require [latte.core :as latte :refer [definition defthm defaxiom proof forall exist
                                           assume have]])
+
+  (:require [latte.prop :as p :refer [and]])
+  (:require [latte.equal :as eq :refer [equal]])
   )
 
 
@@ -68,4 +73,55 @@ Based on this encoding, one can use the syntax `(exists [x T] P)`
               (==> (forall [z T] (==> (P z) A))
                    A)) :discharge [A (c)])
     (qed d)))
+
+(definition single
+  "The constraint that \"there exists at most\"..."
+  [[T :type] [P (==> T :type)]]
+  (forall [x y T]
+    (==> (P x)
+         (P y)
+         (equal T x y))))
+
+(definition unique
+  "The constraint that \"there exists a unique\" ..."
+  [[T :type] [P (==> T :type)]]
+  (and (ex T P)
+       (single T P)))
+
+(defaxiom the
+  "The unique element descriptor.
+
+  `(the T P u)` defines the unique inhabitant of type
+ `T` satisfying the predicate `P`. This is provided
+ thanks to the uniqueness proof `u`."
+  [[T :type] [P (==> T :type)] [u (unique T P)]]
+  T)
+
+(defaxiom the-prop
+  "The property of the unique element descriptor."
+  [[T :type] [P (==> T :type)] [u (unique T P)]]
+  (P (the T P u)))
+
+(defthm the-lemma
+  "The unique element is ... unique."
+  [[T :type] [P (==> T :type)] [u (unique T P)]]
+  (forall [y T]
+    (==> (P y)
+         (equal T y (the T P u)))))
+
+(proof the-lemma :script
+  (have a (single T P) :by ((p/and-elim-right (ex T P)
+                                              (single T P)) u))
+  (have b (P (the T P u)) :by (the-prop T P u))
+  (assume [y T
+           Hy (P y)]
+    (have c (==> (P y)
+                 (P (the T P u))
+                 (equal T y (the T P u))) :by ((a) y (the T P u)))
+    (have d (equal T y (the T P u)) :by ((c) Hy (b)))
+    (have e _ :discharge [Hy (d)])
+    (have f _ :discharge [y (e)]))
+  (qed f))
+
+
 
