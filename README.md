@@ -1,5 +1,16 @@
 # LaTTe
 
+```text
+             ((((
+            ((((
+             ))))
+          _ .---.
+         ( |`---'|
+          \|     |
+          : .___, :
+           `-----'  -Karl
+```
+
 **LaTTe** : a Laboratory for Type Theory experiments (in clojure)
 
 ## What?
