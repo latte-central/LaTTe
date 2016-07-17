@@ -306,8 +306,3 @@
   {:style/indent [1]}
   [& args]
   `((quote have) ~@args))
-
-(defmacro exist
-  {:style/indent [1 :form :form]} 
-  [bindings body]
-  `((quote  exist) ~bindings ~body))

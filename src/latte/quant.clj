@@ -10,7 +10,7 @@
 
   (:refer-clojure :exclude [and or not])
 
-  (:require [latte.core :as latte :refer [definition defthm defaxiom proof forall exist
+  (:require [latte.core :as latte :refer [definition defthm defaxiom proof forall
                                           assume have]])
 
   (:require [latte.prop :as p :refer [and]])
@@ -73,6 +73,11 @@ Based on this encoding, one can use the syntax `(exists [x T] P)`
               (==> (forall [z T] (==> (P z) A))
                    A)) :discharge [A (c)])
     (qed d)))
+
+(defmacro exist
+  {:style/indent [1 :form :form]} 
+  [bindings body]
+  `((quote  exist) ~bindings ~body))
 
 (definition single
   "The constraint that \"there exists at most\"..."
