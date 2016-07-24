@@ -98,7 +98,8 @@ Based on this encoding, one can use the syntax `(exists [x T] P)`
 
   `(the T P u)` defines the unique inhabitant of type
  `T` satisfying the predicate `P`. This is provided
- thanks to the uniqueness proof `u` (of type `(unique T P)`."
+ thanks to the uniqueness proof `u` (of type `(unique T P)`.
+"
   [[T :type] [P (==> T :type)] [u (unique T P)]]
   T)
 
@@ -127,6 +128,4 @@ Based on this encoding, one can use the syntax `(exists [x T] P)`
     (have e _ :discharge [Hy (d)])
     (have f _ :discharge [y (e)]))
   (qed f))
-
-
 

@@ -12,7 +12,7 @@ This namespace provides some important properties about such
   relations."
 
   (:require [latte.core :as latte :refer [definition defaxiom defthm
-                                          forall]])
+                                          forall proof assume have]])
 
   (:require [latte.prop :as p :refer [and or not]])
 
@@ -72,3 +72,30 @@ This namespace provides some important properties about such
   (and (injective T U F)
        (surjective T U F)))
 
+(defthm bijective-is-surjective
+  "A bijection is a surjection."
+  [[T :type] [U :type] [F (==> T U)]]
+  (==> (bijective T U F)
+       (surjective T U F)))
+
+(proof bijective-is-surjective :script
+  (assume [H (bijective T U F)]
+    (have a (surjective T U F) :by ((p/and-elim-right (injective T U F)
+                                                      (surjective T U F)) H))
+    (qed a)))
+
+(defthm bijective-is-injective
+  "A bijection is an injection."
+  [[T :type] [U :type] [F (==> T U)]]
+  (==> (bijective T U F)
+       (injective T U F)))
+
+(proof bijective-is-injective :script
+  (assume [H (bijective T U F)]
+    (have a (injective T U F) :by ((p/and-elim-left (injective T U F)
+                                                    (surjective T U F)) H))
+    (qed a)))
+
+
+
+           
