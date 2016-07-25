@@ -35,20 +35,20 @@ This can be seen as an elimination rule for ¬¬ (not-not) propositions."
 (proof not-not-impl
        :script
        (assume [H (not (not A))]
-         (have (em) (or A (not A)) :by (excluded-middle-ax A))
-         (have (a) (==> (==> A A)
-                        (==> (not A) A)
-                        A) :by ((em) A))
-         (have (b) (==> A A) :by (p/impl-refl A))
-         (have (c) (==> (==> (not A) A)
-                        A) :by ((a) (b)))
+         (have em (or A (not A)) :by (excluded-middle-ax A))
+         (have a (==> (==> A A)
+                      (==> (not A) A)
+                      A) :by (em A))
+         (have b (==> A A) :by (p/impl-refl A))
+         (have c (==> (==> (not A) A)
+                      A) :by ((a) (b)))
          (assume [z (not A)]
-           (have (d) p/absurd :by (H z))
-           (have (e) (==> p/absurd A) :by (p/ex-falso A))
-           (have (f) A :by ((e) (d)))
-           (have (g) (==> (not A) A) :discharge [z (f)]))
-         (have (h) A :by ((c) (g)))
-         (qed (h))))
+           (have d p/absurd :by (H z))
+           (have e (==> p/absurd A) :by (p/ex-falso A))
+           (have f A :by (e d))
+           (have g (==> (not A) A) :discharge [z (f)]))
+         (have h A :by (c g))
+         (qed h)))
 
 
 (defthm not-not
@@ -57,11 +57,11 @@ This can be seen as an elimination rule for ¬¬ (not-not) propositions."
   (<=> A (not (not A))))
 
 (proof not-not :script
-  (have (a) (==> A (not (not A))) :by (p/impl-not-not A))
-  (have (b) (==> (not (not A)) A) :by (not-not-impl A))
-  (have (c) _ :by (p/and-intro (==> A (not (not A)))
-                               (==> (not (not A)) A)))
-  (qed ((c) (a) (b))))
+  (have a (==> A (not (not A))) :by (p/impl-not-not A))
+  (have b (==> (not (not A)) A) :by (not-not-impl A))
+  (have c _ :by (p/and-intro (==> A (not (not A)))
+                             (==> (not (not A)) A)))
+  (qed (c a b)))
 
 (defthm not-impl-or-intro
   "An alternative elimination rule for disjunction.
@@ -76,20 +76,20 @@ classical logic."
   (assume [H (==> (not A) B)]
     (assume [Hnot (not (or A B))]
       (assume [x A]
-        (have (a1) _ :by (p/or-intro-left A B))
-        (have (a2) (or A B) :by ((a1) x))
-        (have (a3) p/absurd :by (Hnot (a2)))
-        (have (a) (not A) :discharge [x (a3)]))
+        (have a1 _ :by (p/or-intro-left A B))
+        (have a2 (or A B) :by (a1 x))
+        (have a3 p/absurd :by (Hnot a2))
+        (have a (not A) :discharge [x a3]))
       (assume [y B]
-        (have (b1) _ :by (p/or-intro-right A B))
-        (have (b2) (or A B) :by ((b1) y))
-        (have (b3) p/absurd :by (Hnot (b2)))
-        (have (b) (not B) :discharge [y (b3)]))
-      (have (c) B :by (H (a)))
-      (have (d) p/absurd :by ((b) (c)))
-      (have (e) (not (not (or A B))) :discharge [Hnot (d)]))
-    (have (f) (or A B) :by ((not-not-impl (or A B)) e))
-    (qed (f))))
+        (have b1 _ :by (p/or-intro-right A B))
+        (have b2 (or A B) :by (b1 y))
+        (have b3 p/absurd :by (Hnot b2))
+        (have b (not B) :discharge [y b3]))
+      (have c B :by (H a))
+      (have d p/absurd :by (b c))
+      (have e (not (not (or A B))) :discharge [Hnot d]))
+    (have f (or A B) :by ((not-not-impl (or A B)) e))
+    (qed f)))
 
 
 

@@ -52,7 +52,7 @@ Based on this encoding, one can use the syntax `(exists [x T] P)`
            H2 (forall [x T] (==> (P x) A))]
     (have a (==> (forall [x T] (==> (P x) A))
                  A) :by (H1 A))
-    (have b A :by ((a) H2))
+    (have b A :by (a H2))
     (qed b)))
 
 (defthm exist-intro
@@ -66,12 +66,12 @@ Based on this encoding, one can use the syntax `(exists [x T] P)`
            A :type
            y (forall [z T] (==> (P z) A))]
     (have a (==> (P x) A) :by (y x))
-    (have b A :by ((a) H))
+    (have b A :by (a H))
     (have c (==> (forall [z T] (==> (P z) A))
-                 A) :discharge [y (b)])
+                 A) :discharge [y b])
     (have d (forall [A :type]
               (==> (forall [z T] (==> (P z) A))
-                   A)) :discharge [A (c)])
+                   A)) :discharge [A c])
     (qed d)))
 
 (defmacro exist
@@ -123,9 +123,9 @@ Based on this encoding, one can use the syntax `(exists [x T] P)`
            Hy (P y)]
     (have c (==> (P y)
                  (P (the T P u))
-                 (equal T y (the T P u))) :by ((a) y (the T P u)))
-    (have d (equal T y (the T P u)) :by ((c) Hy (b)))
-    (have e _ :discharge [Hy (d)])
-    (have f _ :discharge [y (e)]))
+                 (equal T y (the T P u))) :by (a y (the T P u)))
+    (have d (equal T y (the T P u)) :by (c Hy b))
+    (have e _ :discharge [Hy d])
+    (have f _ :discharge [y e]))
   (qed f))
 

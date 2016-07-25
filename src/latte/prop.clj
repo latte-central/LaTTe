@@ -43,10 +43,10 @@
   (assume [H1 (==> A B)
            H2 (==> B C)
            x A]
-    (have (a) B :by (H1 x))
-    (have (b) C :by (H2 (a)))
-    (have (c) (==> A C) :discharge [x (b)])
-    (qed (c))))
+    (have a B :by (H1 x))
+    (have b C :by (H2 a))
+    (have c (==> A C) :discharge [x b])
+    (qed c)))
 
 (definition absurd
   "Absurdity."
@@ -66,8 +66,8 @@
 (proof ex-falso
     :script
   (assume [f absurd]
-    (have (a) A :by (f A))
-    (qed (a))))
+    (have a A :by (f A))
+    (qed a)))
 
 (definition not
   "Logical negation."
@@ -90,8 +90,8 @@
     :script
   (assume [x A
            y (not A)]
-    (have (a) absurd :by (y x))
-    (qed (a))))
+    (have a absurd :by (y x))
+    (qed a)))
 
 (defthm impl-not-not
   "The if half of double negation.
@@ -109,8 +109,8 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
     :script
   (assume [x A
            H (not A)]
-    (have (a) absurd :by (H x))
-    (qed (a))))
+    (have a absurd :by (H x))
+    (qed a)))
 
 
 (definition truth
@@ -154,12 +154,12 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
            y B
            C :type
            z (==> A B C)]
-    (have (a) (==> B C) :by (z x))
-    (have (b) C :by ((a) y))
-    (have (c) (==> (==> A B C)
-                   C) :discharge [z (b)])
-    (have (d) (and A B) :discharge [C (c)])
-    (qed (d))))
+    (have a (==> B C) :by (z x))
+    (have b C :by ((a) y))
+    (have c (==> (==> A B C)
+                   C) :discharge [z b])
+    (have d (and A B) :discharge [C c])
+    (qed d)))
 
 (defthm and-elim-left
   "Elimination rule for logical conjunction.
@@ -171,10 +171,10 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
 (proof and-elim-left
     :script
   (assume [H1 (and A B)]
-    (have (a) (==> (==> A B A) A) :by (H1 A))
-    (have (b) (==> A B A) :by (impl-ignore A B))
-    (have (c) A :by ((a) (b)))
-    (qed (c))))
+    (have a (==> (==> A B A) A) :by (H1 A))
+    (have b (==> A B A) :by (impl-ignore A B))
+    (have c A :by (a b))
+    (qed c)))
 
 (defthm and-elim-right
   "Elimination rule for logical conjunction.
@@ -186,10 +186,10 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
 (proof and-elim-right
     :script
   (assume [H1 (and A B)]
-    (have (a) (==> (==> A B B) B) :by (H1 B))
-    (have (b) (==> A B B) :by (lambda [x A] (lambda [y B] y)))
-    (have (c) B :by ((a) (b)))
-    (qed (c))))
+    (have a (==> (==> A B B) B) :by (H1 B))
+    (have b (==> A B B) :by (lambda [x A] (lambda [y B] y)))
+    (have c B :by (a b))
+    (qed c)))
 
 ;; (definition and
 ;;   "logical conjunction."
@@ -206,12 +206,12 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
 
 (proof and-sym :script
   (assume [H (and A B)]
-    (have (a) A :by ((and-elim-left A B) H))
-    (have (b) B :by ((and-elim-right A B) H))
-    (have (c) (==> B A
+    (have a A :by ((and-elim-left A B) H))
+    (have b B :by ((and-elim-right A B) H))
+    (have c (==> B A
                    (and B A)) :by (and-intro B A))
-    (have (d) (and B A) :by ((c) (b) (a)))
-    (qed (d))))
+    (have d (and B A) :by (c b a))
+    (qed d)))
 
 (definition or
   "logical disjunction."
@@ -234,13 +234,13 @@ This is the introduction by the left operand."
            C :type
            H1 (==> A C)
            H2 (==> B C)]
-    (have (a) C :by (H1 x))
-    (have (b) (==> (==> B C) C) :discharge [H2 (a)])
-    (have (c) (==> (==> A C)
+    (have a C :by (H1 x))
+    (have b (==> (==> B C) C) :discharge [H2 a])
+    (have c (==> (==> A C)
                    (==> B C)
-                   C) :discharge [H1 (b)])
-    (have (d) (or A B) :discharge [C (c)])
-    (qed (d))))
+                   C) :discharge [H1 b])
+    (have d (or A B) :discharge [C c])
+    (qed d)))
 
 (defthm or-intro-right
   "Introduction rule for logical disjunction.
@@ -255,13 +255,13 @@ This is the introduction by the right operand."
            C :type
            H1 (==> A C)
            H2 (==> B C)]
-    (have (a) C :by (H2 y))
-    (have (b) (==> (==> B C) C) :discharge [H2 (a)])
-    (have (c) (==> (==> A C)
+    (have a C :by (H2 y))
+    (have b (==> (==> B C) C) :discharge [H2 a])
+    (have c (==> (==> A C)
                    (==> B C)
-                   C) :discharge [H1 (b)])
-    (have (d) (or A B) :discharge [C (c)])
-    (qed (d))))
+                   C) :discharge [H1 b])
+    (have d (or A B) :discharge [C c])
+    (qed d)))
 
 (defthm or-elim
   "Elimination rule for logical disjunction.
@@ -285,10 +285,10 @@ which offers a much simpler elimination process.
            C :type
            H2 (==> A C)
            H3 (==> B C)]
-    (have (a) (==> (==> A C) (==> B C) C) :by (H1 C))
-    (have (b) (==> (==> B C) C) :by ((a) H2))
-    (have (c) C :by ((b) H3))
-    (qed (c))))
+    (have a (==> (==> A C) (==> B C) C) :by (H1 C))
+    (have b (==> (==> B C) C) :by (a H2))
+    (have c C :by (b H3))
+    (qed c)))
 
 (defthm or-sym
   "Symmetry of disjunction.
@@ -299,20 +299,19 @@ characteristic of or-elimination."
   (==> (or A B)
        (or B A)))
 
-
 (proof or-sym :script
   (assume [H1 (or A B)
            D :type
            H2 (==> A D)
            H3 (==> B D)]
-    (have (a) _ :by (H1 D))
-    (have (b) D :by ((a) H2 H3))
-    (have (c) (==> (==> A D) D) :discharge [H2 (b)])
-    (have (d) (==> (==> B D)
+    (have a _ :by (H1 D))
+    (have b D :by (a H2 H3))
+    (have c (==> (==> A D) D) :discharge [H2 b])
+    (have d (==> (==> B D)
                    (==> A D)
-                   D) :discharge [H3 (c)])
-    (have (e) (or B A) :discharge [D (d)])
-    (qed (e))))
+                   D) :discharge [H3 c])
+    (have e (or B A) :discharge [D d])
+    (qed e)))
 
 (defthm or-not-impl-elim
   "An alternative elimination rule for disjunction."
@@ -320,27 +319,25 @@ characteristic of or-elimination."
   (==> (or A B)
        (==> (not A) B)))
 
-
 (proof or-not-impl-elim :script
   (assume [H (or A B)
            Hn (not A)
            x A]
-    (have (a) absurd :by (Hn x))
-    (have (b) B :by ((a) B))
-    (have (c) (==> A B) :discharge [x (b)])
-    (have (d) (==> B B) :by (impl-refl B))
-    (have (e) (==> (==> A B)
-                   (==> B B)
-                   B) :by (H B))
-    (have (f) B :by ((e) (c) (d)))
-    (qed (f))))
+    (have a absurd :by (Hn x))
+    (have b B :by (a B))
+    (have c (==> A B) :discharge [x b])
+    (have d (==> B B) :by (impl-refl B))
+    (have e (==> (==> A B)
+                 (==> B B)
+                 B) :by (H B))
+    (have f B :by (e c d))
+    (qed f)))
 
 (definition <=>
   "Logical equivalence or 'if and only if'."
   [[A :type] [B :type]]
   (and (==> A B)
        (==> B A)))
-
 
 (defthm iff-refl
   "Reflexivity of logical equivalence."
@@ -349,13 +346,13 @@ characteristic of or-elimination."
 
 (proof iff-refl
     :script
-  (have (a) (==> A A) :by (impl-refl A))
-  (have (b) (==> (==> A A)
-                 (==> A A)
-                 (<=> A A)) :by
+  (have a (==> A A) :by (impl-refl A))
+  (have b (==> (==> A A)
+               (==> A A)
+               (<=> A A)) :by
         (and-intro (==> A A) (==> A A)))
-  (have (c) (<=> A A) :by ((b) (a) (a)))
-  (qed (c)))
+  (have c (<=> A A) :by (b a a))
+  (qed c))
 
 (defthm iff-intro
   "Introduction rule for logical equivalence."
@@ -368,11 +365,11 @@ characteristic of or-elimination."
     :script
   (assume [H1 (==> A B)
            H2 (==> B A)]
-    (have (a) (==> (==> A B)
-                   (==> B A)
-                   (<=> A B)) :by (and-intro (==> A B) (==> B A)))
-    (have (b) (<=> A B) :by ((a) H1 H2))
-    (qed (b))))
+    (have a (==> (==> A B)
+                 (==> B A)
+                 (<=> A B)) :by (and-intro (==> A B) (==> B A)))
+    (have b (<=> A B) :by (a H1 H2))
+    (qed b)))
 
 (defthm iff-elim-if
   "Elimination rule for logical equivalence.
@@ -384,10 +381,10 @@ characteristic of or-elimination."
 (proof iff-elim-if
     :script
   (assume [H (<=> A B)]
-    (have (a) (==> (<=> A B)
+    (have a (==> (<=> A B)
                    (==> A B)) :by (and-elim-left (==> A B) (==> B A)))
-    (have (b) (==> A B) :by ((a) H))
-    (qed (b))))
+    (have b (==> A B) :by (a H))
+    (qed b)))
 
 (defthm iff-elim-only-if
   "Elimination rule for logical equivalence.
@@ -399,10 +396,10 @@ characteristic of or-elimination."
 (proof iff-elim-only-if
     :script
   (assume [H (<=> A B)]
-    (have (a) (==> (<=> A B)
-                   (==> B A)) :by (and-elim-right (==> A B) (==> B A)))
-    (have (b) (==> B A) :by ((a) H))
-    (qed (b))))
+    (have a (==> (<=> A B)
+                 (==> B A)) :by (and-elim-right (==> A B) (==> B A)))
+    (have b (==> B A) :by (a H))
+    (qed b)))
 
 (defthm iff-sym
   "Symmetry of logical equivalence."
@@ -413,13 +410,13 @@ characteristic of or-elimination."
 (proof iff-sym
     :script
   (assume [H (<=> A B)]
-    (have (a) (==> B A) :by ((iff-elim-only-if A B) H))
-    (have (b) (==> A B) :by ((iff-elim-if A B) H))
-    (have (c) (==> (==> B A)
-                   (==> A B)
-                   (<=> B A)) :by (iff-intro B A))
-    (have (d) (<=> B A) :by ((c) (a) (b)))
-    (qed (d))))
+    (have a (==> B A) :by ((iff-elim-only-if A B) H))
+    (have b (==> A B) :by ((iff-elim-if A B) H))
+    (have c (==> (==> B A)
+                 (==> A B)
+                 (<=> B A)) :by (iff-intro B A))
+    (have d (<=> B A) :by (c a b))
+    (qed d)))
 
 (defthm iff-trans
   "Transitivity of logical equivalence."
@@ -432,14 +429,14 @@ characteristic of or-elimination."
     :script
   (assume [H1 (<=> A B)
            H2 (<=> B C)]
-    (have (a) (==> A B) :by ((iff-elim-if A B) H1))
-    (have (b) (==> B C) :by ((iff-elim-if B C) H2))
-    (have (c) _ :by (impl-trans A B C))
-    (have (d) (==> A C) :by ((c) (a) (b)))
-    (have (e) (==> C B) :by ((iff-elim-only-if B C) H2))
-    (have (f) (==> B A) :by ((iff-elim-only-if A B) H1))
-    (have (g) _ :by (impl-trans C B A))
-    (have (h) (==> C A) :by ((g) (e) (f)))
-    (have (i) _ :by (iff-intro A C))
-    (have (k) (<=> A C) :by ((i) (d) (h)))
-    (qed (k))))
+    (have a (==> A B) :by ((iff-elim-if A B) H1))
+    (have b (==> B C) :by ((iff-elim-if B C) H2))
+    (have c _ :by (impl-trans A B C))
+    (have d (==> A C) :by (c a b))
+    (have e (==> C B) :by ((iff-elim-only-if B C) H2))
+    (have f (==> B A) :by ((iff-elim-only-if A B) H1))
+    (have g _ :by (impl-trans C B A))
+    (have h (==> C A) :by (g e f))
+    (have i _ :by (iff-intro A C))
+    (have k (<=> A C) :by (i d h))
+    (qed k)))

@@ -53,8 +53,8 @@
            H (elem T x s)]
     (have a (elem T x s) :by H)
     (have b (==> (elem T x s)
-                 (elem T x s)) :discharge [H (a)])
-    (have c (subseteq T s s) :discharge [x (b)])
+                 (elem T x s)) :discharge [H a])
+    (have c (subseteq T s s) :discharge [x b])
     (qed c)))
 
 (defthm subseteq-trans
@@ -75,8 +75,8 @@
       (have c (==> (elem T x s1)
                    (elem T x s3)) :by ((p/impl-trans (elem T x s1)
                                                      (elem T x s2)
-                                                     (elem T x s3)) (a) (b)))
-      (have d (subseteq T s1 s3) :discharge [x (c)]))
+                                                     (elem T x s3)) a b))
+      (have d (subseteq T s1 s3) :discharge [x c]))
     (qed d)))
 
 (definition seteq
@@ -95,7 +95,7 @@
   (have b (and (subseteq T s s)
                (subseteq T s s))
         :by ((p/and-intro (subseteq T s s)
-                          (subseteq T s s)) (a) (a)))
+                          (subseteq T s s)) a a))
   (qed b))
 
 (defthm seteq-sym
@@ -111,7 +111,7 @@
     (have b (subseteq T s2 s1) :by ((p/and-elim-right (subseteq T s1 s2)
                                                         (subseteq T s2 s1)) H))
     (have c (seteq T s2 s1) :by ((p/and-intro (subseteq T s2 s1)
-                                              (subseteq T s1 s2)) (b) (a)))
+                                              (subseteq T s1 s2)) b a))
     (qed c)))
 
 (defthm seteq-trans
@@ -128,14 +128,14 @@
                                                       (subseteq T s2 s1)) H1))
     (have b1 (subseteq T s2 s3) :by ((p/and-elim-left (subseteq T s2 s3)
                                                       (subseteq T s3 s2)) H2))
-    (have c1 (subseteq T s1 s3) :by ((subseteq-trans T s1 s2 s3) (a1) (b1)))
+    (have c1 (subseteq T s1 s3) :by ((subseteq-trans T s1 s2 s3) a1 b1))
     (have a2 (subseteq T s2 s1) :by ((p/and-elim-right (subseteq T s1 s2)
                                                        (subseteq T s2 s1)) H1))
     (have b2 (subseteq T s3 s2) :by ((p/and-elim-right (subseteq T s2 s3)
                                                        (subseteq T s3 s2)) H2))
-    (have c2 (subseteq T s3 s1) :by ((subseteq-trans T s3 s2 s1) (b2) (a2)))
+    (have c2 (subseteq T s3 s1) :by ((subseteq-trans T s3 s2 s1) b2 a2))
     (have d (seteq T s1 s3) :by ((p/and-intro (subseteq T s1 s3)
-                                              (subseteq T s3 s1)) (c1) (c2)))
+                                              (subseteq T s3 s1)) c1 c2))
     (qed d)))
 
 
@@ -160,28 +160,28 @@
                  (elem T x s2)) :by H)
     (have a2 _ :by (p/or-sym (elem T x s1) (elem T x s2)))
     (have a3 (or (elem T x s2)
-                (elem T x s1)) :by ((a2) (a1)))
-    (have a4 (elem T x (union T s2 s1)) :by (a3))
+                (elem T x s1)) :by (a2 a1))
+    (have a4 (elem T x (union T s2 s1)) :by a3)
     (have a5 (==> (elem T x (union T s1 s2))
-                  (elem T x (union T s2 s1))) :discharge [H (a4)])
+                  (elem T x (union T s2 s1))) :discharge [H a4])
     (have a (subseteq T
                       (union T s1 s2)
-                      (union T s2 s1)) :discharge [x (a5)]))
+                      (union T s2 s1)) :discharge [x a5]))
   (assume [x T
            H (elem T x (union T s2 s1))]
     (have b1 (elem T x (union T s1 s2))
           :by ((p/or-sym (elem T x s2) (elem T x s1)) H))
     (have b2 (==> (elem T x (union T s2 s1))
-                  (elem T x (union T s1 s2))) :discharge [H (b1)])
+                  (elem T x (union T s1 s2))) :discharge [H b1])
     (have b (subseteq T
                       (union T s2 s1)
-                      (union T s1 s2)) :discharge [x (b2)]))
+                      (union T s1 s2)) :discharge [x b2]))
   (have c (seteq T
                  (union T s1 s2)
                  (union T s2 s1))
         :by ((p/and-intro (subseteq T (union T s1 s2) (union T s2 s1))
                           (subseteq T (union T s2 s1) (union T s1 s2)))
-             (a) (b)))
+             a b))
   (qed c))
 
 (definition intersection
@@ -228,25 +228,25 @@
     (have a1 (elem T x (intersection T s2 s1))
           :by ((p/and-sym (elem T x s1) (elem T x s2)) H))
     (have a2 (==> (elem T x (intersection T s1 s2))
-                  (elem T x (intersection T s2 s1))) :discharge [H (a1)])
+                  (elem T x (intersection T s2 s1))) :discharge [H a1])
     (have a (subseteq T
                       (intersection T s1 s2)
-                      (intersection T s2 s1)) :discharge [x (a2)]))
+                      (intersection T s2 s1)) :discharge [x a2]))
   (assume [x T
            H (elem T x (intersection T s2 s1))]
     (have b1 (elem T x (intersection T s1 s2))
           :by ((p/and-sym (elem T x s2) (elem T x s1)) H))
     (have b2 (==> (elem T x (intersection T s2 s1))
-                  (elem T x (intersection T s1 s2))) :discharge [H (b1)])
+                  (elem T x (intersection T s1 s2))) :discharge [H b1])
     (have b (subseteq T
                       (intersection T s2 s1)
-                      (intersection T s1 s2)) :discharge [x (b2)]))
+                      (intersection T s1 s2)) :discharge [x b2]))
   (have c (seteq T
                  (intersection T s1 s2)
                  (intersection T s2 s1))
         :by ((p/and-intro (subseteq T (intersection T s1 s2) (intersection T s2 s1))
                           (subseteq T (intersection T s2 s1) (intersection T s1 s2)))
-             (a) (b)))
+             a b))
   (qed c))
 
 
@@ -266,7 +266,7 @@ of the full set)."
 (proof fullset-intro :script
   (assume [x T]
     (have a (elem T x (fullset T)) :by p/truth-is-true)
-    (have b _ :discharge [x (a)])
+    (have b _ :discharge [x a])
     (qed b)))
 
 (definition emptyset
@@ -284,8 +284,8 @@ of the full set)."
   (assume [x T
            H (elem T x (emptyset T))]
     (have a p/absurd :by H)
-    (have b (not (elem T x (emptyset T))) :discharge [H (a)])
-    (have c _ :discharge [x (b)])
+    (have b (not (elem T x (emptyset T))) :discharge [H a])
+    (have c _ :discharge [x b])
     (qed c)))
 
 

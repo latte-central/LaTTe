@@ -91,9 +91,20 @@
       (product-kw? (first t)) (parse-product-term def-env t bound)
       (arrow-kw? (first t)) (parse-arrow-term def-env t bound)
       (exist-kw? (first t)) (parse-exist-term def-env t bound)
-      (and (or (symbol? (first t)) (var? (first t)))
-           (defenv/registered-definition? def-env (first t))) (parse-defined-term def-env t bound)
-      :else (parse-application-term def-env t bound))))
+      :else
+      (if (and (or (symbol? (first t)) (var? (first t)))
+               (defenv/registered-definition? def-env (first t)))
+        (let [[status sdef] (defenv/fetch-definition def-env (first t))]
+          (cond
+            (= status :ko)
+            [:ko sdef]
+            (and (= (:arity sdef) 0)
+                 (seq (rest t)))
+            (parse-application-term def-env (cons (list (first t)) (rest t)) bound)
+            :else
+            (parse-defined-term def-env sdef t bound)))
+        ;; else
+        (parse-application-term def-env t bound)))))
 
 (defn parse-binding [def-env v bound]
   (cond
@@ -260,15 +271,12 @@
  (parse-term {} '(exist [x T] P))
  => [:ok (list (resolve 'latte.quant/ex) 'T '(λ [x T] P))])
 
-(defn parse-defined-term [def-env t bound]
+(defn parse-defined-term [def-env sdef t bound]
   (let [def-name (first t)
-        arity (count (rest t))
-        [status sdef] (defenv/fetch-definition def-env def-name)]
-    (cond
-      (= status :ko) [:ko sdef]
-      (< (:arity sdef) arity)
+        arity (count (rest t))]
+    (if (< (:arity sdef) arity)
       [:ko {:msg "Too many arguments for definition." :term t :def-name def-name :arity arity :nb-args (:arity sdef)}]
-      :else
+      ;; else
       (let [[status ts] (parse-terms def-env (rest t) bound)]
         (if (= status :ko)
           [:ko {:msg "Wrong argument" :term t :from ts}]
