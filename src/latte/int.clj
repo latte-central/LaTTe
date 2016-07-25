@@ -32,16 +32,29 @@
   []
   (rel/bijective int int succ))
 
+(defthm succ-surjective
+  "The successor function is surjective."
+  []
+  (rel/surjective int int succ))
+
+(proof succ-surjective :term
+  ((rel/bijective-is-surjective int int succ) succ-bijective))
+
+(defthm succ-injective
+  "The successor function is injective."
+  []
+  (rel/injective int int succ))
+
+(proof succ-injective :term
+  ((rel/bijective-is-injective int int succ) succ-bijective))
+
 (defthm exist-succ
   "An integer `y` is the successor of  *at least* another integer."
   [[y int]]
   (exist [x int] (equal int (succ x) y)))
 
-(proof exist-succ :script
-  (have a (forall [z int]
-            (exist [x int] (equal int (succ x) z)))
-        :by ((rel/bijective-is-surjective int int succ) (succ-bijective)))
-  (qed (a y)))
+(proof exist-succ :term
+  (succ-surjective y))
 
 (defthm single-succ
   "An integer `y` is the successor *at most* another integer."
@@ -57,10 +70,8 @@
     (have b (equal int (succ x1) (succ x2))
           :by ((eq/eq-trans int (succ x1) y (succ x2))
                H1 a))
-    (have c (rel/injective int int succ)
-          :by ((rel/bijective-is-injective int int succ) (succ-bijective)))
-    (have d (equal int x1 x2) :by (c x1 x2 b))
-    (qed d)))
+    (have c (equal int x1 x2) :by (succ-injective x1 x2 b))
+    (qed c)))
 
 (defthm unique-succ
   "There is a unique successor to an integer `y`."
@@ -73,3 +84,30 @@
    (exist-succ y)
    (single-succ y)))
 
+(definition pred
+  "The predecessor of `y`."
+  [[y int]]
+  (q/the int
+         (lambda [x int] (equal int (succ x) y)) 
+         (unique-succ y)))
+
+(defthm succ-of-pred
+  "The succesor of the predecessor of `y` is ... `y`."
+  [[y int]]
+  (equal int (succ (pred y)) y))
+
+(proof succ-of-pred :term
+  (q/the-prop int (lambda [x int] (equal int (succ x) y)) (unique-succ y)))
+
+(defthm pred-of-succ
+  "The predecessor of the successor of `y` is ... `y`."
+  [[y int]]
+  (equal int (pred (succ y)) y))
+
+;; Proof is too big !?!  
+;; (proof pred-of-succ :script
+;;   (have a (equal int (succ (pred (succ y))) (succ y))
+;;         :by (succ-of-pred (succ y)))
+;;   (have b (equal int (pred (succ y)) y)
+;;         :by (succ-injective (pred (succ y)) y a)))
+;;   (qed b))
