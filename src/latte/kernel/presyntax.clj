@@ -98,6 +98,9 @@
           (cond
             (= status :ko)
             [:ko sdef]
+            (nil? (get sdef :arity))
+            (throw (ex-info "Not a LaTTe definition (please report)"
+                            {:def sdef}))
             (and (= (:arity sdef) 0)
                  (seq (rest t)))
             (parse-application-term def-env (cons (list (first t)) (rest t)) bound)

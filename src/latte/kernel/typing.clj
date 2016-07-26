@@ -264,6 +264,8 @@
   (let [[status ddef] (defenv/fetch-definition def-env name)]
     (cond
       (= status :ko) [:ko ddef]
+      (nil? (get ddef :arity))
+      (throw (ex-info "Not a LaTTe definition (please report)." {:def ddef}))
       (> (count args) (:arity ddef))
       [:ko {:msg "Too many arguments for definition." :term (list* name args) :arity ddef}]
       :else

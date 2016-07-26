@@ -1,16 +1,11 @@
 (ns latte.kernel.defenv
   "The definitional environment."
+
   )
 
 ;;{
 ;; ## Definitional environment
 ;;}
-
-(defn latte-definition? [v]
-  (and (map? v)
-       (contains? v :tag)
-       (contains? #{:definition :theorem :axiom} (:tag v))))
-
 
 (defn fetch-definition [locals sym]
   ;; (println "[fetch-definition] sym=" sym "(type" (type sym) ")")
@@ -22,9 +17,7 @@
                       [:ko {:msg "No such (local) definition" :def sym}]))
     (var? sym) (let [gdef @sym]
                  ;;(println "[fetch-definition] " gdef)
-                 (if (latte-definition? gdef)
-                   [:ok gdef]
-                   [:ko {:msg "Not a LaTTe definition" :def sym}]))
+                 [:ok gdef])
     :else (throw (ex-info "Cannot fetch definition (please report)"
                           {:sym sym}))))
 

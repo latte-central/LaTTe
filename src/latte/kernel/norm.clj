@@ -3,6 +3,7 @@
 
   (:require [clj-by.example :refer [example do-for-example]])
   (:require [latte.kernel.syntax :as stx])
+  (:require [latte.kernel.defs :refer [definition? theorem? axiom?]])
   (:require [latte.kernel.defenv :as defenv])
   )
 
@@ -141,49 +142,53 @@
         [t false] ;; No error?  or (throw (ex-info "No such definition" {:term t :def-name name}))
         (if (> (count args) (:arity sdef))
           (throw (ex-info "Too many arguments to instantiate definition." {:term t :def-name name :nb-params (count (:arity sdef)) :nb-args (count args)}))
-            (case (:tag sdef)
-              ;; unfolding a defined term
-              :definition
-              (if (:parsed-term sdef)
-                [(instantiate-def (:params sdef) (:parsed-term sdef) args) true]
-                (throw (ex-info "Cannot unfold term reference (please report)"
-                                {:term t :def sdef})))
-              :theorem
-              (if (:proof sdef)
-                [(instantiate-def (:params sdef) (:proof sdef) args) true]
-                (throw (ex-info "Cannot use theorem with no proof." {:term t :theorem sdef})))
-              :axiom
-              [t false]
-              (throw (ex-info "Incorrect tag for definition." {:term t :tag (:tag sdef) :def sdef}))))))))
+          (cond
+            (definition? sdef)
+            ;; unfolding a defined term
+            (if (:parsed-term sdef)
+              [(instantiate-def (:params sdef) (:parsed-term sdef) args) true]
+              (throw (ex-info "Cannot unfold term reference (please report)"
+                              {:term t :def sdef})))
+            (theorem? sdef)
+            (if (:proof sdef)
+              [(instantiate-def (:params sdef) (:proof sdef) args) true]
+              (throw (ex-info "Cannot use theorem with no proof." {:term t :theorem sdef})))
+            (axiom? sdef)
+            [t false]
+            :else (throw (ex-info "Not a Latte definition (please report)." {:term t :def sdef}))))))))
 
 (example
- (delta-reduction '{test {:arity 3
-                          :tag :definition
-                          :params [[x ✳] [y □] [z ✳]]
-                          :parsed-term [y (λ [t ✳] [x [z t]])]}}
+ (delta-reduction {'test (latte.kernel.defs/map->Definition
+                          '{:name test
+                            :arity 3
+                            :params [[x ✳] [y □] [z ✳]]
+                            :parsed-term [y (λ [t ✳] [x [z t]])]})}
                   '(test [a b] c [t (λ [t] t)]))
  => '[[c (λ [t' ✳] [[a b] [[t (λ [t] t)] t']])] true])
 
 (example
- (delta-reduction '{test {:arity 3
-                          :tag :theorem
-                          :params [[x ✳] [y □] [z ✳]]
-                          :proof [y (λ [t ✳] [x [z t]])]}}
+ (delta-reduction {'test (latte.kernel.defs/map->Theorem
+                          '{:name test
+                            :arity 3
+                            :params [[x ✳] [y □] [z ✳]]
+                            :proof [y (λ [t ✳] [x [z t]])]})}
                   '(test [a b] c [t (λ [t] t)]))
  => '[[c (λ [t' ✳] [[a b] [[t (λ [t] t)] t']])] true])
 
 (example
- (delta-reduction '{test {:arity 3
-                          :tag :axiom
-                          :params [[x ✳] [y □] [z ✳]]}}
-                  '(test [a b] c [t (λ [t] t)]))
+ (delta-reduction {'test (latte.kernel.defs/map->Axiom
+                          '{:arity 3
+                            :tag :axiom
+                            :params [[x ✳] [y □] [z ✳]]})}
+                   '(test [a b] c [t (λ [t] t)]))
  => '[(test [a b] c [t (λ [t] t)]) false])
 
 (example
- (delta-reduction '{test {:arity 3
-                          :tag :definition
-                          :params [[x ✳] [y □] [z ✳]]
-                          :parsed-term [y (λ [t ✳] [x [z t]])]}}
+ (delta-reduction {'test (latte.kernel.defs/map->Definition
+                          '{:arity 3
+                            :tag :definition
+                            :params [[x ✳] [y □] [z ✳]]
+                            :parsed-term [y (λ [t ✳] [x [z t]])]})}
                   '(test [a b] c))
  => '[(λ [z ✳] [c (λ [t ✳] [[a b] [z t]])]) true])
 
@@ -226,18 +231,20 @@
  (delta-step {} 'x) => '[x false])
 
 (example
- (delta-step '{test {:arity 1
-                     :tag :definition
-                     :params [[x ✳]]
-                     :parsed-term [x x]}}
+ (delta-step {'test (latte.kernel.defs/map->Definition
+                     '{:arity 1
+                       :tag :definition
+                       :params [[x ✳]]
+                       :parsed-term [x x]})}
              '[y (test [t t])])
  => '[[y [[t t] [t t]]] true])
 
 (example
- (delta-step '{test {:arity 2
-                     :tag :definition
-                     :params [[x ✳] [y ✳]]
-                     :parsed-term [x [y x]]}}
+ (delta-step {'test (latte.kernel.defs/map->Definition
+                     '{:arity 2
+                       :tag :definition
+                       :params [[x ✳] [y ✳]]
+                       :parsed-term [x [y x]]})}
              '[y (test [t t] u)])
  => '[[y [[t t] [u [t t]]]] true])
 
@@ -288,5 +295,4 @@
   (let [t1' (normalize def-env t1)
         t2' (normalize def-env t2)]
     (stx/alpha-eq? t1' t2')))
-
 

@@ -67,11 +67,10 @@
         ;; TODO: maybe disallow redefining if type is changed ?
         ;;       otherwise only warn ?
         (println "[Warning] redefinition as term: " def-name)))
-    (let [[status definition] (as-> {:tag :definition :name def-name :doc doc} $
-                                (d/handle-term-definition $ {} [] params body))]
+    (let [[status definition] (d/handle-term-definition def-name {} [] params body)]
       (when (= status :ko)
         (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
-      (let [quoted-def# (list 'quote `~definition)]
+      (let [quoted-def# definition]
         `(do
            (def ~def-name ~quoted-def#)
            (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
@@ -114,9 +113,8 @@
         ;; TODO: maybe disallow redefining if type is changed ?
         ;;       otherwise only warn ?
         (println "[Warning] redefinition as theorem: " def-name)))
-    (let [definition (as-> {:tag :theorem :name def-name :doc doc} $
-                       (d/handle-thm-declaration $ {} params ty))
-          quoted-def# (list 'quote `~definition)]
+    (let [definition (d/handle-thm-declaration def-name {} params ty)
+          quoted-def# definition]
       `(do
          (def ~def-name ~quoted-def#)
          (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
@@ -159,9 +157,8 @@
         ;; TODO: maybe disallow redefining if type is changed ?
         ;;       otherwise only warn ?
         (println "[Warning] redefinition as axiom: " def-name)))
-    (let [definition (as-> {:tag :axiom :name def-name :doc doc} $
-                       (d/handle-axiom-declaration $ {} params ty))
-          quoted-def# (list 'quote `~definition)]
+    (let [definition (d/handle-axiom-declaration def-name {} params ty)
+          quoted-def# definition]
       `(do
          (def ~def-name ~quoted-def#)
          (alter-meta! (var ~def-name)  (fn [m#] (assoc m#

@@ -208,7 +208,7 @@
                   (nil? name) [:ok [def-env ctx]]
                   :else
                   (let [[status tdef] (d/handle-term-definition
-                                       {:tag :definition :name name :doc "<have step>"}
+                                       name
                                        def-env
                                        ctx
                                        params
@@ -223,18 +223,14 @@
  (do-have-step {}
           '[[A ✳] [x A]]
           'step [] 'A :by 'x)
- => '[:ok [{step {:tag :definition,
-                  :name step, :doc "<have step>", :params [], :arity 0,
-                  :type A, :parsed-term x}}
+ => '[:ok [{step #latte.kernel.defs.Definition{:name step, :params [], :arity 0, :parsed-term x, :type A}}
            [[A ✳] [x A]]]])
 
 (example
  (let [{name :have-name params :params have-type :have-type method :method have-arg :have-arg}
        (second (parse-have-step '(have step A :by x)))]
    (do-have-step {} '[[A ✳] [x A]] name params have-type method have-arg))
- => '[:ok [{step {:tag :definition,
-                  :name step, :doc "<have step>", :params [], :arity 0,
-                  :type A, :parsed-term x}}
+ => '[:ok [{step #latte.kernel.defs.Definition{:name step, :params [], :arity 0, :parsed-term x, :type A}}
            [[A ✳] [x A]]]])
 
 (defn do-qed-step [start-def-env end-def-env start-ctx end-ctx term]
@@ -263,10 +259,12 @@
   (println "[showdef]" arg)
   (let [[status sdef] (defenv/fetch-definition def-env arg)]
     (if (= status :ok)
-      (do
-        (println "-----------------------------------------")
-        (clojure.pprint/pprint sdef)
-        (println "-----------------------------------------"))
+      (if (d/latte-definition? sdef)
+        (do
+          (println "-----------------------------------------")
+          (clojure.pprint/pprint sdef)
+          (println "-----------------------------------------"))
+        (println "  ==> not a LaTTe definition"))
       (println "  ==> no such definition"))))
 
 (defn do-showterm-step [def-env ctx arg]
