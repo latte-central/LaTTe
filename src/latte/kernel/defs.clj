@@ -3,17 +3,14 @@
 
   (:require [latte.kernel.utils :as u])
   (:require [latte.kernel.presyntax :as stx])
+  (:require [latte.kernel.defenv :refer [->Definition ->Theorem ->Axiom]])
   (:require [latte.kernel.typing :as ty])
+
   )
 
 ;;{
 ;; ## Term definitions
 ;;}
-
-(defrecord Definition [name params arity parsed-term type])
-
-(defn definition? [v]
-  (instance? Definition v))
 
 (defn handle-term-definition [def-name def-env ctx params body]
   (let [[status params] (reduce (fn [[sts params] [x ty]]
@@ -35,11 +32,6 @@
 ;; ## Theorem definitions
 ;;}
 
-(defrecord Theorem [name params arity type proof])
-
-(defn theorem? [v]
-  (instance? Theorem v))
-
 (defn handle-thm-declaration [thm-name def-env params ty]
   (let [params (mapv (fn [[x ty]] [x (stx/parse def-env ty)]) params)
         ty (stx/parse def-env ty)]
@@ -49,13 +41,8 @@
     (->Theorem thm-name params (count params) ty false)))
 
 ;;{
-;; ## Theorem definitions
+;; ## Axiom definitions
 ;;}
-
-(defrecord Axiom [name params arity type])
-
-(defn axiom? [v]
-  (instance? Axiom v))
 
 (defn handle-axiom-declaration [ax-name def-env params ty]
   (let [params (mapv (fn [[x ty]] [x (stx/parse def-env ty)]) params)
@@ -65,7 +52,3 @@
       (throw (ex-info "Axiom is not a proper type" {:theorem ax-name :type ty})))
     (->Axiom ax-name params (count params) ty)))
 
-(defn latte-definition? [v]
-  (or (definition? v)
-      (theorem? v)
-      (axiom? v)))

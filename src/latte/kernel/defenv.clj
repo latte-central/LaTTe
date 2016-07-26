@@ -4,6 +4,30 @@
   )
 
 ;;{
+;; ## Definitional entities
+;;}
+
+(defrecord Definition [name params arity parsed-term type])
+
+(defn definition? [v]
+  (instance? Definition v))
+
+(defrecord Theorem [name params arity type proof])
+
+(defn theorem? [v]
+  (instance? Theorem v))
+
+(defrecord Axiom [name params arity type])
+
+(defn axiom? [v]
+  (instance? Axiom v))
+
+(defn latte-definition? [v]
+  (or (definition? v)
+      (theorem? v)
+      (axiom? v)))
+
+;;{
 ;; ## Definitional environment
 ;;}
 
@@ -34,3 +58,4 @@
       (if-let [_ (get locals sym)]
         sym
         (resolve sym)))))
+

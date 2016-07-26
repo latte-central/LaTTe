@@ -223,14 +223,13 @@
  (do-have-step {}
           '[[A ✳] [x A]]
           'step [] 'A :by 'x)
- => '[:ok [{step #latte.kernel.defs.Definition{:name step, :params [], :arity 0, :parsed-term x, :type A}}
-           [[A ✳] [x A]]]])
+ => '[:ok [{step #latte.kernel.defenv.Definition{:name step, :params [], :arity 0, :parsed-term x, :type A}} [[A ✳] [x A]]]])
 
 (example
  (let [{name :have-name params :params have-type :have-type method :method have-arg :have-arg}
        (second (parse-have-step '(have step A :by x)))]
    (do-have-step {} '[[A ✳] [x A]] name params have-type method have-arg))
- => '[:ok [{step #latte.kernel.defs.Definition{:name step, :params [], :arity 0, :parsed-term x, :type A}}
+ => '[:ok [{step #latte.kernel.defenv.Definition{:name step, :params [], :arity 0, :parsed-term x, :type A}}
            [[A ✳] [x A]]]])
 
 (defn do-qed-step [start-def-env end-def-env start-ctx end-ctx term]

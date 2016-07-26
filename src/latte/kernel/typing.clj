@@ -264,7 +264,7 @@
   (let [[status ddef] (defenv/fetch-definition def-env name)]
     (cond
       (= status :ko) [:ko ddef]
-      (nil? (get ddef :arity))
+      (not (defenv/latte-definition? ddef))
       (throw (ex-info "Not a LaTTe definition (please report)." {:def ddef}))
       (> (count args) (:arity ddef))
       [:ko {:msg "Too many arguments for definition." :term (list* name args) :arity ddef}]
@@ -291,17 +291,19 @@
                 [:ok (stx/subst res sub)]))))))))
 
 (example
- (type-of-term '{test {:params [[x ✳] [y ✳]]
-                  :type ✳
-                  :arity 2}}
+ (type-of-term {'test (defenv/map->Definition
+                        '{:params [[x ✳] [y ✳]]
+                          :type ✳
+                          :arity 2})}
           '[[a ✳] [b ✳]]
           '(test a b))
  => '[:ok ✳])
 
 (example
- (type-of-term '{test {:params [[x ✳] [y ✳]]
-                  :type ✳
-                  :arity 2}}
+ (type-of-term {'test (defenv/map->Definition
+                        '{:params [[x ✳] [y ✳]]
+                          :type ✳
+                          :arity 2})}
           '[[bool ✳] [a ✳] [b bool]]
           '(test a b))
  => '[:ko {:msg "Wrong argument type", :term (test b), :arg b, :expected-type ✳}])

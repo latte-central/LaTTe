@@ -98,7 +98,7 @@
           (cond
             (= status :ko)
             [:ko sdef]
-            (nil? (get sdef :arity))
+            (not (defenv/latte-definition? sdef))
             (throw (ex-info "Not a LaTTe definition (please report)"
                             {:def sdef}))
             (and (= (:arity sdef) 0)
@@ -286,12 +286,12 @@
           [:ok (list* (defenv/qualify-def def-env def-name) ts)])))))
 
 (example
- (parse-term {'ex {:arity 2}}
+ (parse-term {'ex (defenv/map->Definition {:arity 2})}
              '(ex x :kind) #{'x})
  => '[:ok (ex x □)])
 
 (example
- (parse-term {'ex {:arity 3}}
+ (parse-term {'ex (defenv/map->Definition {:arity 3})}
              '(ex x y z) '#{x y z})
  => '[:ok (ex x y z)])
 

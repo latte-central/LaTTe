@@ -8,7 +8,6 @@
                                           lambda forall assume proof try-proof]])
   )
 
-
 (defthm impl-refl
   "Implication is reflexive."
   [[A :type]]

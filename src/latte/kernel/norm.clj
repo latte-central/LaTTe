@@ -3,8 +3,7 @@
 
   (:require [clj-by.example :refer [example do-for-example]])
   (:require [latte.kernel.syntax :as stx])
-  (:require [latte.kernel.defs :refer [definition? theorem? axiom?]])
-  (:require [latte.kernel.defenv :as defenv])
+  (:require [latte.kernel.defenv :as defenv :refer [definition? theorem? axiom?]])
   )
 
 ;; (s/exercise ::sx/binder)
@@ -158,7 +157,7 @@
             :else (throw (ex-info "Not a Latte definition (please report)." {:term t :def sdef}))))))))
 
 (example
- (delta-reduction {'test (latte.kernel.defs/map->Definition
+ (delta-reduction {'test (defenv/map->Definition
                           '{:name test
                             :arity 3
                             :params [[x ✳] [y □] [z ✳]]
@@ -167,7 +166,7 @@
  => '[[c (λ [t' ✳] [[a b] [[t (λ [t] t)] t']])] true])
 
 (example
- (delta-reduction {'test (latte.kernel.defs/map->Theorem
+ (delta-reduction {'test (defenv/map->Theorem
                           '{:name test
                             :arity 3
                             :params [[x ✳] [y □] [z ✳]]
@@ -176,7 +175,7 @@
  => '[[c (λ [t' ✳] [[a b] [[t (λ [t] t)] t']])] true])
 
 (example
- (delta-reduction {'test (latte.kernel.defs/map->Axiom
+ (delta-reduction {'test (defenv/map->Axiom
                           '{:arity 3
                             :tag :axiom
                             :params [[x ✳] [y □] [z ✳]]})}
@@ -184,7 +183,7 @@
  => '[(test [a b] c [t (λ [t] t)]) false])
 
 (example
- (delta-reduction {'test (latte.kernel.defs/map->Definition
+ (delta-reduction {'test (defenv/map->Definition
                           '{:arity 3
                             :tag :definition
                             :params [[x ✳] [y □] [z ✳]]
@@ -231,7 +230,7 @@
  (delta-step {} 'x) => '[x false])
 
 (example
- (delta-step {'test (latte.kernel.defs/map->Definition
+ (delta-step {'test (defenv/map->Definition
                      '{:arity 1
                        :tag :definition
                        :params [[x ✳]]
@@ -240,7 +239,7 @@
  => '[[y [[t t] [t t]]] true])
 
 (example
- (delta-step {'test (latte.kernel.defs/map->Definition
+ (delta-step {'test (defenv/map->Definition
                      '{:arity 2
                        :tag :definition
                        :params [[x ✳] [y ✳]]

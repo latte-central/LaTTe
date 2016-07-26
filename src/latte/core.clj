@@ -274,11 +274,12 @@
       (if (= status :ko)
         (throw (ex-info (str "Proof failed: " (:msg proof-term)) {:theorem thm-name
                                                                   :error (dissoc proof-term :msg)}))
-        (let [new-thm# (list 'quote (assoc thm :proof `~proof-term))]
+        (let [new-thm (assoc thm :proof proof-term)]
           ;;(println "HERE" "HERE" "HERE")
           ;;(println new-thm#)
+          (alter-var-root (resolve thm-name) (fn [_] new-thm))
           `(do
-             (alter-var-root (var ~thm-name) (fn [_#] ~new-thm#))
+             ;;(alter-var-root (var ~thm-name) (fn [_#] ~new-thm#))
              [:qed (quote ~thm-name)]))))))
 
 ;;{

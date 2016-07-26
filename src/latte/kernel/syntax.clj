@@ -121,13 +121,25 @@
 ;; ## Substitution
 ;;}
 
-(defn mk-fresh [base forbid]
-  (if (contains? forbid base)
-    (recur (symbol (str (name base) "'")) forbid)
-    base))
+(defn mk-fresh
+  ([base forbid] (mk-fresh base 0 forbid))
+  ([base level forbid]
+   (let [suffix (case level
+                  0 ""
+                  1 "'"
+                  2 "''"
+                  3 "'''"
+                  (str "-" level))
+         candidate (symbol (str base suffix))]
+     (if (contains? forbid candidate)
+       (recur base (inc level) forbid)
+       candidate))))
 
 (example
  (mk-fresh 'x '#{x x' x''}) => 'x''')
+
+(example
+ (mk-fresh 'x '#{x x' x'' x'''}) => 'x-4)
 
 (defn subst- [t sub forbid]
   (cond

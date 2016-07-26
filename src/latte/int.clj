@@ -104,10 +104,15 @@
   [[y int]]
   (equal int (pred (succ y)) y))
 
-;; Proof is too big !?!  
-;; (proof pred-of-succ :script
-;;   (have a (equal int (succ (pred (succ y))) (succ y))
-;;         :by (succ-of-pred (succ y)))
-;;   (have b (equal int (pred (succ y)) y)
-;;         :by (succ-injective (pred (succ y)) y a)))
-;;   (qed b))
+;; this term is very big !
+;;(latte/type-of
+;; [y int]
+;; (succ-injective (pred (succ y)) y (succ-of-pred (succ y))))
+
+;; Hence, the following proof is very big (for a macro) !?!  
+(proof pred-of-succ :script
+  (have a (equal int (succ (pred (succ y))) (succ y))
+        :by (succ-of-pred (succ y)))
+  (have b (equal int (pred (succ y)) y)
+        :by (succ-injective (pred (succ y)) y a))
+  (qed b))
