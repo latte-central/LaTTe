@@ -106,20 +106,12 @@
   [[y int]]
   (equal int (pred (succ y)) y))
 
-;; this term is very big !
-;;(latte/type-of
-;; [y int]
-;; (succ-injective (pred (succ y)) y (succ-of-pred (succ y))))
-
-;; Hence, the following proof is very big !?!
-;; unless we need it, the proof is not enabled
-
-;; (proof pred-of-succ :script
-;;   (have a (equal int (succ (pred (succ y))) (succ y))
-;;         :by (succ-of-pred (succ y)))
-;;   (have b (equal int (pred (succ y)) y)
-;;         :by (succ-injective (pred (succ y)) y a))
-;;   (qed b))
+(proof pred-of-succ :script
+  (have a (equal int (succ (pred (succ y))) (succ y))
+        :by (succ-of-pred (succ y)))
+  (have b (equal int (pred (succ y)) y)
+        :by (succ-injective (pred (succ y)) y a))
+  (qed b))
 
 (defaxiom int-induct
   "The induction principle for integers
@@ -193,13 +185,23 @@ wrt. [[pred]]."
     (==> (elem int x nat)
          (not (equal int (succ x) zero)))))
 
-;; TODO
-;; (proof nat-zero-is-not-succ :script
-;;   (assume [x int
-;;            H (elem int x nat)]
-;;     (assume [H2 (equal int (succ x) zero)]
-;;       (have a (equal int (pred (succ x)) (pred zero))
-;;             :by ((eq/eq-cong int int pred (succ x) zero) H2)))))
+(proof nat-zero-is-not-succ :script
+  (assume [x int
+           H (elem int x nat)]
+    (assume [H2 (equal int (succ x) zero)]
+      (have a (equal int (pred (succ x)) (pred zero))
+            :by ((eq/eq-cong int int pred (succ x) zero) H2))
+      (have b (equal int x (pred (succ x)))
+            :by ((eq/eq-sym int (pred (succ x)) x)
+                 (pred-of-succ x)))
+      (have c (equal int x (pred zero))
+            :by ((eq/eq-trans int x (pred (succ x)) (pred zero))
+                 b a))
+      (have d (elem int (pred zero) nat)
+            :by ((eq/eq-subst int nat x (pred zero))
+                 c H))
+      (have e p/absurd :by (nat-zero-has-no-pred d))
+      (qed e))))
 
 ;; (defaxiom int-recur
 ;;   "The recursion principle for integers.

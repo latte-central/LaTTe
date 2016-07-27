@@ -150,7 +150,12 @@
                               {:term t :def sdef})))
             (theorem? sdef)
             (if (:proof sdef)
-              [(instantiate-def (:params sdef) (:proof sdef) args) true]
+              ;; unfolding works but yields very big terms
+              ;; having a proof is like a certicate and thus
+              ;; the theorem can now be considered as an abstraction, like
+              ;; an axiom but with a proof...
+              ;; [(instantiate-def (:params sdef) (:proof sdef) args) true]
+              [t false]
               (throw (ex-info "Cannot use theorem with no proof." {:term t :theorem sdef})))
             (axiom? sdef)
             [t false]
@@ -172,7 +177,8 @@
                             :params [[x ✳] [y □] [z ✳]]
                             :proof [y (λ [t ✳] [x [z t]])]})}
                   '(test [a b] c [t (λ [t] t)]))
- => '[[c (λ [t' ✳] [[a b] [[t (λ [t] t)] t']])] true])
+ => '[(test [a b] c [t (λ [t] t)]) false])
+ ;;=> '[[c (λ [t' ✳] [[a b] [[t (λ [t] t)] t']])] true])
 
 (example
  (delta-reduction {'test (defenv/map->Axiom
