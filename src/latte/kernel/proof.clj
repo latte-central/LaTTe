@@ -258,7 +258,7 @@
   (println "[showdef]" arg)
   (let [[status sdef] (defenv/fetch-definition def-env arg)]
     (if (= status :ok)
-      (if (d/latte-definition? sdef)
+      (if (defenv/latte-definition? sdef)
         (do
           (println "-----------------------------------------")
           (clojure.pprint/pprint sdef)

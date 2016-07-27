@@ -1,6 +1,6 @@
 (ns latte.int
   (:require [latte.core :as latte :refer [defaxiom defthm definition
-                                          lambda forall proof]])
+                                          lambda forall proof assume]])
 
   (:require [latte.prop :as p :refer [and or not <=>]])
   
@@ -9,6 +9,8 @@
   (:require [latte.quant :as q :refer [exist]])
 
   (:require [latte.equal :as eq :refer [equal]])
+
+  (:require [latte.subset :as set :refer [elem]])
   )
 
 
@@ -57,7 +59,7 @@
   (succ-surjective y))
 
 (defthm single-succ
-  "An integer `y` is the successor *at most* another integer."
+  "An integer `y` is the successor of *at most* another integer."
   [[y int]]
   (q/single int (lambda [x int] (equal int (succ x) y))))
 
@@ -109,10 +111,105 @@
 ;; [y int]
 ;; (succ-injective (pred (succ y)) y (succ-of-pred (succ y))))
 
-;; Hence, the following proof is very big (for a macro) !?!  
-(proof pred-of-succ :script
-  (have a (equal int (succ (pred (succ y))) (succ y))
-        :by (succ-of-pred (succ y)))
-  (have b (equal int (pred (succ y)) y)
-        :by (succ-injective (pred (succ y)) y a))
-  (qed b))
+;; Hence, the following proof is very big !?!
+;; unless we need it, the proof is not enabled
+
+;; (proof pred-of-succ :script
+;;   (have a (equal int (succ (pred (succ y))) (succ y))
+;;         :by (succ-of-pred (succ y)))
+;;   (have b (equal int (pred (succ y)) y)
+;;         :by (succ-injective (pred (succ y)) y a))
+;;   (qed b))
+
+(defaxiom int-induct
+  "The induction principle for integers
+(as an axiom)."
+  [[P (==> int :type)]]
+  (==> (and (P zero)
+            (forall [x int] (==> (P x)
+                                 (and (P (succ x))
+                                      (P (pred x))))))
+       (forall [x int] (P x))))
+
+(definition nat-succ-prop
+  "A property verified by all successors of natural integers."
+  [[P (==> int :type)]]
+  (forall [y int] (==> (P y) (P (succ y)))))
+
+(definition nat
+  "The subset of natural integers."
+  []
+  (lambda [x int]
+    (forall [P (==> int :type)]
+      (==> (and (P zero)
+                (nat-succ-prop P))
+           (P x)))))
+
+(defthm nat-zero
+  "Zero is a natural integer."
+  []
+  (elem int zero nat))
+
+(proof nat-zero :script
+  (assume [P (==> int :type)
+           H (and (P zero)
+                  (nat-succ-prop P))]
+    (have a (P zero) :by ((p/and-elim-left (P zero)
+                                           (nat-succ-prop P))
+                          H))
+    (qed a)))
+
+(defthm nat-succ
+  "The successor of a natural integer is a natural integer."
+  [[x int]]
+  (==> (elem int x nat)
+       (elem int (succ x) nat)))
+
+(proof nat-succ :script
+  (assume [H (elem int x nat)]
+    (assume [Q (==> int :type)
+             H2 (and (Q zero)
+                     (nat-succ-prop Q))]
+      (have a (==> (and (Q zero)
+                        (nat-succ-prop Q))
+                   (Q x)) :by (H Q))
+      (have b (Q x) :by (a H2))
+      (have c (==> (Q x) (Q (succ x)))
+            :by ((p/and-elim-right (Q zero) (nat-succ-prop Q))
+                 H2 x))
+      (have d (Q (succ x)) :by (c b))
+      (qed d))))
+
+(defaxiom nat-zero-has-no-pred
+  "An important axiom of the natural integer subset
+wrt. [[pred]]."
+  []
+  (not (elem int (pred zero) nat)))
+
+(defthm nat-zero-is-not-succ
+  "Zero is not a successor of a natural integer."
+  []
+  (forall [x int]
+    (==> (elem int x nat)
+         (not (equal int (succ x) zero)))))
+
+;; TODO
+;; (proof nat-zero-is-not-succ :script
+;;   (assume [x int
+;;            H (elem int x nat)]
+;;     (assume [H2 (equal int (succ x) zero)]
+;;       (have a (equal int (pred (succ x)) (pred zero))
+;;             :by ((eq/eq-cong int int pred (succ x) zero) H2)))))
+
+;; (defaxiom int-recur
+;;   "The recursion principle for integers.
+
+;; According to [TT&FP,p. 318], this is derivable,
+;;  but we introduce it as an axiom since the
+;; derivation seems rather complex."
+;;   [[T :type] [x T] [f-succ (==> T T)] [f-pred (==> T T)]]
+;;   (q/unique (==> int T)
+;;             (lambda [g (==> int T)]
+;;               (and (equal T (g 0) x)
+;;                    (forall [y int]
+;;                      (and (==> 
