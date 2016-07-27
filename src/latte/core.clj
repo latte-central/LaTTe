@@ -43,10 +43,10 @@
     [def-name doc params body]))
 
 (defn mk-doc [kind content explanation]
-  (str "\n"
+  (str "\n```\n"
        (with-out-str
          (pp/pprint content))
-       "\n**" kind "**"
+       "```\n**" kind "**"
        "\n\n"
        explanation))
 

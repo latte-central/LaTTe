@@ -1,4 +1,6 @@
 (ns latte.int
+  "A formalization of the type of integers."
+  
   (:require [latte.core :as latte :refer [defaxiom defthm definition
                                           lambda forall proof assume]])
 
