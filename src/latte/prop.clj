@@ -155,10 +155,8 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
            z (==> A B C)]
     (have a (==> B C) :by (z x))
     (have b C :by ((a) y))
-    (have c (==> (==> A B C)
-                   C) :discharge [z b])
-    (have d (and A B) :discharge [C c])
-    (qed d)))
+    (have c (and A B) :discharge [C z b])
+    (qed c)))
 
 (defthm and-elim-left
   "Elimination rule for logical conjunction.

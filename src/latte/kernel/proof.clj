@@ -166,6 +166,15 @@
                 :have-type ty, :method meth, :have-arg arg}]))
     [:ko {:msg "Wrong have step:  3, 4 or 5 arguments needed" :nb-args (dec (count script))}]))
 
+(reverse (butlast [1 2 3 4]))
+
+(defn prepare-discharge [ctx vars term]
+  (if (seq vars)
+    (if-let [ty (ty/env-fetch ctx (first vars))]
+      (recur ctx (rest vars) (list 'lambda [(first vars) ty] term))
+      [:ko {:msg "No such variable in context" :variable (first vars)}])
+    [:ok term]))
+
 (defn do-have-step [def-env ctx name params have-type method have-arg]
   ;;(println "[do-have-step] name=" name "have-arg=" have-arg)
   ;;(println "   ctx=" ctx)
@@ -174,12 +183,13 @@
           (:by :term) (stx/parse-term def-env have-arg)
           (:from :abst :abstr :discharge)
           (if-not (and (vector? have-arg)
-                       (= (count have-arg) 2))
-            [:ko {:msg "Cannot perform have step: argument is not of the form [var term]"
+                       (>= (count have-arg) 2))
+            [:ko {:msg "Cannot perform have step: argument is not of the form [var ... var term]"
                   :have-arg have-arg}]
-            (if-let [ty (ty/env-fetch ctx (first have-arg))]
-              (stx/parse-term def-env (list 'lambda [(first have-arg) ty] (second have-arg)))
-              [:ko {:msg "No such variable in context" :variable (first have-arg)}]))
+            (let [[status term] (prepare-discharge ctx (reverse (butlast have-arg)) (last have-arg))]
+              (if (= status :ko)
+                [:ko term]
+                (stx/parse-term def-env term))))
           ;; else
           [:ko {:msg "No such method for proof script." :have-name name :method method}])]
     ;; check synthetized term
@@ -341,4 +351,3 @@
     (if (seq cont-stack)
       (recur (first cont-stack) start-def-env start-ctx def-env ctx (rest cont-stack))
       [:ko {:msg "Missing `qed` step in proof."}])))
-

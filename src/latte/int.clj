@@ -226,13 +226,8 @@ here a simple consequence of [[succ-injective]]."
            H3 (equal int (succ x) (succ y))]
     (have a (equal int x y)
           :by (succ-injective x y H3))
-    ;; TODO: multiple discharge at once ?
-    ;; Alternative: put unused assumptions in
-    ;; term
-    (have b _ :discharge [H3 a])
-    (have c _ :discharge [H2 b])
-    (have d _ :discharge [H1 c])
-    (qed d)))
+    (have b _ :discharge [H1 H2 H3 a])
+    (qed b)))
 
 (defthm nat-induct
   "The induction principle for natural integers.
@@ -294,23 +289,20 @@ derived from [[int-induct]]."
       (have i (Q (succ y)) :by ((p/and-intro (elem int (succ y) nat)
                                              (P (succ y)))
                                 f h))
-      (have j (==> (Q y) (Q (succ y))) :discharge [v i])
-      (have k (nat-succ-prop Q) :discharge [y j]))
-    (have l (and (Q zero)
+      (have j (nat-succ-prop Q) :discharge [y v i]))
+    (have k (and (Q zero)
                  (nat-succ-prop Q)) :by ((p/and-intro (Q zero)
-                                                      (nat-succ-prop Q)) c k))
+                                                      (nat-succ-prop Q)) c j))
     
     (assume [x int
              w (elem int x nat)]
-      (have m (Q x) :by (w Q l))
-      (have n (P x) :by ((p/and-elim-right (elem int x nat)
-                                           (P x)) m))
-      (have o (==> (elem int x nat)
-                   (P x)) :discharge [w n])
-      (have p (forall [x int]
+      (have l (Q x) :by (w Q k))
+      (have m (P x) :by ((p/and-elim-right (elem int x nat)
+                                           (P x)) l))
+      (have n (forall [x int]
                 (==> (elem int x nat)
-                     (P x))) :discharge [x o])
-      (qed p))))
+                     (P x))) :discharge [x w m])
+      (qed n))))
       
 
 ;; (defaxiom int-recur
