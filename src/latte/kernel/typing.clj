@@ -72,7 +72,7 @@
   (let [[status type'] (type-of-term def-env env term)]
     ;;(println "  ==> " status "type'=" type' "vs. type=" type)
     (if (= status :ok)
-      (norm/beta-delta-eq? def-env type type')
+      (norm/beta-delta-eq? def-env env type type')
       (throw (ex-info "Cannot check type of term" {:term term :from type'})))))
 
 ;;{
@@ -126,14 +126,14 @@
   (let [[status sort1] (type-of-term def-env env A)]
     (if (= status :ko)
       [:ko {:msg "Cannot calculate domain type of product." :term A :from sort1}]
-      (let [sort1' (norm/normalize def-env sort1)]
+      (let [sort1' (norm/normalize def-env env sort1)]
         (if (not (stx/sort? sort1'))
           [:ko {:msg "Not a valid domain type in product (super-type not a sort)" :term A :type sort1}]
           (let [env' (env-put env x A)
                 [status sort2] (type-of-term def-env env' B)]
             (if (= status :ko)
               [:ko {:msg "Cannot calculate codomain type of product." :term B :from sort2}]
-              (let [sort2' (norm/normalize def-env sort2)]
+              (let [sort2' (norm/normalize def-env env sort2)]
                 ;; (println "sort2' = " sort2' " sort? " (stx/sort? sort2'))
                 (if (not (stx/sort? sort2'))
                   [:ko {:msg "Not a valid codomain type in product (not a sort)" :term B :type sort2}]
@@ -173,7 +173,7 @@
           [:ko {:msg "Not a valid codomain type in abstraction (cannot calculate super-type)."
                 :term (list 'λ [x A] t)
                 :codomain B :from sort}]
-          (if (not (stx/sort? (norm/normalize def-env sort)))
+          (if (not (stx/sort? (norm/normalize def-env env sort)))
             [:ko {:msg "Not a valid codomain type in abstraction (super-type not a sort)."
                   :term (list 'λ [x A] t)
                   :codomain B
@@ -234,7 +234,7 @@
     (if (= status :ko)
       [:ko {:msg "Cannot calculate operator (left-hand) type in application."
             :term [rator rand] :from trator}]
-      (let [trator' (norm/normalize def-env trator)]
+      (let [trator' (norm/normalize def-env env trator)]
         (if (not (stx/prod? trator'))
           [:ko {:msg "Not a product type for operator (left-hand) in application." :term [rator rand] :operator-type trator}]
           (let [[_ [x A] B] trator']
@@ -327,5 +327,5 @@
   ([ctx t] (proper-type? {} ctx t))
   ([def-env ctx t]
    (let [ty (type-of def-env ctx t)]
-     (let [sort (norm/beta-delta-normalize def-env ty)]
+     (let [sort (norm/beta-delta-normalize def-env ctx ty)]
        (stx/sort? sort)))))

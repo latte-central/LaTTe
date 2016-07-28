@@ -212,11 +212,15 @@ since they are arbitrary functions. The risk is limited, though, since they cann
   "A special operator such that an occurrence of the
 term `(%type-of term)` is replaced by the *type* of `term`."
   [def-env ctx term]
-  (println "[type-of] term=" term)
   (let [[status ty] (ty/type-of-term def-env ctx term)]
     (if (= status :ko)
-      (throw (ex-info "Cannot synthetize type of term" {:term term :from ty}))
+      (throw (ex-info "Cannot synthetize type of term" {:special 'latte.core/%type-of :term term :from ty}))
       ty)))
+
+;; (example
+;;  ((:special-fn %type-of) {} '[[x ✳]] 'x)
+;;  => ✳)
+ 
 
 ;;{
 ;; ## Top-level term parsing
@@ -243,13 +247,11 @@ term `(%type-of term)` is replaced by the *type* of `term`."
     (let [def-env {}
           t (stx/parse def-env (last args))
           ctx (parse-context-args def-env (butlast args))]
-      ;;(println "[term] t = " t " ctx = " ctx)
-      (if (latte.kernel.norm/beta-eq? t :kind)
+      ;; (println "[term] t = " t " ctx = " ctx)
+      (if (latte.kernel.norm/beta-delta-eq? def-env ctx t :kind)
         '□
         (let [ty (ty/type-of def-env ctx t)]
           (list 'quote t)))))
-
-(term [T :type] [x T] (%type-of x))
 
 ;;{
 ;; ## Top-level type checking
@@ -269,7 +271,7 @@ term `(%type-of term)` is replaced by the *type* of `term`."
         ctx (parse-context-args def-env (butlast (butlast args)))]
     ;;(println "[check-type?] ctx=" ctx)
     (let [tty (ty/type-of def-env ctx t)]
-      (n/beta-delta-eq? def-env ty tty))))
+      (n/beta-delta-eq? def-env ctx ty tty))))
 
 ;;{
 ;; ## Top-level term equivalence
@@ -279,7 +281,7 @@ term `(%type-of term)` is replaced by the *type* of `term`."
   (let [def-env {}
         t1 (stx/parse def-env t1)
         t2 (stx/parse def-env t2)]
-    (n/beta-delta-eq? def-env t1 t2)))
+    (n/beta-delta-eq? def-env [] t1 t2)))
 
 (def term= ===)
 
