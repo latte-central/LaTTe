@@ -281,7 +281,7 @@
 
 ;; XXX : this is a critical function... need to be checked
 (defn beta-delta-normalize [def-env ctx t]
-  ;; (println "[beta-delta-normalize]:")
+  ;; (println "[beta-delta-normalize]: t=" t)
   (let [t' (delta-normalize def-env ctx t)
         [t'' red?] (beta-step t')]
     (if red?

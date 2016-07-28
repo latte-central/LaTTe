@@ -260,7 +260,7 @@
 ;;}
 
 (defn type-of-ref [def-env env name args]
-  ;;(println "[type-of-ref] def-env=" def-env "env=" env "name=" name "args=" args)
+  ;;(println "[type-of-ref] name=" name "args=" args)
   (let [[status ddef] (defenv/fetch-definition def-env name)]
     (cond
       (= status :ko) [:ko ddef]
@@ -272,6 +272,7 @@
       (if (< (count args) (:arity ddef))
         [:ko {:msg "Not enough argument for special definition." :term (list* name args) :arity (:arity ddef)}]
         (let [term (apply (:special-fn ddef) def-env env args)]
+          ;; (println "[type-of-ref] special term =" term)
           (type-of-term def-env env term)))
       :else
       (loop [args args, params (:params ddef), sub {}]

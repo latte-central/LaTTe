@@ -4,7 +4,10 @@
 
   (:refer-clojure :exclude [and or not])
 
-  (:require [latte.core :as latte :refer [definition term type-of defthm
+  (:require [latte.kernel.syntax :as stx])
+  (:require [latte.kernel.typing :as ty])
+
+  (:require [latte.core :as latte :refer [definition term type-of defthm defspecial
                                           lambda forall assume proof try-proof]])
   )
 
@@ -173,6 +176,52 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
     (have c A :by (a b))
     (qed c)))
 
+(defn decompose-and-type [def-env ctx t]
+  
+  (if (clojure.core/and (seq? t) 
+                        (= (count t) 3)
+                        (= (first t) #'latte.prop/and))
+    [:ok (second t) (nth t 2)]
+    (let [[t ok?] (latte.kernel.norm/delta-step def-env ctx t)]
+      (if ok?
+        (recur def-env ctx t)
+        (let [t (latte.kernel.norm/normalize def-env ctx t)]
+          (if-not (stx/prod? t)
+            [:ko nil nil]
+            (let [[_ [z _] body] t]
+              (if-not (stx/prod? body)
+                [:ko nil nil]
+                (let [[_ [_ hyp] concl] body]
+                  (if-not (stx/prod? hyp)
+                    [:ko nil nil]
+                    (let [[_ [_ a] nxt] hyp]
+                      (if-not (stx/prod? nxt)
+                        [:ko nil nil]
+                        (let [[_ [_ b] end] nxt]
+                          (if-not (= z concl end)
+                            [:ko nil nil]
+                            [:ok a b]))))))))))))))
+
+(defspecial %and-elim-left
+  "A special elimination rule that takes a proof
+of type `(and A B)` and yields a proof of `A`.
+
+This is a special version of [[and-elim-left]]."
+  [def-env ctx and-term]
+  (let [[status ty] (ty/type-of-term def-env ctx and-term)]
+    (if (= status :ko)
+      (throw (ex-info "Cannot type term." {:special 'latte.prop/%and-elim-left
+                                           :term and-term
+                                           :from ty}))
+      (do
+        ;; (println "[%and-elim-left] ty=" ty)
+        (let [[status A B] (decompose-and-type def-env ctx ty)]
+          (if (= status :ko)
+            (throw (ex-info "Not an `and`-type." {:special 'latte.prop/%and-elim-left
+                                                  :term and-term
+                                                  :type ty}))
+            [(list #'and-elim-left A B) and-term]))))))
+
 (defthm and-elim-right
   "Elimination rule for logical conjunction.
    This one only keeps the right-side of the conjunction"
@@ -188,6 +237,26 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
     (have c B :by (a b))
     (qed c)))
 
+(defspecial %and-elim-right
+  "A special elimination rule that takes a proof
+of type `(and A B)` and yields a proof of `B`.
+
+This is a special version of [[and-elim-right]]."
+  [def-env ctx and-term]
+  (let [[status ty] (ty/type-of-term def-env ctx and-term)]
+    (if (= status :ko)
+      (throw (ex-info "Cannot type term." {:special 'latte.prop/%and-elim-right
+                                           :term and-term
+                                           :from ty}))
+      (do
+        (let [[status A B] (decompose-and-type def-env ctx ty)]
+          ;; (println "[%and-elim-right] A=" A "B=" B)
+          (if (= status :ko)
+            (throw (ex-info "Not an `and`-type." {:special 'latte.prop/%and-elim-right
+                                                  :term and-term
+                                                  :type ty}))
+            [(list #'and-elim-right A B) and-term]))))))
+
 (defthm and-sym
   "Symmetry of conjunction."
   [[A :type] [B :type]]
@@ -196,10 +265,12 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
 
 (proof and-sym :script
   (assume [H (and A B)]
-    (have a A :by ((and-elim-left A B) H))
-    (have b B :by ((and-elim-right A B) H))
+    ;; (have a A :by ((and-elim-left A B) H))
+    (have a A :by (%and-elim-left H))
+    ;;(have b B :by ((and-elim-right A B) H))
+    (have b B :by (%and-elim-right H))
     (have c (==> B A
-                   (and B A)) :by (and-intro B A))
+                 (and B A)) :by (and-intro B A))
     (have d (and B A) :by (c b a))
     (qed d)))
 
@@ -372,7 +443,7 @@ characteristic of or-elimination."
     :script
   (assume [H (<=> A B)]
     (have a (==> (<=> A B)
-                   (==> A B)) :by (and-elim-left (==> A B) (==> B A)))
+                 (==> A B)) :by (and-elim-left (==> A B) (==> B A)))
     (have b (==> A B) :by (a H))
     (qed b)))
 

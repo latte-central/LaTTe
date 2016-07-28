@@ -248,7 +248,7 @@
       [:ko {:msg "Cannot do QED step: parse error." :error term}]
       (let [delta-env (select-keys end-def-env (set/difference (set (keys end-def-env))
                                                                 (set (keys start-def-env))))
-            term (n/delta-normalize delta-env start-ctx term)
+            term (n/delta-normalize delta-env end-ctx term)
             fv (free-vars term)
             count-start-ctx (count start-ctx)]
         (loop [delta-ctx end-ctx, count-delta-ctx (count end-ctx), term term]
