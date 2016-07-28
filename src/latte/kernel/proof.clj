@@ -224,6 +224,8 @@
                                        ctx
                                        params
                                        term)]
+                    ;;(println "[have-step] term=" term)
+                    ;;(println "            def=" (:parsed-term tdef))
                     (if (= status :ko)
                       [:ko {:msg "Cannot perform have step: wrong local definition."
                             :have-name name
@@ -249,10 +251,13 @@
       [:ko {:msg "Cannot do QED step: parse error." :error term}]
       (let [delta-env (select-keys end-def-env (set/difference (set (keys end-def-env))
                                                                 (set (keys start-def-env))))
-            term (n/delta-normalize delta-env term)
-            fv (free-vars term)
+            term' (n/delta-normalize-local delta-env term)
+            fv (free-vars term')
             count-start-ctx (count start-ctx)]
-        (loop [delta-ctx end-ctx, count-delta-ctx (count end-ctx), term term]
+        ;;(println "[do-qed-step] delta-env=" (keys delta-env))
+        ;;(println "    term = " term)
+        ;;(println "    term' = " term')
+        (loop [delta-ctx end-ctx, count-delta-ctx (count end-ctx), term term']
           (if (> count-delta-ctx count-start-ctx)
             (let [[x ty] (first delta-ctx)]
               (if (contains? fv x)
