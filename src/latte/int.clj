@@ -148,9 +148,7 @@
   (assume [P (==> int :type)
            H (and (P zero)
                   (nat-succ-prop P))]
-    (have a (P zero) :by ((p/and-elim-left (P zero)
-                                           (nat-succ-prop P))
-                          H))
+    (have a (P zero) :by (p/%and-elim-left H))
     (qed a)))
 
 (defthm nat-succ
@@ -169,8 +167,7 @@
                    (Q x)) :by (H Q))
       (have b (Q x) :by (a H2))
       (have c (==> (Q x) (Q (succ x)))
-            :by ((p/and-elim-right (Q zero) (nat-succ-prop Q))
-                 H2 x))
+            :by ((p/%and-elim-right H2) x))
       (have d (Q (succ x)) :by (c b))
       (qed d))))
 
@@ -252,35 +249,21 @@ derived from [[int-induct]]."
                     (==> (elem int x nat)
                          (P x)
                          (P (succ x)))))]
-    (have a (P zero) :by ((p/and-elim-left
-                           (P zero)
-                           (forall [x int]
-                             (==> (elem int x nat)
-                                  (P x)
-                                  (P (succ x)))))
-                          u))
+    (have a (P zero) :by (p/%and-elim-left u))
     (have b (forall [x int]
               (==> (elem int x nat)
                    (P x)
                    (P (succ x))))
-          :by ((p/and-elim-right
-                (P zero)
-                (forall [x int]
-                  (==> (elem int x nat)
-                       (P x)
-                       (P (succ x)))))
-               u))
+          :by (p/%and-elim-right u))
     (have c (Q zero) :by ((p/and-intro (elem int zero nat)
                                        (P zero))
                           nat-zero a))
     (assume [y int
              v (Q y)]
       (have d (elem int y nat)
-            :by ((p/and-elim-left (elem int y nat)
-                                  (P y)) v))
+            :by (p/%and-elim-left v))
       (have e (P y)
-            :by ((p/and-elim-right (elem int y nat)
-                                   (P y)) v))
+            :by (p/%and-elim-right v))
       (have f (elem int (succ y) nat)
             :by ((nat-succ y) d))
       (have g (==> (P y) (P (succ y)))
