@@ -3,7 +3,7 @@
 
   (:require [clj-by.example :refer [example do-for-example]])
   (:require [latte.kernel.syntax :as stx])
-  (:require [latte.kernel.defenv :as defenv :refer [definition? theorem? axiom?]])
+  (:require [latte.kernel.defenv :as defenv :refer [definition? theorem? axiom? special?]])
   )
 
 ;; (s/exercise ::sx/binder)
@@ -130,7 +130,7 @@
                   '())
  => '(λ [x ✳] (λ [y ✳] (λ [z ✳] [[x y] z]))))
 
-(defn delta-reduction [def-env ctx t]
+(defn delta-reduction [def-env t]
   ;; (println "[delta-reduction] t=" t)
   (if (not (stx/ref? t))
     (throw (ex-info "Cannot delta-reduce: not a reference term." {:term t}))
@@ -158,11 +158,13 @@
               [t false]
               (throw (ex-info "Cannot use theorem with no proof." {:term t :theorem sdef})))
             (axiom? sdef) [t false]
-            (defenv/special? sdef)
-            (if (< (count args) (:arity sdef))
-              (throw (ex-info "Not enough argument for special definition." { :term t :arity (:arity sdef)}))
-              (let [term (apply (:special-fn sdef) def-env ctx args)]
-                [term true]))
+            (special? sdef)
+            (throw (ex-info "Specials must not exist at delta-reduction time (please report)" {:term t :special sdef}))
+            ;; XXX: before that, specials were handled by delta-reduction
+            ;; (if (< (count args) (:arity sdef))
+            ;;   (throw (ex-info "Not enough argument for special definition." { :term t :arity (:arity sdef)}))
+            ;;   (let [term (apply (:special-fn sdef) def-env ctx args)]
+            ;;     [term true]))
             :else (throw (ex-info "Not a Latte definition (please report)." {:term t :def sdef}))))))))
 
 (example
@@ -171,7 +173,6 @@
                             :arity 3
                             :params [[x ✳] [y □] [z ✳]]
                             :parsed-term [y (λ [t ✳] [x [z t]])]})}
-                  []
                   '(test [a b] c [t (λ [t] t)]))
  => '[[c (λ [t' ✳] [[a b] [[t (λ [t] t)] t']])] true])
 
@@ -181,7 +182,6 @@
                             :arity 3
                             :params [[x ✳] [y □] [z ✳]]
                             :proof [y (λ [t ✳] [x [z t]])]})}
-                  []
                   '(test [a b] c [t (λ [t] t)]))
  => '[(test [a b] c [t (λ [t] t)]) false])
  ;;=> '[[c (λ [t' ✳] [[a b] [[t (λ [t] t)] t']])] true])
@@ -191,7 +191,6 @@
                           '{:arity 3
                             :tag :axiom
                             :params [[x ✳] [y □] [z ✳]]})}
-                  []
                    '(test [a b] c [t (λ [t] t)]))
  => '[(test [a b] c [t (λ [t] t)]) false])
 
@@ -201,47 +200,46 @@
                             :tag :definition
                             :params [[x ✳] [y □] [z ✳]]
                             :parsed-term [y (λ [t ✳] [x [z t]])]})}
-                  []
                   '(test [a b] c))
  => '[(λ [z ✳] [c (λ [t ✳] [[a b] [z t]])]) true])
 
-(defn delta-step [def-env ctx t]
+(defn delta-step [def-env t]
   ;; (println "[delta-step] t=" t)
   (cond
     ;; binder
     (stx/binder? t)
     (let [[binder [x ty] body] t]
       ;; 1) try reduction in binding type
-      (let [[ty' red?] (delta-step def-env ctx ty)]
+      (let [[ty' red?] (delta-step def-env ty)]
         (if red?
           [(list binder [x ty'] body) true]
           ;; 2) try reduction in body
-          (let [[body' red?] (delta-step def-env ctx body)]
+          (let [[body' red?] (delta-step def-env body)]
             [(list binder [x ty] body') red?]))))
     ;; application
     (stx/app? t)
     (let [[left right] t
           ;; 1) try left reduction
-          [left' red?] (delta-step def-env ctx left)]
+          [left' red?] (delta-step def-env left)]
       (if red?
         [[left' right] true]
         ;; 2) try right reduction
-        (let [[right' red?] (delta-step def-env ctx right)]
+        (let [[right' red?] (delta-step def-env right)]
           [[left right'] red?])))
     ;; reference
     (stx/ref? t)
     (let [[def-name & args] t
           [args' red?] (reduce (fn [[res red?] arg]
-                                 (let [[arg' red?'] (delta-step def-env ctx arg)]
+                                 (let [[arg' red?'] (delta-step def-env arg)]
                                    [(conj res arg') (or red? red?')])) [[] false] args)]
       (if red?
         [(list* def-name args') red?]
-        (delta-reduction def-env ctx t)))
+        (delta-reduction def-env t)))
     ;; other cases
     :else [t false]))
 
 (example
- (delta-step {} [] 'x) => '[x false])
+ (delta-step {} 'x) => '[x false])
 
 (example
  (delta-step {'test (defenv/map->Definition
@@ -249,7 +247,6 @@
                        :tag :definition
                        :params [[x ✳]]
                        :parsed-term [x x]})}
-             []
              '[y (test [t t])])
  => '[[y [[t t] [t t]]] true])
 
@@ -259,9 +256,69 @@
                        :tag :definition
                        :params [[x ✳] [y ✳]]
                        :parsed-term [x [y x]]})}
-             []
              '[y (test [t t] u)])
  => '[[y [[t t] [u [t t]]]] true])
+
+;;{
+;; ## Reduction of specials
+;;}
+
+(defn special-reduction [def-env ctx t]
+  (if (not (stx/ref? t))
+    (throw (ex-info "Cannot special-reduce: not a reference term." {:term t}))
+    (let [[name & args] t
+          [status sdef] (defenv/fetch-definition def-env name)]
+      (if (= status :ko)
+        [t false] ;; No error?  or (throw (ex-info "No such definition" {:term t :def-name name}))
+        (if (> (count args) (:arity sdef))
+          (throw (ex-info "Too many arguments to instantiate special." {:term t :def-name name :nb-params (count (:arity sdef)) :nb-args (count args)}))
+          (if (special? sdef)
+            (if (< (count args) (:arity sdef))
+              (throw (ex-info "Not enough argument for special definition." { :term t :arity (:arity sdef)}))
+              (let [term (apply (:special-fn sdef) def-env ctx args)]
+                [term true]))
+            [t false]))))))
+
+(defn special-step [def-env ctx t]
+  ;; (println "[delta-step] t=" t)
+  (cond
+    ;; binder
+    (stx/binder? t)
+    (let [[binder [x ty] body] t]
+      ;; 1) try reduction in binding type
+      (let [[ty' red?] (special-step def-env ctx ty)]
+        (if red?
+          [(list binder [x ty'] body) true]
+          ;; 2) try reduction in body
+          (let [[body' red?] (special-step def-env ctx body)]
+            [(list binder [x ty] body') red?]))))
+    ;; application
+    (stx/app? t)
+    (let [[left right] t
+          ;; 1) try left reduction
+          [left' red?] (special-step def-env ctx left)]
+      (if red?
+        [[left' right] true]
+        ;; 2) try right reduction
+        (let [[right' red?] (special-step def-env ctx right)]
+          [[left right'] red?])))
+    ;; reference
+    (stx/ref? t)
+    (let [[def-name & args] t
+          [args' red?] (reduce (fn [[res red?] arg]
+                                 (let [[arg' red?'] (special-step def-env ctx arg)]
+                                   [(conj res arg') (or red? red?')])) [[] false] args)]
+      (if red?
+        [(list* def-name args') red?]
+        (special-reduction def-env ctx t)))
+    ;; other cases
+    :else [t false]))
+
+(defn special-normalize [def-env ctx t]
+  (let [[t' red?] (special-step def-env ctx t)]
+    (if red?
+      (recur def-env ctx t')
+      t')))
 
 ;;{
 ;; ## Normalization (up-to beta/delta)
@@ -273,41 +330,55 @@
       (recur t')
       t')))
 
-(defn delta-normalize [def-env ctx t]
-  (let [[t' red?] (delta-step def-env ctx t)]
+(defn delta-normalize [def-env t]
+  (let [[t' red?] (delta-step def-env t)]
     (if red?
-      (recur def-env ctx t')
+      (recur def-env t')
       t')))
 
 ;; XXX : this is a critical function... need to be checked
-(defn beta-delta-normalize [def-env ctx t]
+(defn beta-delta-normalize [def-env t]
   ;; (println "[beta-delta-normalize]: t=" t)
-  (let [t' (delta-normalize def-env ctx t)
+  (let [t' (delta-normalize def-env t)
         [t'' red?] (beta-step t')]
     (if red?
-      (recur def-env ctx t'')
+      (recur def-env t'')
       t'')))
 
+;; XXX : this is a critical function... need to be checked
+(defn beta-delta-special-normalize [def-env ctx t]
+  ;; (println "[beta-delta-special-normalize]: t=" t)
+  (let [[t' spec-red?] (special-step def-env ctx t)
+        [t'' delta-red?] (delta-step def-env t')
+        [t''' beta-red?] (beta-step t'')]
+    (if (or spec-red? delta-red? beta-red?)
+      (recur def-env ctx t''')
+      t''')))
+
 (defn normalize
-  ([t] (beta-delta-normalize {} [] t))
-  ([def-env t] (beta-delta-normalize def-env [] t))
-  ([def-env ctx t] (beta-delta-normalize def-env ctx t)))
+  ([t] (beta-delta-normalize {} t))
+  ([def-env t] (beta-delta-normalize def-env t))
+  ([def-env ctx t] (beta-delta-special-normalize def-env ctx t)))
 
 (example
  (normalize '(λ [y [(λ [x □] x) ✳]] [(λ [x ✳] x) y]))
  => '(λ [y ✳] y))
 
 
-(defn beta-eq? [t1 t2]
-  (let [t1' (normalize t1)
-        t2' (normalize t2)]
-    (stx/alpha-eq? t1' t2')))
-
+(defn beta-eq?
+  ([t1 t2]
+   (let [t1' (normalize t1)
+         t2' (normalize t2)]
+     (stx/alpha-eq? t1' t2')))
+  ([def-env t1 t2]
+   (let [t1' (normalize def-env t1)
+         t2' (normalize def-env t2)]
+     (stx/alpha-eq? t1' t2')))
+  ([def-env ctx t1 t2]
+   (let [t1' (normalize def-env ctx t1)
+         t2' (normalize def-env ctx t2)]
+     (stx/alpha-eq? t1' t2'))))
+   
 (example
  (beta-eq? '(λ [z ✳] z)
            '(λ [y [(λ [x □] x) ✳]] [(λ [x ✳] x) y])) => true)
-
-(defn beta-delta-eq? [def-env ctx t1 t2]
-  (let [t1' (normalize def-env ctx t1)
-        t2' (normalize def-env ctx t2)]
-    (stx/alpha-eq? t1' t2')))

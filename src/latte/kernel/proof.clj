@@ -36,7 +36,7 @@
         (if (= status :ko)
           [:ko {:msg (str "type error, " (:msg ptype))
                 :error (dissoc ptype :msg)}]
-          (if (not (n/beta-delta-eq? def-env ctx thm-ty ptype))
+          (if (not (n/beta-eq? def-env ctx thm-ty ptype))
             [:ko {:msg "proof checking error (type mismatch)"
                   :expected-type thm-ty
                   :proof-type ptype}]
@@ -195,7 +195,8 @@
     ;; check synthetized term
     (if (= status :ko)
       [:ko {:msg "Cannot perform have step: incorrect term." :have-name name :from term}]
-      (let [[status have-type] (if (and (symbol? have-type)
+      (let [term (n/special-normalize def-env ctx term)
+            [status have-type] (if (and (symbol? have-type)
                                         (= (clojure.core/name have-type) "_"))
                                  [:ok nil]
                                  (stx/parse-term def-env have-type))]
@@ -248,7 +249,7 @@
       [:ko {:msg "Cannot do QED step: parse error." :error term}]
       (let [delta-env (select-keys end-def-env (set/difference (set (keys end-def-env))
                                                                 (set (keys start-def-env))))
-            term (n/delta-normalize delta-env end-ctx term)
+            term (n/delta-normalize delta-env term)
             fv (free-vars term)
             count-start-ctx (count start-ctx)]
         (loop [delta-ctx end-ctx, count-delta-ctx (count end-ctx), term term]
@@ -285,7 +286,7 @@
     ;; (println "[showterm] parsed=" term)
     (if (= status :ko)
       (clojure.pprint/pprint term)
-      (let [term (n/beta-delta-normalize def-env ctx term)]
+      (let [term (n/normalize def-env ctx term)]
         (clojure.pprint/pprint term)
         (let [[status ty] (ty/type-of-term def-env ctx term)] 
           (if (= status :ko)

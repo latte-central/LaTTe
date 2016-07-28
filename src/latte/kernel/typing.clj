@@ -14,21 +14,21 @@
 ;;}
 
 ;;{
-;; ## Type environment
+;; ## Type context
 ;;}
 
-(defn env-fetch [env x]
-  ;; (println "[env-fetch] env=" env "x=" x)
-  (if (seq env)
-    (if (= (first (first env)) x)
-      (second (first env))
-      (recur (rest env) x))
+(defn ctx-fetch [ctx x]
+  ;; (println "[ctx-fetch] ctx=" ctx "x=" x)
+  (if (seq ctx)
+    (if (= (first (first ctx)) x)
+      (second (first ctx))
+      (recur (rest ctx) x))
     nil))
 
-(defn env-put [env x t]
-  (cons [x t] env))
+(defn ctx-put [ctx x t]
+  (cons [x t] ctx))
 
-(defn mk-env [& args]
+(defn mk-ctx [& args]
   args)
 
 
@@ -43,36 +43,36 @@
          type-of-app
          type-of-ref)
 
-(defn type-of-term [def-env env t]
-  ;;(println "[type-of-term] env=" env " t=" t)
+(defn type-of-term [def-env ctx t]
+  ;;(println "[type-of-term] ctx=" ctx " t=" t)
   (cond
     (stx/kind? t) [:ko {:msg "Kind has not type" :term t}]
     (stx/type? t) (type-of-type)
-    (stx/variable? t) (type-of-var def-env env t)
+    (stx/variable? t) (type-of-var def-env ctx t)
     ;; binders (lambda, prod)
     (stx/binder? t)
     (let [[binder [x ty] body] t]
       (case binder
-        λ (type-of-abs def-env env x ty body)
-        Π (type-of-prod def-env env x ty body)
+        λ (type-of-abs def-env ctx x ty body)
+        Π (type-of-prod def-env ctx x ty body)
         (throw (ex-info "No such binder (please report)" {:term t :binder binder}))))
     ;; references
-    (stx/ref? t) (type-of-ref def-env env (first t) (rest t))
+    (stx/ref? t) (type-of-ref def-env ctx (first t) (rest t))
     ;; applications
-    (stx/app? t) (type-of-app def-env env (first t) (second t))
+    (stx/app? t) (type-of-app def-env ctx (first t) (second t))
     :else
     (throw (ex-info "Invalid term (please report)" {:term t}))))
 
 (example
  (type-of-term {} [] '□) => '[:ko {:msg "Kind has not type" :term □}])
 
-(defn type-check? [def-env env term type]
+(defn type-check? [def-env ctx term type]
   ;;(println "[type-check?] term=" term "type=" type)
-  ;;(println "    ctx=" env)
-  (let [[status type'] (type-of-term def-env env term)]
+  ;;(println "    ctx=" ctx)
+  (let [[status type'] (type-of-term def-env ctx term)]
     ;;(println "  ==> " status "type'=" type' "vs. type=" type)
     (if (= status :ok)
-      (norm/beta-delta-eq? def-env env type type')
+      (norm/beta-eq? def-env ctx type type')
       (throw (ex-info "Cannot check type of term" {:term term :from type'})))))
 
 ;;{
@@ -93,15 +93,15 @@
 ;;        E,x::ty |- x ::> ty
 ;;}
 
-(defn type-of-var [def-env env x]
-  (if-let [ty (env-fetch env x)]
-    (let [[status sort] (type-of-term def-env env ty)]
+(defn type-of-var [def-env ctx x]
+  (if-let [ty (ctx-fetch ctx x)]
+    (let [[status sort] (type-of-term def-env ctx ty)]
       (if (= status :ko)
         [:ko {:msg "Cannot calculate type of variable." :term x :from sort}]
         (if (stx/sort? sort)
           [:ok ty]
           [:ko {:msg "Not a correct type (super-type is not a sort)" :term x :type ty :sort sort}])))
-    [:ko {:msg "No such variable in type environment" :term x}]))
+    [:ko {:msg "No such variable in type context" :term x}]))
 
 (example
  (type-of-term {} '[[bool ✳] [x bool]] 'x) => '[:ok bool])
@@ -110,11 +110,11 @@
  (type-of-term {} '[[x bool]] 'x)
  => '[:ko {:msg "Cannot calculate type of variable.",
            :term x,
-           :from {:msg "No such variable in type environment", :term bool}}])
+           :from {:msg "No such variable in type context", :term bool}}])
 
 (example
  (type-of-term {} '[[bool ✳] [y bool]] 'x)
- => '[:ko {:msg "No such variable in type environment", :term x}])
+ => '[:ko {:msg "No such variable in type context", :term x}])
 
 ;;{
 ;;    E |- A ::> s1     E,x:A |- B ::> s2
@@ -122,18 +122,18 @@
 ;;     E |- prod x:A . B  ::>  s2
 ;;}
 
-(defn type-of-prod [def-env env x A B]
-  (let [[status sort1] (type-of-term def-env env A)]
+(defn type-of-prod [def-env ctx x A B]
+  (let [[status sort1] (type-of-term def-env ctx A)]
     (if (= status :ko)
       [:ko {:msg "Cannot calculate domain type of product." :term A :from sort1}]
-      (let [sort1' (norm/normalize def-env env sort1)]
+      (let [sort1' (norm/normalize def-env ctx sort1)]
         (if (not (stx/sort? sort1'))
           [:ko {:msg "Not a valid domain type in product (super-type not a sort)" :term A :type sort1}]
-          (let [env' (env-put env x A)
-                [status sort2] (type-of-term def-env env' B)]
+          (let [ctx' (ctx-put ctx x A)
+                [status sort2] (type-of-term def-env ctx' B)]
             (if (= status :ko)
               [:ko {:msg "Cannot calculate codomain type of product." :term B :from sort2}]
-              (let [sort2' (norm/normalize def-env env sort2)]
+              (let [sort2' (norm/normalize def-env ctx sort2)]
                 ;; (println "sort2' = " sort2' " sort? " (stx/sort? sort2'))
                 (if (not (stx/sort? sort2'))
                   [:ko {:msg "Not a valid codomain type in product (not a sort)" :term B :type sort2}]
@@ -161,19 +161,19 @@
 ;;    E |- lambda x:A . t  ::>  prod x:A . B
 ;;}
 
-(defn type-of-abs [def-env env x A t]
-  (let [env' (env-put env x A)
-        [status B] (type-of-term def-env env' t)]
+(defn type-of-abs [def-env ctx x A t]
+  (let [ctx' (ctx-put ctx x A)
+        [status B] (type-of-term def-env ctx' t)]
     (if (= status :ko)
       [:ko {:msg "Cannot calculate codomain type of abstraction."
             :term (list 'λ [x A] t) :from B}]
       (let [tprod (list 'Π [x A] B)
-            [status sort] (type-of-term def-env env tprod)]
+            [status sort] (type-of-term def-env ctx tprod)]
         (if (= status :ko)
           [:ko {:msg "Not a valid codomain type in abstraction (cannot calculate super-type)."
                 :term (list 'λ [x A] t)
                 :codomain B :from sort}]
-          (if (not (stx/sort? (norm/normalize def-env env sort)))
+          (if (not (stx/sort? (norm/normalize def-env ctx sort)))
             [:ko {:msg "Not a valid codomain type in abstraction (super-type not a sort)."
                   :term (list 'λ [x A] t)
                   :codomain B
@@ -192,7 +192,7 @@
  (type-of-term {} '[[y bool]] '(λ [x bool] x))
  => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (λ [x bool] x),
            :from {:msg "Cannot calculate type of variable.", :term x,
-                  :from {:msg "No such variable in type environment", :term bool}}}])
+                  :from {:msg "No such variable in type context", :term bool}}}])
 
 (example
  (type-of-term {} '[[y ✳] [z y]] '(λ [x z] x))
@@ -205,7 +205,7 @@
  (type-of-term {} '[[y bool]] '(λ [x ✳] y))
  => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (λ [x ✳] y),
            :from {:msg "Cannot calculate type of variable.", :term y,
-                  :from {:msg "No such variable in type environment", :term bool}}}])
+                  :from {:msg "No such variable in type context", :term bool}}}])
 
 (example
  (type-of-term {} '[[y bool]] '(λ [x ✳] □))
@@ -229,16 +229,16 @@
 ;;          E |- rator rand : B [rand/x]
 ;;}
 
-(defn type-of-app [def-env env rator rand]
-  (let [[status trator] (type-of-term def-env env rator)]
+(defn type-of-app [def-env ctx rator rand]
+  (let [[status trator] (type-of-term def-env ctx rator)]
     (if (= status :ko)
       [:ko {:msg "Cannot calculate operator (left-hand) type in application."
             :term [rator rand] :from trator}]
-      (let [trator' (norm/normalize def-env env trator)]
+      (let [trator' (norm/normalize def-env ctx trator)]
         (if (not (stx/prod? trator'))
           [:ko {:msg "Not a product type for operator (left-hand) in application." :term [rator rand] :operator-type trator}]
           (let [[_ [x A] B] trator']
-            (if (not (type-check? def-env env rand A))
+            (if (not (type-check? def-env ctx rand A))
               [:ko {:msg "Cannot apply: type mismatch" :term [rator rand] :domain A :operand rand}]
               [:ok (stx/subst B x rand)])))))))
 
@@ -259,21 +259,18 @@
 ;;              ::> (prod [xM+1 tM+1] ... (prod [xN tN] t [e1/x1, e2/x2, ...eM/xM]) ...)
 ;;}
 
-(defn type-of-ref [def-env env name args]
+(defn type-of-ref [def-env ctx name args]
   ;;(println "[type-of-ref] name=" name "args=" args)
   (let [[status ddef] (defenv/fetch-definition def-env name)]
     (cond
       (= status :ko) [:ko ddef]
       (not (defenv/latte-definition? ddef))
       (throw (ex-info "Not a LaTTe definition (please report)." {:def ddef}))
+      (defenv/special? ddef)
+      (throw (ex-info "Special should not occur at typing time (please report)"
+                      {:special ddef :term (list* name args)})) 
       (> (count args) (:arity ddef))
       [:ko {:msg "Too many arguments for definition." :term (list* name args) :arity (:arity ddef)}]
-      (defenv/special? ddef)
-      (if (< (count args) (:arity ddef))
-        [:ko {:msg "Not enough argument for special definition." :term (list* name args) :arity (:arity ddef)}]
-        (let [term (apply (:special-fn ddef) def-env env args)]
-          ;; (println "[type-of-ref] special term =" term)
-          (type-of-term def-env env term)))
       :else
       (loop [args args, params (:params ddef), sub {}]
         ;; (println "args=" args "params=" params "sub=" sub)
@@ -281,7 +278,7 @@
           (let [arg (first args)
                 ty (stx/subst (second (first params)) sub)]
             ;; (println "arg=" arg "ty=" ty)
-            (if (not (type-check? def-env env arg ty))
+            (if (not (type-check? def-env ctx arg ty))
               [:ko {:msg "Wrong argument type"
                     :term (list* name args)
                     :arg arg
@@ -316,9 +313,9 @@
 
 (defn type-of
   ([t] (type-of {} [] t))
-  ([env t] (type-of {} env t))
-  ([def-env env t]
-   (let [[status ty] (type-of-term def-env env t)]
+  ([ctx t] (type-of {} ctx t))
+  ([def-env ctx t]
+   (let [[status ty] (type-of-term def-env ctx t)]
      (if (= status :ko)
        (throw (ex-info "Type checking error" ty))
        ty))))
@@ -328,5 +325,5 @@
   ([ctx t] (proper-type? {} ctx t))
   ([def-env ctx t]
    (let [ty (type-of def-env ctx t)]
-     (let [sort (norm/beta-delta-normalize def-env ctx ty)]
+     (let [sort (norm/normalize def-env ctx ty)]
        (stx/sort? sort)))))

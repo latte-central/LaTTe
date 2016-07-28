@@ -280,8 +280,7 @@ derived from [[int-induct]]."
     (assume [x int
              w (elem int x nat)]
       (have l (Q x) :by (w Q k))
-      (have m (P x) :by ((p/and-elim-right (elem int x nat)
-                                           (P x)) l))
+      (have m (P x) :by (p/%and-elim-right l))
       (have n (forall [x int]
                 (==> (elem int x nat)
                      (P x))) :discharge [x w m])

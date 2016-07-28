@@ -182,7 +182,7 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
                         (= (count t) 3)
                         (= (first t) #'latte.prop/and))
     [:ok (second t) (nth t 2)]
-    (let [[t ok?] (latte.kernel.norm/delta-step def-env ctx t)]
+    (let [[t ok?] (latte.kernel.norm/delta-step def-env t)]
       (if ok?
         (recur def-env ctx t)
         (let [t (latte.kernel.norm/normalize def-env ctx t)]

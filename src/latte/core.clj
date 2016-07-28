@@ -271,7 +271,7 @@ term `(%type-of term)` is replaced by the *type* of `term`."
         ctx (parse-context-args def-env (butlast (butlast args)))]
     ;;(println "[check-type?] ctx=" ctx)
     (let [tty (ty/type-of def-env ctx t)]
-      (n/beta-delta-eq? def-env ctx ty tty))))
+      (n/beta-eq? def-env ctx ty tty))))
 
 ;;{
 ;; ## Top-level term equivalence
@@ -281,7 +281,7 @@ term `(%type-of term)` is replaced by the *type* of `term`."
   (let [def-env {}
         t1 (stx/parse def-env t1)
         t2 (stx/parse def-env t2)]
-    (n/beta-delta-eq? def-env [] t1 t2)))
+    (n/beta-eq? def-env [] t1 t2)))
 
 (def term= ===)
 
