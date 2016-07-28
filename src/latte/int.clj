@@ -2,7 +2,7 @@
   "A formalization of the type of integers."
   
   (:require [latte.core :as latte :refer [defaxiom defthm definition
-                                          lambda forall proof assume]])
+                                          lambda forall proof assume have]])
 
   (:require [latte.prop :as p :refer [and or not <=>]])
   
@@ -181,7 +181,10 @@ wrt. [[pred]]."
   (not (elem int (pred zero) nat)))
 
 (defthm nat-zero-is-not-succ
-  "Zero is not a successor of a natural integer."
+  "Zero is not a successor of a natural integer.
+
+This is the first Peano 'axiom' (here theorem, based
+ on integers) for natural integers."
   []
   (forall [x int]
     (==> (elem int x nat)
@@ -204,6 +207,111 @@ wrt. [[pred]]."
                  c H))
       (have e p/absurd :by (nat-zero-has-no-pred d))
       (qed e))))
+
+(defthm nat-succ-injective
+  "Successor is injective, the second Peano 'axiom'
+here a simple consequence of [[succ-injective]]."
+  []
+  (forall [x y int]
+    (==> (elem int x nat)
+         (elem int y nat)
+         (equal int (succ x) (succ y))
+         (equal int x y))))
+
+(proof nat-succ-injective :script
+  (assume [x int
+           y int
+           H1 (elem int x nat)
+           H2 (elem int y nat)
+           H3 (equal int (succ x) (succ y))]
+    (have a (equal int x y)
+          :by (succ-injective x y H3))
+    ;; TODO: multiple discharge at once ?
+    ;; Alternative: put unused assumptions in
+    ;; term
+    (have b _ :discharge [H3 a])
+    (have c _ :discharge [H2 b])
+    (have d _ :discharge [H1 c])
+    (qed d)))
+
+(defthm nat-induct
+  "The induction principle for natural integers.
+This is the third Peano axiom but it can be
+derived from [[int-induct]]."
+  [[P (==> int :type)]]
+  (==> (and (P zero)
+            (forall [x int]
+              (==> (elem int x nat)
+                   (P x)
+                   (P (succ x)))))
+       (forall [x int]
+         (==> (elem int x nat)
+              (P x)))))
+
+(proof nat-induct :script
+  (have Q _ :by (lambda [z int]
+                  (and (elem int z nat)
+                       (P z))))
+  (assume [u (and (P zero)
+                  (forall [x int]
+                    (==> (elem int x nat)
+                         (P x)
+                         (P (succ x)))))]
+    (have a (P zero) :by ((p/and-elim-left
+                           (P zero)
+                           (forall [x int]
+                             (==> (elem int x nat)
+                                  (P x)
+                                  (P (succ x)))))
+                          u))
+    (have b (forall [x int]
+              (==> (elem int x nat)
+                   (P x)
+                   (P (succ x))))
+          :by ((p/and-elim-right
+                (P zero)
+                (forall [x int]
+                  (==> (elem int x nat)
+                       (P x)
+                       (P (succ x)))))
+               u))
+    (have c (Q zero) :by ((p/and-intro (elem int zero nat)
+                                       (P zero))
+                          nat-zero a))
+    (assume [y int
+             v (Q y)]
+      (have d (elem int y nat)
+            :by ((p/and-elim-left (elem int y nat)
+                                  (P y)) v))
+      (have e (P y)
+            :by ((p/and-elim-right (elem int y nat)
+                                   (P y)) v))
+      (have f (elem int (succ y) nat)
+            :by ((nat-succ y) d))
+      (have g (==> (P y) (P (succ y)))
+            :by (b y d))
+      (have h (P (succ y)) :by (g e))
+      (have i (Q (succ y)) :by ((p/and-intro (elem int (succ y) nat)
+                                             (P (succ y)))
+                                f h))
+      (have j (==> (Q y) (Q (succ y))) :discharge [v i])
+      (have k (nat-succ-prop Q) :discharge [y j]))
+    (have l (and (Q zero)
+                 (nat-succ-prop Q)) :by ((p/and-intro (Q zero)
+                                                      (nat-succ-prop Q)) c k))
+    
+    (assume [x int
+             w (elem int x nat)]
+      (have m (Q x) :by (w Q l))
+      (have n (P x) :by ((p/and-elim-right (elem int x nat)
+                                           (P x)) m))
+      (have o (==> (elem int x nat)
+                   (P x)) :discharge [w n])
+      (have p (forall [x int]
+                (==> (elem int x nat)
+                     (P x))) :discharge [x o])
+      (qed p))))
+      
 
 ;; (defaxiom int-recur
 ;;   "The recursion principle for integers.
