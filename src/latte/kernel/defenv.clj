@@ -22,10 +22,16 @@
 (defn axiom? [v]
   (instance? Axiom v))
 
+(defrecord Special [name arity special-fn])
+
+(defn special? [v]
+  (instance? Special v))
+
 (defn latte-definition? [v]
   (or (definition? v)
       (theorem? v)
-      (axiom? v)))
+      (axiom? v)
+      (special? v)))
 
 ;;{
 ;; ## Definitional environment

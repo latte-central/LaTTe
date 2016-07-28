@@ -136,7 +136,7 @@
     (throw (ex-info "Cannot delta-reduce: not a reference term." {:term t}))
     (let [[name & args] t
           [status sdef] (defenv/fetch-definition def-env name)]
-      ;; (println "[delta-reduction] term=" t "def=" sdef)
+      (println "[delta-reduction] term=" t "def=" sdef)
       (if (= status :ko)
         [t false] ;; No error?  or (throw (ex-info "No such definition" {:term t :def-name name}))
         (if (> (count args) (:arity sdef))
@@ -157,8 +157,12 @@
               ;; [(instantiate-def (:params sdef) (:proof sdef) args) true]
               [t false]
               (throw (ex-info "Cannot use theorem with no proof." {:term t :theorem sdef})))
-            (axiom? sdef)
-            [t false]
+            (axiom? sdef) [t false]
+            (defenv/special? sdef)
+            (if (< (count args) (:arity sdef))
+              (throw (ex-info "Not enough argument for special definition." { :term t :arity (:arity sdef)}))
+              (let [term (apply (:special-fn sdef) def-env [] args)]
+                [term true]))
             :else (throw (ex-info "Not a Latte definition (please report)." {:term t :def sdef}))))))))
 
 (example

@@ -188,13 +188,6 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
     (have c B :by (a b))
     (qed c)))
 
-;; (definition and
-;;   "logical conjunction."
-;;   [[A :type] [B :type]]
-;;   (forall [C :type]
-;;     (==> (==> A B C)
-;;       C)))
-
 (defthm and-sym
   "Symmetry of conjunction."
   [[A :type] [B :type]]

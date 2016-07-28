@@ -267,7 +267,12 @@
       (not (defenv/latte-definition? ddef))
       (throw (ex-info "Not a LaTTe definition (please report)." {:def ddef}))
       (> (count args) (:arity ddef))
-      [:ko {:msg "Too many arguments for definition." :term (list* name args) :arity ddef}]
+      [:ko {:msg "Too many arguments for definition." :term (list* name args) :arity (:arity ddef)}]
+      (defenv/special? ddef)
+      (if (< (count args) (:arity ddef))
+        [:ko {:msg "Not enough argument for special definition." :term (list* name args) :arity (:arity ddef)}]
+        (let [term (apply (:special-fn ddef) def-env env args)]
+          (type-of-term def-env env term)))
       :else
       (loop [args args, params (:params ddef), sub {}]
         ;; (println "args=" args "params=" params "sub=" sub)
