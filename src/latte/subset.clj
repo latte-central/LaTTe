@@ -287,5 +287,3 @@ of the full set)."
     (have b (not (elem T x (emptyset T))) :discharge [H a])
     (have c _ :discharge [x b])
     (qed c)))
-
-
