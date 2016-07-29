@@ -16,31 +16,28 @@
   (:require [latte.kernel.proof :as p])
   )
 
-
 ;;{
 ;; ## Definitions (defined terms)
 ;;}
 
 (defn parse-definition-args [args]
-    (when (> (count args) 4)
-      (throw (ex-info "Too many arguments for definition" {:max-arity 4 :nb-args (count args)})))
-    (when (< (count args) 2)
+    (when (> (count args) 6)
+      (throw (ex-info "Too many arguments for definition" {:max-arity 6 :nb-args (count args)})))
+    (when (< (count args) 3)
       (throw (ex-info "Not enough arguments for definition" {:min-arity 2 :nb-args (count args)})))
-  (let [body (last args)
-        params (if (= (count args) 2)
-                 []
-                 (last (butlast args)))
-        doc (if (= (count args) 4)
-              (nth args 1)
-              "No documentation.")
-        def-name (first args)]
+  (let [[def-name doc params body & opts] args
+        def-type (case (count opts)
+                   0 nil
+                   1 (first opts)
+                   2 (second opts)
+                   (throw (ex-info "Too many options (please report)" {:opts opts})))]
     (when (not (symbol? def-name))
       (throw (ex-info "Name of definition must be a symbol." {:def-name def-name})))
     (when (not (string? doc))
       (throw (ex-info "Documentation string for definition must be ... a string." {:def-name def-name :doc doc})))
     (when (not (vector? params))
       (throw (ex-info "Parameters of definition must be a vector." {:def-name def-name :params params})))
-    [def-name doc params body]))
+    [def-name doc params body def-type]))
 
 (defn mk-doc [kind content explanation]
   (str "\n```\n"
@@ -59,7 +56,7 @@
   Note that it is a Clojure `def`, the term is defined in the namespace where the `definition` 
   form is invoked."
   [& args]
-  (let [[def-name doc params body] (parse-definition-args args)]
+  (let [[def-name doc params body def-type] (parse-definition-args args)]
     ;; (println "def-name =" def-name " doc =" doc " params =" params " body =" body)
     (when (defenv/registered-definition? {} def-name)
       (do
@@ -67,7 +64,7 @@
         ;; TODO: maybe disallow redefining if type is changed ?
         ;;       otherwise only warn ?
         (println "[Warning] redefinition as term: " def-name)))
-    (let [[status definition] (d/handle-term-definition def-name {} [] params body)]
+    (let [[status definition] (d/handle-term-definition def-name {} [] params body def-type)]
       (when (= status :ko)
         (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
       (let [quoted-def# definition]
@@ -248,7 +245,7 @@ term `(%type-of term)` is replaced by the *type* of `term`."
           t (stx/parse def-env (last args))
           ctx (parse-context-args def-env (butlast args))]
       ;; (println "[term] t = " t " ctx = " ctx)
-      (if (latte.kernel.norm/beta-delta-eq? def-env ctx t :kind)
+      (if (latte.kernel.norm/beta-eq? def-env ctx t :kind)
         '□
         (let [ty (ty/type-of def-env ctx t)]
           (list 'quote t)))))

@@ -170,7 +170,7 @@
 
 (defn prepare-discharge [ctx vars term]
   (if (seq vars)
-    (if-let [ty (ty/env-fetch ctx (first vars))]
+    (if-let [ty (ty/ctx-fetch ctx (first vars))]
       (recur ctx (rest vars) (list 'lambda [(first vars) ty] term))
       [:ko {:msg "No such variable in context" :variable (first vars)}])
     [:ok term]))
@@ -223,7 +223,8 @@
                                        def-env
                                        ctx
                                        params
-                                       term)]
+                                       term
+                                       have-type)]
                     ;;(println "[have-step] term=" term)
                     ;;(println "            def=" (:parsed-term tdef))
                     (if (= status :ko)
