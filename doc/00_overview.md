@@ -17,16 +17,12 @@ This documentation contains reference material (auto-generated from
  
 ## Background information
  
-This background information is not required reading for using LaTTe, but
- it may provide some insights about why and how LaTTe has been developed.
-
-Note that these documents favor concision vs. exhaustivity and
-   facts vs. opinion.
+This background information is not required but recommended reading for using LaTTe.
  
   - A logician dream, providing some historical information about the
 	formalization of mathematics and proof assistants (can be boring...)
 	
-  - Everything starts with **lambda**, explaining the
+  - **Lambda the ultimate**, explaining the
   resemblance and difference between the lambda-calculus
    found as a subset of modern programming languages
    (esp. Clojure) and the lambda-calculus used in LaTTe.
