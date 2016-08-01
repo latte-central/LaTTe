@@ -1,7 +1,7 @@
 
 # Lambda the ultimate
 
-Much ink (and bits) have been spent explaining (and explaining again) the
+Much ink (and bits) have been spilled explaining (and explaining again) the
 lambda-calculus. And this is what we shall do again here, albeit with quite
  a focused approach of comparing the lambda-calculus provided by the
   host language Clojure, to the one implemented by the kernel of LaTTe.
@@ -184,10 +184,10 @@ This looks like a simple rule but it is not. First, we should remember
 that modifying a term such as `a` above should be done with great care
  in order to avoid name clashes. But most importantly if the easy part
   is to beta-reduce a redex, the main problem is to find one! For this
-  we need a *strategy* such as call-by-value (the one implemented by
-  Clojure), call-by-need (the one implemented in Haskell), etc.
- We will not explain these (there are far better sources), but
- we have to remember too things:
+  we need a *strategy* to find a redex to reduce.
+In terms of programming, the three most famous strategies are *call-by-value* (the one implemented by
+  Clojure), *call-by-name* (that you can find as an option in e.g. Scala) and *call-by-need* (the one implemented in Haskell). We will not explain these (there are far better sources), but
+ we have to remember two things:
  
   - beta-reduction is at the heart of the lambda-calculus semantics
   
@@ -200,13 +200,13 @@ And we have now everything at hand to explain the lambda-calculus
 
 The lambda-calculus was for a long time considered as a computational
 artefact. But Church already felt the interest of the calculus, in its
- explicitely typed variant, from a logical point of view.
-
-As we will see, there are many things in common between the two calculus,
- but there are also important differences.
-
-To begin with, while the lambda-calculus of Clojure is "untyped", 
-LaTTe on the contrary heavily relies on typing.
+ explicitely typed variant, from a logical point of view. This was later
+  more deeply investigated by mathematicians, among them Curry, and
+   then Howard (and many others, of course)... But wait, *Curry* ... *Howard* ...
+    that sounds familiar. What we will investigate now is a deep connection
+	 between calculating using the lambda-calculus, as we did in the previous
+	  section, and reasoning ... also using the lambda-calculus. This
+	   is the famous *Curry-Howard correspondance*.
 
 ### To type or not to type, that is (not) the question
 
@@ -215,14 +215,23 @@ The question *Why types?* is one of the greate debates of programming. Clojure
   typing) instead of at compile-time (a.k.a. static typing). As a consequence, the
   lambda-calculus embedded in Clojure is itself of an *untyped* nature.
   
-From a logical perspective, the question *Why types?* is also a debate but as far
- as the lambda-calculus is concerned, the question is more of the kind: *What kind of types?*.
-In LaTTe, the identity function can be written as follows:
+The expression `(fn [x] x)` does not contains any explicit (nor implicit) type information.
+ The Clojure compiler does not perform any type-checking when encoutering such an expression.
+  
+From a logical perspective, the question *Why types?* is also a debate
+ but as far as the lambda-calculus is concerned, the question is more
+ of the kind: *What kind of types?*.  LaTTe implements a very strongly
+ and very explicitely typed lambda-calculus. Suppose we have a type `A`, then the
+ identity function for type `A` can be written in LaTTe as follows:
 
 ```clojure
-(lambda [A :type] (lambda [x A] x))
+(lambda [x A] x)
 ```
-We can see that the types are explicit. The variable `x` of the identity function
+
+The `lambda` keyword is of course the `fn` of LaTTe. The variable `x` is explicited
+ of having type `A`.
+
+of the identity function
 must be typed, here by a type name `A`. But the latter must also by typed, which we do
 by explaining that `A` should be itself of type `:type`, the *type of types*.
 
@@ -309,8 +318,23 @@ a function taking two arguments, an argument `H1` of type `(==> A B)`, a second 
 `H2` of type `A`, and returns a value of type `B`. This is exactly describing
  the type that was our starting point.
 
+### The core calculus
+
+TODO
+
 ### Strong normalization
 
 TODO: low-level vs. high-level terms
 
 ### Uniqueness of typing
+
+
+## On dependent types
+
+### Terms depending on terms
+
+### Terms depending on types
+
+### Types depending on types
+
+### Types depending on terms
