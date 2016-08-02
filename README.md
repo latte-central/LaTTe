@@ -13,6 +13,8 @@
 
 **LaTTe** : a Laboratory for Type Theory experiments (in clojure)
 
+[![Clojars Project](https://img.shields.io/clojars/v/latte.svg)](https://clojars.org/latte)
+
 ## What?
 
 LaTTe (or LaΠe) is a **proof assistant library** based on type theory (a variant of
@@ -68,7 +70,7 @@ Given the tight integration with the Clojure language, *existing Clojure develop
 
 ## How?
 
-LaTTe is an implementation of a **lambda-calculus with dependent types**.
+Just read *this tutorial* (Soon...)
 
 ## Who?
 
