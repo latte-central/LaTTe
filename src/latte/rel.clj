@@ -11,6 +11,8 @@ With an extra property, this is also the type of **functional
 This namespace provides some important properties about such
   relations."
 
+  (:refer-clojure :exclude [and or not])
+
   (:require [latte.core :as latte :refer [definition defaxiom defthm
                                           forall proof assume have]])
 
@@ -18,7 +20,7 @@ This namespace provides some important properties about such
 
   (:require [latte.equal :as eq :refer [equal]])
 
-  (:require [latte.quant :as q :refer [exist]])
+  (:require [latte.quant :as q :refer [exists]])
   
   )
 
@@ -64,7 +66,7 @@ This namespace provides some important properties about such
 (definition surjective
   "A surjective function."
   [[T :type] [U :type] [F (==> T U)]]
-  (forall [y U] (exist [x T] (equal U (F x) y))))
+  (forall [y U] (exists [x T] (equal U (F x) y))))
 
 (definition bijective
   "A bijective function."

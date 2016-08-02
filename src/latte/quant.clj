@@ -40,14 +40,14 @@ Based on this encoding, one can use the syntax `(exists [x T] P)`
     (==> (forall [x T] (==> (P x) α))
          α)))
 
-(defthm exist-elim
+(defthm ex-elim
   "The (intuitionistic) elimination rule for the existential quantifier."
   [[T :type] [P (==> T :type)] [A :type]]
   (==> (ex T P)
        (forall [x T] (==> (P x) A))
        A))
 
-(proof exist-elim :script
+(proof ex-elim :script
   (assume [H1 (ex T P)
            H2 (forall [x T] (==> (P x) A))]
     (have a (==> (forall [x T] (==> (P x) A))
@@ -55,13 +55,13 @@ Based on this encoding, one can use the syntax `(exists [x T] P)`
     (have b A :by (a H2))
     (qed b)))
 
-(defthm exist-intro
+(defthm ex-intro
   "The introduction rule for the existential quantifier."
   [[T :type] [P (==> T :type)] [x T]]
   (==> (P x)
        (ex T P)))
 
-(proof exist-intro :script
+(proof ex-intro :script
   (assume [H (P x)
            A :type
            y (forall [z T] (==> (P z) A))]
@@ -74,10 +74,10 @@ Based on this encoding, one can use the syntax `(exists [x T] P)`
                    A)) :discharge [A c])
     (qed d)))
 
-(defmacro exist
+(defmacro exists
   {:style/indent [1 :form :form]} 
   [bindings body]
-  `((quote  exist) ~bindings ~body))
+  `((quote  exists) ~bindings ~body))
 
 (definition single
   "The constraint that \"there exists at most\"..."
