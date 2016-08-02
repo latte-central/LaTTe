@@ -5,7 +5,7 @@ Much ink (and bits) have been spilled explaining (and explaining again) the
 lambda-calculus. And this is what we shall do again here, albeit with quite
  a focused approach of comparing the lambda-calculus provided by the
   host language Clojure, to the one implemented by the kernel of LaTTe.
-  
+
 ## Lambda for computing
 
 Most modern programming languages support a form of functional programming
@@ -13,7 +13,7 @@ Most modern programming languages support a form of functional programming
   programming language, is of course a typical example. The *lambda* of
    Clojure is named `fn`. A primary use of `fn` is to create (in general short)
     anonymous functions. Let's take one of the simplest example: the identity function.
-	
+
 ```clojure
 (fn [x] x)
 ```
@@ -21,7 +21,7 @@ Most modern programming languages support a form of functional programming
 In the lambda terminology, this is called an **abstraction**. 
 We say in `(fn [x] e)` that `x` is the *binding variable* and `e` (an arbitrary expression) is the *body* of
  the abstraction. All the *free ocurrences* of `x` in `e` become *bound* by the abstraction.
- 
+
 To see that the abstraction above represents the identity function, we can apply it to some value:
 
 ```clojure
@@ -32,9 +32,9 @@ To see that the abstraction above represents the identity function, we can apply
 We just encountered two other major ingredients of the lambda-calculus:
 
   - an **application** `(f e)` of a function `f` to lambda-term `e`
-  
+
   - a **primitive value** (sometimes also called a constant) `42`
-  
+
 Let's take a slightly more complex example: the *church* encoding of
 pairs in the lambda-calculus (here the one embedded in Clojure).
 
@@ -54,15 +54,19 @@ Here are a few example:
 ;=> 42
 ```
 
-The church thesis is that everything computable can be expressed with similar
-encodings in such a "simple" lambda-calculus. While most introductions provide long lists
- of encodings of things such as booleans, numbers, arithmetic operations, (etc.), we
-  will *not*. The thing is, such encodings are not practical, they yield very slow
-   computations. But this does not remove any interest of the lambda-calculus in
-    the practice of programming: what would be Clojure without `fn` ?
+Note that in Clojure we could define `pair` more conveniently as `(fn [x y] (fn [z] ((z x) y)))`
+ such that the construction of a pair would be simpler, e.g. `(pair "hello" 42)`. However,
+  it is simpler, at least conceptually, to only consider single-argument functions.
 
-Before dwelving into the main subject, we have to introduce (or remind of) two
-important features of the lambda-calclus: *alpha-conversion* and *beta-reduction*.
+The Church thesis is that everything (at least numerically) computable can be expressed with similar
+encodings in such a "simple" lambda-calculus (or equivalently by Turing machines). 
+While most introductions provide long lists
+ of encodings of things such as booleans, numbers, arithmetic operations, (etc.), we
+  will *not*. The thing is, such encodings are in general not practical, and most often yield very slow
+   computations.
+
+Before dwelving into the main subject, reasoning with a lambda-calculus, we have to introduce (or remind of) two
+important features: *alpha-conversion* and *beta-reduction*.
 
 ### Alpha-conversion
    
@@ -210,18 +214,42 @@ artefact. But Church already felt the interest of the calculus, in its
 
 ### To type or not to type, that is (not) the question
 
-The question *Why types?* is one of the greate debates of programming. Clojure
+The question *Why types?* is one of the great debates about programming. Clojure
  programmers obviously made a choice of relying on types at runtime (a.k.a. dynamic
   typing) instead of at compile-time (a.k.a. static typing). As a consequence, the
   lambda-calculus embedded in Clojure is itself of an *untyped* nature.
-  
+
 The expression `(fn [x] x)` does not contains any explicit (nor implicit) type information.
- The Clojure compiler does not perform any type-checking when encoutering such an expression.
-  
+ Moreover, the Clojure compiler does not perform any type-checking when encoutering such an expression.
+
 From a logical perspective, the question *Why types?* is also a debate
  but as far as the lambda-calculus is concerned, the question is more
- of the kind: *What kind of types?*.  LaTTe implements a very strongly
- and very explicitely typed lambda-calculus. Suppose we have a type `A`, then the
+ of the kind: *What kind of types?*.
+
+There are two "schools" about this:
+
+ - the *typing à la Curry* school
+
+ - the *typing à la Church* school
+
+In the Curry school, the idea is to consider the untyped terms, and try *a posteriori*
+ to classify them according to their type. There is the underlying idea of *type reconstruction*
+  behind Curry typing. Curry-typing is a very important principle in statically-typed functional
+   programming languages. For example, if we write the identity function in Ocaml, we get:
+
+```ocaml
+ fun x -> x ;;
+- : 'a -> 'a = <fun>
+```
+
+This is equivalent to say, for any type `'a`, then `fun x -> x`  (the Ocaml version of `(fn [x] x)`)
+returns a value of the same type `'a`. Here, the `'a` is a *type variable*, a placeholder for a "real"
+ type, e.g. `bool`, `int`, etc.  Curry typing is sometimes called *implicit typing*.
+
+In the Church school, on the contrary, types must be explicit. Because it uses a very expressive
+ lambda-calculus for which type reconstruction is not decidable,  LaTTe implements an explicitely typed lambda-calculus. 
+ 
+ Suppose we have a type `A`, then the
  identity function for type `A` can be written in LaTTe as follows:
 
 ```clojure
@@ -231,11 +259,39 @@ From a logical perspective, the question *Why types?* is also a debate
 The `lambda` keyword is of course the `fn` of LaTTe. The variable `x` is explicited
  of having type `A`.
 
-of the identity function
-must be typed, here by a type name `A`. But the latter must also by typed, which we do
-by explaining that `A` should be itself of type `:type`, the *type of types*.
+The type of the previous expression can be written in LaTTe: `(==> A A)` it is a function
+ that takes an `A` and yields an `A`.
 
-If we want to use this identity function, we have to provide two arguments, as in:
+We have defined an identity function that is *specific* to a type `A` that has not
+been specified. In clojure the function `(fn [x] x)` is very generic, it is an identity
+functions for anything
+
+```clojure
+((fn [x] x) true) -> true ;; identity for `booleans`
+((fn [x] x) 42) -> 42     ;; identity for `integers`
+... etc ...
+```
+
+Is it possible to define such a generic function in LaTTe? The answer is of course yes,
+ and this can be written as follows:
+
+```clojure
+(lambda [A :type]
+  (lambda [x A] x))
+```
+
+The generic identity function first has a parameter `A` that is an arbitrary type, and it yields
+ the identity function on `A`. We give to `A` the type `:type` to say that it *is* an arbitrary type.
+  The constant `:type` is the *type of types*.
+
+We can now apply the generic identity in an explicitely-typed context:
+
+```clojure
+(((lambda [A :type] (lambda [x A] x)) boolean) true)
+--> ((lambda [x boolean] x) true)
+--> true
+```
+or:
 
 ```clojure
 (((lambda [A :type] (lambda [x A] x)) int) 42)
@@ -243,82 +299,328 @@ If we want to use this identity function, we have to provide two arguments, as i
 --> 42
 ```
 
-A first remark is that things are now much more verbose than in the untyped case.
-A second remark is that a type `int` was use as a value, and there's nothing strange
-about this.
+This is clearly a little bit more verbose, so
+we need a more serious argument in favor of typing. For we should answer the question:
 
-A question we might now ask is: what is the type of the identity function ?
+> What is the type of `(lambda [A :type] (lambda [x A] x))`?
 
-The term describing the identity function was:
+An adequate answer is obtained thanks to a lambda-calculus named *system F* (or *λ2*, or the polymorphic
+  lambda-calculus), and in LaTTe it is as follows:
 
-```clojure
-(lambda [A :type] (lambda [x A] x))
 ```
-
-And its type can be also written as a term in LaTTe:
-
-```clojure
-(forall [A :type] (==> A A))
-```
-
-The term above has a straightforward logical explanation:
-
-> for any proposition A, it is true that A implies A
-
-This is also called the *reflexivity of implication*, and it is a simple albeit important
-property of logic.
-
-What we have here is a lambda-calculus type whose meaning is a logical proposition.
-This is the *Propositions-as-Types* (PaT) interpretation of lambda-terms.
-
-Obviously, the proposition above should be true, and we might want to prove it... But in
- fact we already proved it because we have a term whose type is the proposition: this is the
- identity function!
- 
-So the reflexivity of implication is demonstrated by the (generic) identity function!
-This is the *Proofs-as-Terms* (PaT) interpretation of lambda-terms.
-
-The PaT-PaT interpretation of lambda-calculus is at the heart of the famous
-Curry-Howard correspondance.
-
-In logic propositions come first, and proofs next. Thus in LaTTe we first express types (hence propositions),
- and then tries to find terms (hence proofs) having these types.
- 
-Let's try with a slightly more complex proposition.
-
-```clojure
 (forall [A :type]
-  (forall [B :type]
-    (==> (==> A B)
-	     A
-		 B)))
+  (==> A A))
 ```
 
-This proposition says that if I now that `A` implies `B`, and moreover that `A` is true,
- then in conclusion `B` should be true also. This is the famous *modus ponens* written as a lambda-term.
- 
-Let's find a term inhabiting this type... that's not too difficult but maybe requires some practice.
-Anyways, here's the answer.
+Note that it is in fact the same type that is reconstructed by Ocaml for the expression `fun x -> x`.
+
+As a computational statement, the expression above reads:
+
+> for an arbitrary type `A`, get a function that takes an `A` and yields an `A`.
+
+As a logical statement, the alternative but equivalement reading is:
+
+> for an arbitrary proposition `A`, it is true that `A` implies `A`.
+
+But wait, this is a simple although fundamental property of propositional logic:
+ *reflexivity of implication*.
+
+Let's take a second example, slightly more complex.
+
+Suppose we have a value `v` of type `A` and a function `f` of type `(==> A B)`.
+The question is now:
+
+> How to obtain a value of type `B`?
+
+From a computational point of view, the answer is obvious: let's apply `f` to `v`,
+ and of course `(f v)` is of type `B`.
+
+Now let's translate this into logical statements... this gives:
+
+ - suppose we have two propositions `A` and `B`
+
+ - moreover we have a proof of `A` named `v`, and a proof of `(==> A B)` named `f`
+
+ - a proof of `B` is `(f v)`.
+
+What we just did is a *demonstration* that probably the most important rule of
+logical deduction - the infamous *modus ponens* - is a natural interpretation of
+ applying a function to a value in a (typed) lambda-calculus.
+
+Amusingly, such a "proof" is already present in e.g. Ocaml:
+
+```ocaml
+(fun v -> (fun f -> f v))
+- : 'a -> ('a -> 'b) -> 'b = <fun>
+```
+
+For the trained mind, this reads: "from a value of type `'a` and a function of type `'a -> 'b' 
+get a value of type `b`. The function works also in Clojure of course:
+
+```clojure
+(((fn [v] (fn [f] (f v))) 42) even?)
+;=> true
+```
+
+The function `even?` is (at least philosophically) of type `(==> int boolean)`, and
+`42` is of type `int` hence we obtain a `boolean`.
+
+In LaTTe, we can make all this quite explicit:
 
 ```clojure
 (lambda [A :type]
   (lambda [B :type]
-     (lambda [H1 (==> A B)]
-	   (lambda [H2 A]
-	      (H1 H2)))))
+    (lambda [v A]
+      (lambda [f (==> A B)]
+        (f v)))))
 ```
-In the term above `H1` is of type `(==> A B)` which means, from a
-lambda-calculus perspective, that `H1` is a function from type `A` to type `B`.
-Moreover, `H2` is a value of type `A`. Hence, to have a value of type `B`, 
-an obvious thing to do is to apply `H2` to `H1`.
 
-One possible reading of the term above is that we have a function that takes 
-two types `A` and `B`, and yield 
-a function taking two arguments, an argument `H1` of type `(==> A B)`, a second argument
-`H2` of type `A`, and returns a value of type `B`. This is exactly describing
- the type that was our starting point.
+The type of the expression above is as follows:
 
-### The core calculus
+```clojure
+(forall [A :type]
+  (forall [B :type]
+    (forall [v A]
+       (forall [f (==> A B)]
+          B))))
+```
+
+This is quite verbose so let's try to simplify this. We remark that in the type, there is
+no occurrence of the variables `v` and `F` and we have the following law:
+
+If `x` is a variable, `T` is a type and `U` is type in which there is no free occurrence of `x`, then:
+
+```clojure
+(forall  [x T] U) ≝ (==> T U)
+```
+
+(so implication is a special case of universal quantification)
+
+Hence the type of our *modus ponens* example becomes:
+
+```clojure
+(forall [A :type]
+  (forall [B :type]
+    (==> A
+         (==> (==> A B)
+              B))))
+```
+
+that can be further simplified (using a simple *n-ary* version of implication) as follows:
+
+```clojure
+(forall [A :type]
+  (forall [B :type]
+    (==> A
+         (==> A B)
+         B)))
+```
+
+And the logical reading of this type is eloquent:
+
+> - suppose `A` and `B` two arbitrary propositions
+> - if we know that `A` is true
+> - and moreover we know that `A` implies `B`
+> - then `B` is true.
+
+Logicians like to write this as an *inference rule*, as follows:
+
+```
+  A     A ==> B
+==================
+       B
+```
+
+And in general they call this rule the *modus monens*.
+
+(but the lambda-calculus expression is more explicit, e.g. about the meaning of the
+"horizontal bar" and also the quantification of `A` and `B`).
+
+This is another extremely important component of (any) logic, and as we see this
+is completely equivalent to another extremely important component of (any) programming
+ language: *function application*.
+
+### The Curry-Howard correspondance
+
+What we just experienced in the previous section was discovered (partially) by Haskell Curry
+ and later more concretely explained by William A. Howard (but then refined by many
+ others). It is (hence) named the *Curry-Howard correspondance* between:
+
+ - types and terms of a lambda-calculus on the one, computational, side
+
+ - propositions and proofs on the other, logical, side
+
+When we gave a logical reading for lambda-terms in the previous sections, we used:
+
+  - *Propositions-as-Types* (e.g. suppose an arbitrary proposition `A`)
+
+  - *Proofs-as-Terms* (e.g. suppose we have a proof `v` of `A`)
+
+This is the *PaT* (or maybe more accurately *PaT-PaT*) interpretation of a (typed) lambda-calculus,
+ and it is at the heart of LaTTe.
+
+To provide a slightly more advanced example of the interest and use of the *PaT* interpretation,
+ we will consider once more the pairing function.
+ 
+In Clojure it was defined as follows:
+
+```clojure
+(fn [x] (fn [y] (fn [z] ((z x) y))))
+```
+
+We can give an explicit version in LaTTe, as follows:
+
+```clojure
+(lambda [A :type]
+  (lambda [B :type]
+      (lambda [x A]
+           (lambda [y B]
+        (lambda [C :type]
+           (lambda [z (==> A B
+                           C)]
+                    ((z x) y)))))))
+```
+(wow! that's verbose...)
+
+The type of this function is more interesting:
+
+```clojure
+(forall [A :type]
+  (forall [B :type]
+    (==> A B
+        (forall [C :type]
+          (==> (==> A B
+                  C)
+              C)))))
+```
+(wow! that's also verbose...).
+
+To simplify a little bit matters, let's now suppose we have the
+types `A` and `B` implicit (we'll see later how to make them *parameters*), so we drop 
+the first two `lambda`'s and get for the pairing function:
+
+```clojure
+(lambda [x A]
+    (lambda [y B]
+       (lambda [C :type]
+           (lambda [z (==> A B
+                           C)]
+               ((z x) y)))))))
+```
+
+The type becomes:
+
+```clojure
+(==> A B
+     (forall [C :type]
+        (==> (==> A B
+                  C)
+             C)))
+```
+
+That's a little bit more readable... but we will write
+this even more concisely by naming `(pair A B)` the
+ `(forall [C :type] ... C)` subexpression. We get:
+
+```clojure
+(==> A B
+     (pair A B))
+```
+
+Now let's take the function `fst`:
+
+```clojure
+(fn [p] (p (fn [x] (fn [y] x))))
+```
+
+which becomes (still abstracting from `A` and `B`):
+
+```clojure
+(lambda [p (pair A B)]
+    (p (lambda [x A]
+          (lambda [y B]
+              x))))
+```
+
+The type of the term, once again more interestingly, is:
+
+```clojure
+(==> (pair A B)
+     A)
+```
+
+So `fst` is a function that takes a pair of an `A` and a `B`, and
+yield an `A`, that's what we expected of course!
+
+And you might then guess what the type of `snd` is:
+
+```clojure
+(==> (pair A B)
+     B)
+```
+
+From a `(pair A B)` it yield a `B`.
+
+Now let's apply the *PaT* interpretation. Because logical names
+ are often far from computational ones, let's replace `(pair A B)`
+  by `(and-by-all-means A B)` (but there is no trick here, it is just
+   an alternative name for the same *thing*).
+
+The type of the pairing function becomes:
+
+```clojure
+(==> A B
+     (and-by-all-means A B))
+```
+
+Which, from a logical point of view, reads as follows:
+
+This reads:
+
+> - If we know that `A` is true and `B` is true
+> - Then the conjunction of `A` and `B` is true.
+
+In what is called *natural deduction* in logic this is exactly the definition of
+ the *introduction rule for conjunction*.
+ 
+Let's now take the `fst` function, whose type becomes:
+
+```clojure
+(==> (and-by-all-means A B)
+     A)
+``̀`
+
+So:
+
+> If we know that the conjunction of `A` and `B` is true
+> Then `A` "alone" is true
+
+This is the *left elimination rule for conjunction* in natural deduction,
+ and of course the right elimation rule of conjunction is demonstrated
+ by the `snd` function of type:
+ 
+```clojure
+(==> (and-by-all-means A B)
+     B)
+``̀`
+ 
+So what we reconstructed here, using only the lambda-calculus and LaTTe, is the
+common logical characterization of conjunction in natural deduction with its
+ introduction and elimination rules.
+ 
+We can go very far based on the Curry-Horward correspondance, and essentially all
+ of logic and (arguably) mathematics can be built using a similar process.
+
+
+At least it is hoped that the previous examples provide a good illustration of
+ the deep connection existing between computation (types, expressions, function application)
+ and reasoning (propositions, proofs, deduction) in a typed lambda-calculus.
+
+It is now time to be a little bit more explicit about the particular calculus
+implemented in LaTTe.
+
+
+## The Calculus of Constructions (a.k.a. λC)
 
 TODO
 
@@ -338,3 +640,7 @@ TODO: low-level vs. high-level terms
 ### Types depending on types
 
 ### Types depending on terms
+
+## A λC with definitions (a.k.a. λD)
+
+TODO
