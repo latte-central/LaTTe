@@ -1,6 +1,8 @@
 
 # Lambda the ultimate
 
+> (this document is copyright © 2016 Frédéric Peschanski under the Creative commons CC-BY-SA 4.0)
+
 Much ink (and bits) have been spilled explaining (and explaining again) the
 lambda-calculus. And this is what we shall do again here, albeit with quite
  a focused approach of comparing the lambda-calculus provided by the
@@ -192,9 +194,9 @@ that modifying a term such as `a` above should be done with great care
 In terms of programming, the three most famous strategies are *call-by-value* (the one implemented by
   Clojure), *call-by-name* (that you can find as an option in e.g. Scala) and *call-by-need* (the one implemented in Haskell). We will not explain these (there are far better sources), but
  we have to remember two things:
- 
+
   - beta-reduction is at the heart of the lambda-calculus semantics
-  
+
   - a strategy to find the first redex to reduce must be established
 
 And we have now everything at hand to explain the lambda-calculus
@@ -588,7 +590,7 @@ Let's now take the `fst` function, whose type becomes:
 ```clojure
 (==> (and-by-all-means A B)
      A)
-``̀`
+```
 
 So:
 
@@ -598,11 +600,11 @@ So:
 This is the *left elimination rule for conjunction* in natural deduction,
  and of course the right elimation rule of conjunction is demonstrated
  by the `snd` function of type:
- 
+
 ```clojure
 (==> (and-by-all-means A B)
      B)
-``̀`
+```
  
 So what we reconstructed here, using only the lambda-calculus and LaTTe, is the
 common logical characterization of conjunction in natural deduction with its
@@ -622,25 +624,189 @@ implemented in LaTTe.
 
 ## The Calculus of Constructions (a.k.a. λC)
 
-TODO
+At the lowest-level of the LaTTe kernel sits a relatively simple
+although very expressive lambda-calculus. It is an implementation
+ of the *Calculus of Constructions* (first defined by *Thierry Coquand*)
+  and often called *λC* nowadays. 
+  
+Remark: it is not impossible, but difficult, to write low-level lambda
+ terms in LaTTe. This is both to be as faithful as possible to the theory and
+  also to avoid working with low-level terms directly (they are somewhat
+   unreadable even for the trained mind). Thanksfully, LaTTe also provides a 
+   *parser* for higher-level terms, the ones manipulated by the users.
 
-### Strong normalization
+Some lambda-calculi are untyped, other ones make a clear distinction between terms
+ on the one side, and types on the other side. This is *not* the case with λC, although
+ some terms are types and others are not (of course !). We will see how to distinguish them.
+ 
+A (low-level) lambda-term in LaTTe is either:
 
-TODO: low-level vs. high-level terms
+  - the constant: `✳` named **type**
+  
+This corresponds to the *type of types*. A lambda-term is said a *proper type* if its type is `□`. In the concrete syntax `□` is more conveniently written `:type`.
 
-### Uniqueness of typing
+  - the constant  `□` named **kind**
 
+This is to give a type to `□` (`:type`). The type of `□` is `□` (or `:kind` in the concrete syntax) and `□` *has no type*. For the sake of logical consistency, it is important that the type hierarchy stops somewhere, and it stops at the kind level (it is possible to introduce universes so that the hierarchy doesn't stop while preserving consistency, however for the sake of minimalism LaTTe doesn't need nor use universes... It is then said *impredicative*, which is nothing similar to a disease).
 
-## On dependent types
+  - a  **lambda-abstraction** `(λ [x T] e)` with `x` the name of the **binding variable**, `T` a term corresponding to the type of `x` and `e` a lambda-term called the **body** of the abstraction
 
-### Terms depending on terms
+This is as we largely discussed the (single-argument) function constructor. In the concrete syntax, the most common notations are as follows:
 
-### Terms depending on types
+```clojure
+(lambda [x T] e) ≡ (λ [x T] e)
 
-### Types depending on types
+(lambda [x1 x2 ... xN T] e)
+≡ (λ [x1 T] (λ [x2 T] ... (λ [xN T] e) ... ))
+```
 
-### Types depending on terms
+  - a **product-abstraction** (a.k.a. *Π-type*) `(Π [x T] e)` (with `x`, `T`, `e` as in the lambda case)
 
-## A λC with definitions (a.k.a. λD)
+The *Π-types* are probably the most distinguishing feature of type theories such as *λC*. These simply are the *types* of the lambda-abstractions.
 
-TODO
+If a lambda-term `e` has type `U` in the context that `x` is of type `T`, then the type of `(λ [x T] e)` is `(Π [x T] U)`.
+
+In the concrete syntax, the most common used notations are as follows:
+
+```clojure
+(forall [x T] U) ≡ (Π [x T] U)
+
+(forall [x1 x2 ... xN T] U)
+≡ (Π [x1 T] (Π [x2 T] ... (Π [xN T] e) ... ))
+```
+
+Yes, of course! This is the *universal quantifier* of the logic.
+
+Moreover, if in `(Π [x T] U)` the variable `x` does not occur freely in `U`, then
+an equivalent notation is `(==> T U)`.  This is thus not only universal quantification but
+*also* (as a specific case) the type of functions from `T` to `U` *and* the *implication* that
+from `T` we can get `U`.
+
+A syntactic shortcut allows to chain the implications:
+
+```clojure
+(==> T1 T2 T3) ≡ (==> T1
+                      (==> T2 T3))
+
+(==> T1 T2 T3 T4) ≡ (==> T1
+                         (==> T2
+                              (==> T4 T4)))
+
+;; etc...
+```
+
+  - an occurrence of a **variable** `x`, `y`, `A`, `B`, etc.
+
+The variables are for example introduced by the abstractions (they can also be introduced by parameteric definitions, as discussed later on). The type of each variable is to be found in what is called the *context* or *typing context*.
+
+  - an **application** `[f e]` with `f` and `e` lambda-terms, informally `f` a function and `e` its argument
+
+If `f` is is type `(Π [x T] U)` and `e` is of type `T` then `[f e]` is of type `U` and realizes through beta-reduction the application of the function `f` on argument `e`.
+
+*Remark*: the non-standard use of square brackets is to distinguish at the syntax level the applications for the refence terms below... In the concrete syntax the parentheses may be used, the Lisp way as: `(f e)`. Since we know that all abstrations have a single argument, the following syntactic shortcuts are quite useful:
+
+```clojure
+(e1 e2) ≡ [e1 e2]  ;; if e1 is not a defined term
+(e1 e2 e3) ≡ [[e1 e2] e3]
+(e1 e2 e3 e4) ≡ [[[e1 e2] e3] e4]
+;; etc.
+```
+  - a **reference** `(r e1 ... eN)` with `r` the name of a **defined term** and `e1` ... `eN` lambda-rterms intended as arguments.
+
+The references correpond to an extension of the calculus of constructions by *definitional features*, and it gives a calculus named *λD*. The idea is to have a term that references either a definition, an axiom or a theorem. 
+
+If a term references a definition, then the definition is simply unfolded as in calling a function.
+
+For example, the definition of conjunction in LaTTe (cf. [[latte.prop/and]]) is as follows:
+
+```clojure
+(definition and
+  "logical conjunction."
+  [[A :type] [B :type]]
+  (forall [C :type]
+    (==> (==> A B C)
+         C)))
+```
+
+So a term such as `(and (> x 3) (<= x 8))` is equivalent to:
+
+```clojure
+(forall [C :type]
+  (==> (==> (> x 3) (<= x 8) C)
+       C))
+```
+
+The type of the reference is the same as the type of the unfolded term.
+
+In the case of an axiom, the reference is considered similar to a constant, except with
+ the parameters replaced by the arguments. The most famous (and sometimes controversed) axiom is probably the
+law of the *excluded middle* of classical logic. It is defined as follows in LaTTe (in [[latte.classic]]):
+
+```clojure
+(defaxiom excluded-middle-ax
+  "..."
+  [[A :type]]
+  (or A (not A)))
+```
+
+So for example a reference `(or (> x 3) (not (> x 3)))` can be considered inhabited (hence true), even though
+ there is no underlying lambda-calculus term.
+
+In the case of a theorem, then it is a little bit the same except that if a proof term is available then 
+we could, in theory, consider the theorem as a definition and replace the reference term by the proof.
+
+For exemple, based on the following theorem and proof (from [[latte.prop]]):
+
+```clojure
+(defthm impl-ignore
+  "A variant of reflexivity."
+  [[A :type] [B :type]]
+  (==> A B A))
+
+(proof impl-ignore
+    :term (lambda [x A] (lambda [y B] x)))
+```
+
+The term `(impl-ignore (> a 2) (<= b 10))` could be replaced
+by the following term:
+
+```clojure
+(lambda [x (> a 2)]
+  (lambda [y (<= b 10)]
+     x))
+```
+
+However, in practice, the references for theorems are not unfolded because
+ it is useless since we already know the type of the proof term. Otherwise,
+ the proofs that reference many theorems would yield very large proof terms.
+
+### Fundamental properties
+
+We now discuss the fundamental properties of the calculus of constructions
+ with definitions that is implemented in LaTTe. These properties are
+  important requirements when considering the formalization of logic.
+
+First, let's remind that the syntactic equality of lambda-terms is governed by
+ *alpha-conversion*, and the semantics are driven by *beta-reduction*.
+
+The first important property of the calculus is what is called **strong normalization**.
+
+TODO :
+
+- a term is said in *normal form* iff there is not any redex.
+
+- weak normalization means that if from a given term two normal forms are reached,
+ then these must be alpha-convertible. Show two distinct strategies for `(snd ((pair "hello") 42))`.
+
+ - but in e.g. the untyped lambda-calculus, there are terms with no normal forms.
+
+ - and with some strategies, some normal forms cannot be reached
+
+- strong normalization is weak normalization + all terms have a normal form
+
+The second important property is the **decidability and uniqueness of typing**.
+
+In LaTTe if a term has a type, then it is unique (up-to beta-equivalence). Moreover,
+ given a term we can compute its type (if it has one). This is a very powerful feature,
+  which is only rarely present in proof assistants based on type theory.
+

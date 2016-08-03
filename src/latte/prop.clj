@@ -45,10 +45,10 @@
   (assume [H1 (==> A B)
            H2 (==> B C)
            x A]
-    (have a B :by (H1 x))
-    (have b C :by (H2 a))
-    (have c (==> A C) :discharge [x b])
-    (qed c)))
+    (have <a> B :by (H1 x))
+    (have <b> C :by (H2 <a>))
+    (have <c> (==> A C) :discharge [x <b>])
+    (qed <c>)))
 
 (definition absurd
   "Absurdity."

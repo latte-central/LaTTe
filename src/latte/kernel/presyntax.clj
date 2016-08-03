@@ -212,7 +212,7 @@
  => '[:ok (Π [x ✳] x)])
 
 (example
- (parse-term {} '(prod [x y :type] x))
+ (parse-term {} '(forall [x y :type] x))
  => '[:ok (Π [x ✳] (Π [y ✳] x))])
 
 (defn parse-terms [def-env ts bound]

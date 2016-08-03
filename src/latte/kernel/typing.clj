@@ -268,7 +268,10 @@
       (throw (ex-info "Not a LaTTe definition (please report)." {:def ddef}))
       (defenv/special? ddef)
       (throw (ex-info "Special should not occur at typing time (please report)"
-                      {:special ddef :term (list* name args)})) 
+                      {:special ddef :term (list* name args)}))
+      (and (defenv/theorem? ddef)
+           (= (:proof ddef) false))
+      [:ko {:msg "Theorem has no proof." :thm-name (:name ddef)}]
       (> (count args) (:arity ddef))
       [:ko {:msg "Too many arguments for definition." :term (list* name args) :arity (:arity ddef)}]
       :else

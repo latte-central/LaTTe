@@ -392,7 +392,7 @@
    (let [t1' (normalize def-env ctx t1)
          t2' (normalize def-env ctx t2)]
      (stx/alpha-eq? t1' t2'))))
-   
+
 (example
  (beta-eq? '(λ [z ✳] z)
            '(λ [y [(λ [x □] x) ✳]] [(λ [x ✳] x) y])) => true)
