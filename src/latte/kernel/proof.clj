@@ -1,5 +1,5 @@
 (ns latte.kernel.proof
-  "Proof handling."
+  "Declarative proof handling."
 
   (:require [clojure.set :as set])
 
@@ -315,45 +315,48 @@
   (if (seq script)
     (if (sequential? (first script))
       (recur (first script) start-def-env start-ctx def-env ctx (conj cont-stack (rest script)))
-      (case (first script)
-        assume
-        (let [[status info] (parse-assume-step script)]
-          (if (= status :ko)
-            [:ko info]
-            (let [{[x ty] :binding body :body} info]
-              (let [[status res] (do-assume-step def-env ctx x ty)]
-                (if (= status :ko)
-                  [:ko res]
-                  (recur body start-def-env start-ctx
-                         (first res) (second res) (conj cont-stack (list 'undo-assume-step x))))))))
-        undo-assume-step
-        (let [[status res] (undo-assume-step def-env ctx (second script))]
-          (if (= status :ko)
-            [:ko res]
-            (recur '() start-def-env start-ctx (first res) (second res) cont-stack)))
-        have
-        (let [[status info] (parse-have-step script)]
-          (if (= status :ko)
-            [:ko info]
-            (let [{have-name :have-name params :params
-                   have-type :have-type method :method have-arg :have-arg} info]
-              (let [[status res] (do-have-step def-env ctx have-name params have-type method have-arg)]
-                (if (= status :ko)
-                  [:ko res]
-                  (recur '() start-def-env start-ctx (first res) (second res) cont-stack))))))
-        qed
-        (do-qed-step start-def-env def-env start-ctx ctx (second script))
-        showdef
-        (do (do-showdef-step def-env (second script))
-            (recur '() start-def-env start-ctx def-env ctx cont-stack))
-        showterm
-        (do (do-showterm-step def-env ctx (second script))
-            (recur '() start-def-env start-ctx def-env ctx cont-stack))
-        showctx
-        (do (do-showctx-step def-env ctx)
-            (recur '() start-def-env start-ctx def-env ctx cont-stack))
-      ;; else
-        (throw (ex-info "Cannot evaluate script" {:script script}))))
+      (if (string? (first script))
+        ;; strings are used for comments inside proof scripts
+        (recur (rest script) start-def-env start-ctx def-env ctx cont-stack)
+        (case (first script)
+          assume
+          (let [[status info] (parse-assume-step script)]
+            (if (= status :ko)
+              [:ko info]
+              (let [{[x ty] :binding body :body} info]
+                (let [[status res] (do-assume-step def-env ctx x ty)]
+                  (if (= status :ko)
+                    [:ko res]
+                    (recur body start-def-env start-ctx
+                           (first res) (second res) (conj cont-stack (list 'undo-assume-step x))))))))
+          undo-assume-step
+          (let [[status res] (undo-assume-step def-env ctx (second script))]
+            (if (= status :ko)
+              [:ko res]
+              (recur '() start-def-env start-ctx (first res) (second res) cont-stack)))
+          have
+          (let [[status info] (parse-have-step script)]
+            (if (= status :ko)
+              [:ko info]
+              (let [{have-name :have-name params :params
+                     have-type :have-type method :method have-arg :have-arg} info]
+                (let [[status res] (do-have-step def-env ctx have-name params have-type method have-arg)]
+                  (if (= status :ko)
+                    [:ko res]
+                    (recur '() start-def-env start-ctx (first res) (second res) cont-stack))))))
+          qed
+          (do-qed-step start-def-env def-env start-ctx ctx (second script))
+          showdef
+          (do (do-showdef-step def-env (second script))
+              (recur '() start-def-env start-ctx def-env ctx cont-stack))
+          showterm
+          (do (do-showterm-step def-env ctx (second script))
+              (recur '() start-def-env start-ctx def-env ctx cont-stack))
+          showctx
+          (do (do-showctx-step def-env ctx)
+              (recur '() start-def-env start-ctx def-env ctx cont-stack))
+          ;; else
+          (throw (ex-info "Cannot evaluate script" {:script script})))))
     ;; at end of script
     (if (seq cont-stack)
       (recur (first cont-stack) start-def-env start-ctx def-env ctx (rest cont-stack))

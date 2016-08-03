@@ -168,8 +168,7 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
   (==> (and A B)
        A))
 
-(proof and-elim-left
-    :script
+(proof and-elim-left :script
   (assume [H1 (and A B)]
     (have a (==> (==> A B A) A) :by (H1 A))
     (have b (==> A B A) :by (impl-ignore A B))
@@ -177,7 +176,6 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
     (qed c)))
 
 (defn decompose-and-type [def-env ctx t]
-  
   (if (clojure.core/and (seq? t) 
                         (= (count t) 3)
                         (= (first t) #'latte.prop/and))
@@ -266,13 +264,13 @@ This is a special version of [[and-elim-right]]."
 (proof and-sym :script
   (assume [H (and A B)]
     ;; (have a A :by ((and-elim-left A B) H))
-    (have a A :by (%and-elim-left H))
+    (have <a> A :by (%and-elim-left H))
     ;;(have b B :by ((and-elim-right A B) H))
-    (have b B :by (%and-elim-right H))
-    (have c (==> B A
+    (have <b> B :by (%and-elim-right H))
+    (have <c> (==> B A
                  (and B A)) :by (and-intro B A))
-    (have d (and B A) :by (c b a))
-    (qed d)))
+    (have <d> (and B A) :by (<c> <b> <a>))
+    (qed <d>)))
 
 (definition or
   "logical disjunction."
@@ -369,8 +367,8 @@ characteristic of or-elimination."
     (have b D :by (a H2 H3))
     (have c (==> (==> A D) D) :discharge [H2 b])
     (have d (==> (==> B D)
-                   (==> A D)
-                   D) :discharge [H3 c])
+                 (==> A D)
+                 D) :discharge [H3 c])
     (have e (or B A) :discharge [D d])
     (qed e)))
 
@@ -385,6 +383,7 @@ characteristic of or-elimination."
            Hn (not A)
            x A]
     (have a absurd :by (Hn x))
+    "Thanks to absurdity we can get anything we want."
     (have b B :by (a B))
     (have c (==> A B) :discharge [x b])
     (have d (==> B B) :by (impl-refl B))
@@ -443,7 +442,8 @@ characteristic of or-elimination."
     :script
   (assume [H (<=> A B)]
     (have a (==> (<=> A B)
-                 (==> A B)) :by (and-elim-left (==> A B) (==> B A)))
+                 (==> A B))
+          :by (and-elim-left (==> A B) (==> B A)))
     (have b (==> A B) :by (a H))
     (qed b)))
 
@@ -458,7 +458,8 @@ characteristic of or-elimination."
     :script
   (assume [H (<=> A B)]
     (have a (==> (<=> A B)
-                 (==> B A)) :by (and-elim-right (==> A B) (==> B A)))
+                 (==> B A))
+          :by (and-elim-right (==> A B) (==> B A)))
     (have b (==> B A) :by (a H))
     (qed b)))
 
