@@ -9,7 +9,7 @@ be done in a qualified way, i.e. favor `classic/not-not-impl`
 
   (:refer-clojure :exclude [and or not])
 
-  (:require [latte.core :as latte :refer [defthm defaxiom proof assume have]])
+  (:require [latte.core :as latte :refer [defthm defaxiom proof assume have ==>]])
 
   (:require [latte.prop :as p :refer [or not and <=>]])
   )

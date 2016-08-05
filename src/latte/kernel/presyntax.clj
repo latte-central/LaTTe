@@ -8,17 +8,20 @@
 (def ^:private +examples-enabled+)
 
 (def +reserved-symbols+
-  '#{□ ∗ ✳ λ ∀ Π exists ∃})
+  '#{□ ✳ λ Π ⟶ ∃})
 
 (defn reserved-symbol? [s]
   (or (contains? +reserved-symbols+ s)
-      (= (first (name s)) \_)))
+      (let [sym (name s)]
+        (and (>= (count sym) 2)
+             (= (first sym) \_)
+             (<= \0 (second sym) \9)))))
 
 (defn kind? [t]
   (contains? '#{:kind □} t))
 
 (defn type? [t]
-  (contains? '#{:type ∗ ✳} t))
+  (contains? '#{:type ✳} t))
 
 (declare parse-compound-term
          parse-symbol-term)
@@ -70,10 +73,10 @@
   (= t 'Π))
 
 (defn arrow-kw? [t]
-  (contains? #{'--> '-> '=> '==> '→ '➝ '⟶ '⟹} t))
+  (= t '⟶))
 
 (defn exists-kw? [t]
-  (contains? #{'exists '∃} t))
+  (= t '∃))
 
 (declare parse-lambda-term
          parse-product-term
@@ -244,11 +247,11 @@
             [:ok res]))))))
 
 (example
- (parse-term {} '(--> :type :type))
+ (parse-term {} '(⟶ :type :type))
  => '[:ok (Π [⇧ ✳] ✳)])
 
 (example
- (parse-term {} '(--> sigma tau mu))
+ (parse-term {} '(⟶ sigma tau mu))
  => '[:ok (Π [⇧ sigma] (Π [⇧ tau] mu))])
 
 (defn parse-exists-term [def-env t bound]
@@ -271,7 +274,7 @@
                     [:ok res]))))))))))
 
 (example
- (parse-term {} '(exists [x T] P))
+ (parse-term {} '(∃ [x T] P))
  => [:ok (list (resolve 'latte.quant/ex) 'T '(λ [x T] P))])
 
 (defn parse-defined-term [def-env sdef t bound]

@@ -10,8 +10,8 @@
 
   (:refer-clojure :exclude [and or not])
 
-  (:require [latte.core :as latte :refer [definition defthm defaxiom proof
-                                          forall
+  (:require [latte.core :as latte :refer [definition defthm defaxiom defnotation proof
+                                          forall ==>
                                           assume have]])
 
   (:require [latte.prop :as p :refer [and]])
@@ -29,17 +29,22 @@
 
 Remark: this is a second-order, intuitionistic definition that
  is more general than the definition in classical logic.
-
-Based on this encoding, one can use the syntax `(exists [x T] P)`
- which is a shortcut for `(ex T (lambda [x T] P))`, corresponding
- to the usual notation for existential quantification: ∃x:T.(P x)
-
-> there exists an `x` of type `T` such that `(P x)` is true.
 "
   [[T :type] [P (==> T :type)]]
   (forall [α :type]
     (==> (forall [x T] (==> (P x) α))
          α)))
+
+(defnotation exists
+  "The existential quantification  `(exists [x T] P)`
+ is a shortcut for `(ex T (lambda [x T] P))`, corresponding
+ to the usual notation for existential quantification: ∃x:T.(P x)
+
+> there exists an `x` of type `T` such that `(P x)` is true."
+  [bindings body]
+  [:ok (list '∃ bindings body)])
+
+(alter-meta! #'exists update-in [:style/indent] (fn [_] [1 :form :form]))
 
 (defthm ex-elim
   "The (intuitionistic) elimination rule for the existential quantifier."
@@ -74,11 +79,6 @@ Based on this encoding, one can use the syntax `(exists [x T] P)`
               (==> (forall [z T] (==> (P z) A))
                    A)) :discharge [A c])
     (qed d)))
-
-(defmacro exists
-  {:style/indent [1 :form :form]} 
-  [bindings body]
-  `((quote  exists) ~bindings ~body))
 
 (definition single
   "The constraint that \"there exists at most\"..."

@@ -282,7 +282,7 @@ term `(%type-of term)` is replaced by the *type* of `term`."
     (let [def-env {}
           t (stx/parse def-env (last args))
           ctx (parse-context-args def-env (butlast args))]
-      (println "[term] t = " t " ctx = " ctx)
+      ;; (println "[term] t = " t " ctx = " ctx)
       (if (latte.kernel.norm/beta-eq? def-env ctx t :kind)
         '□
         (let [ty (ty/type-of def-env ctx t)]
@@ -409,6 +409,17 @@ equivalent to `(forall [x T] (forall [y T] (forall [z T] U)))`."
   [:ok (list 'Π bindings body)])
 
 (alter-meta! #'forall update-in [:style/indent] (fn [_] [1 :form :form]))
+
+(defnotation ==>
+  "The function type, or equivalently logical implication.
+
+  `(==> A B)` is `(Π [x A] B)` where `x` does not occur free in `B`.
+
+Implication is right arrociative:
+
+'(==> A B C) ≡ `(==> A (==> B C))`."
+  [& arguments]
+  [:ok (list* '⟶ arguments)])
 
 (defmacro assume
   {:style/indent [1 :form [1]]} 
