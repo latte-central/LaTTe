@@ -54,7 +54,7 @@
 (definition absurd
   "Absurdity."
   []
-  (forall [α *] α))
+  (forall [α :type] α))
 
 (defthm ex-falso
   "Ex falso sequitur quodlibet

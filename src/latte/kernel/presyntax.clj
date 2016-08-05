@@ -8,7 +8,7 @@
 (def ^:private +examples-enabled+)
 
 (def +reserved-symbols+
-  '#{□ ∗ ✳ λ prod forall ∀ Π exists ∃})
+  '#{□ ∗ ✳ λ ∀ Π exists ∃})
 
 (defn reserved-symbol? [s]
   (or (contains? +reserved-symbols+ s)
@@ -18,7 +18,7 @@
   (contains? '#{:kind □} t))
 
 (defn type? [t]
-  (contains? '#{:type * ∗ ✳} t))
+  (contains? '#{:type ∗ ✳} t))
 
 (declare parse-compound-term
          parse-symbol-term)
@@ -37,7 +37,7 @@
  (parse-term {} :kind) => '[:ok □])
 
 (example
- (parse-term {} '*) => '[:ok ✳])
+ (parse-term {} :type) => '[:ok ✳])
 
 (defn parse-symbol-term [def-env sym bound]
   ;;(println "[parse-symbol-term] sym=" sym)
@@ -64,13 +64,13 @@
  => '[:ok (x)])
 
 (defn lambda-kw? [t]
-  (= t 'λ)) ;; (contains? #{'lambda 'λ} t))
+  (= t 'λ))
 
 (defn product-kw? [t]
-  (contains? #{'prod 'pi 'Π 'forall '∀} t))
+  (= t 'Π))
 
 (defn arrow-kw? [t]
-  (contains? #{'imply '--> '-> '=> '==> '→ '➝ '⟶ '⟹} t))
+  (contains? #{'--> '-> '=> '==> '→ '➝ '⟶ '⟹} t))
 
 (defn exists-kw? [t]
   (contains? #{'exists '∃} t))
@@ -141,10 +141,10 @@
  => '[:ok [[x ✳] [y ✳] [z ✳]]])
 
 (example
- (parse-binding {} '[x y forall :type] #{})
+ (parse-binding {} '[x y Π :type] #{})
  => '[:ko {:msg "Wrong binding variable: symbol is reserved",
-           :term [x y forall :type],
-           :symbol forall}])
+           :term [x y Π :type],
+           :symbol Π}])
 
 (example
  (parse-binding {} '[x y x :type] #{})
@@ -208,11 +208,11 @@
   (parse-binder-term def-env 'Π t bound))
 
 (example
- (parse-term {} '(forall [x :type] x))
+ (parse-term {} '(Π [x :type] x))
  => '[:ok (Π [x ✳] x)])
 
 (example
- (parse-term {} '(forall [x y :type] x))
+ (parse-term {} '(Π [x y :type] x))
  => '[:ok (Π [x ✳] (Π [y ✳] x))])
 
 (defn parse-terms [def-env ts bound]

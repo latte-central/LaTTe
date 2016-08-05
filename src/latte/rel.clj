@@ -21,7 +21,7 @@ This namespace provides some important properties about such
   (:require [latte.equal :as eq :refer [equal]])
 
   (:require [latte.quant :as q :refer [exists]])
-  
+
   )
 
 (definition rel
@@ -96,6 +96,3 @@ This namespace provides some important properties about such
     (have a (injective T U F) :by (p/%and-elim-left H))
     (qed a)))
 
-
-
-           
