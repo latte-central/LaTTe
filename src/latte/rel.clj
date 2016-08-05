@@ -14,7 +14,8 @@ This namespace provides some important properties about such
   (:refer-clojure :exclude [and or not])
 
   (:require [latte.core :as latte :refer [definition defaxiom defthm
-                                          forall proof assume have]])
+                                          forall ==>
+                                          proof assume have]])
 
   (:require [latte.prop :as p :refer [and or not]])
 

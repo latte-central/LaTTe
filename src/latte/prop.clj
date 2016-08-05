@@ -8,7 +8,8 @@
   (:require [latte.kernel.typing :as ty])
 
   (:require [latte.core :as latte :refer [definition term type-of defthm defspecial
-                                          lambda forall assume proof try-proof]])
+                                          lambda forall ==>
+                                          assume proof try-proof]])
   )
 
 (defthm impl-refl

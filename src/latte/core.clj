@@ -312,13 +312,11 @@ term `(%type-of term)` is replaced by the *type* of `term`."
 ;; ## Top-level term equivalence
 ;;}
 
-(defn === [t1 t2]
+(defmacro term= [ctx t1 t2]
   (let [def-env {}
         t1 (stx/parse def-env t1)
         t2 (stx/parse def-env t2)]
-    (n/beta-eq? def-env [] t1 t2)))
-
-(def term= ===)
+    (n/beta-eq? def-env ctx t1 t2)))
 
 ;;{
 ;; ## Proof handling
