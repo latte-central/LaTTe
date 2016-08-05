@@ -171,7 +171,7 @@
 (defn prepare-discharge [ctx vars term]
   (if (seq vars)
     (if-let [ty (ty/ctx-fetch ctx (first vars))]
-      (recur ctx (rest vars) (list 'lambda [(first vars) ty] term))
+      (recur ctx (rest vars) (list 'λ [(first vars) ty] term))
       [:ko {:msg "No such variable in context" :variable (first vars)}])
     [:ok term]))
 
@@ -262,7 +262,7 @@
           (if (> count-delta-ctx count-start-ctx)
             (let [[x ty] (first delta-ctx)]
               (if (contains? fv x)
-                (recur (rest delta-ctx) (dec count-delta-ctx) (list 'lambda [x ty] term))
+                (recur (rest delta-ctx) (dec count-delta-ctx) (list 'λ [x ty] term))
                 (recur (rest delta-ctx) (dec count-delta-ctx) term)))
             (do ;;(println "[qed]")
                 ;;(println "-----------------------------------------")

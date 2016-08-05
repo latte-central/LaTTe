@@ -8,7 +8,7 @@
 (def ^:private +examples-enabled+)
 
 (def +reserved-symbols+
-  '#{kind type □ * ∗ ✳ lambda λ prod forall ∀ Π exists ∃})
+  '#{□ ∗ ✳ λ prod forall ∀ Π exists ∃})
 
 (defn reserved-symbol? [s]
   (or (contains? +reserved-symbols+ s)
@@ -64,7 +64,7 @@
  => '[:ok (x)])
 
 (defn lambda-kw? [t]
-  (contains? #{'lambda 'λ} t))
+  (= t 'λ)) ;; (contains? #{'lambda 'λ} t))
 
 (defn product-kw? [t]
   (contains? #{'prod 'pi 'Π 'forall '∀} t))
@@ -181,23 +181,23 @@
   (parse-binder-term def-env 'λ t bound))
 
 (example
- (parse-term {} '(lambda [x :type] x))
- => '[:ok (λ [x ✳] x)])
+ (parse-term {} '(λ [x :type] x))
+  => '[:ok (λ [x ✳] x)])
 
 (example
- (parse-term {} '(lambda [x y :type] x))
+ (parse-term {} '(λ [x y :type] x))
  => '[:ok (λ [x ✳] (λ [y ✳] x))])
 
 (example
- (parse-term {} '(lambda [x x :type] x))
+ (parse-term {} '(λ [x x :type] x))
  => '[:ko {:msg "Wrong bindings in λ form",
-           :term (lambda [x x :type] x),
+           :term (λ [x x :type] x),
            :from {:msg "Duplicate binding variable", :term [x x :type], :var x}}])
 
 (example
- (parse-term {} '(lambda [x] x))
+ (parse-term {} '(λ [x] x))
  => '[:ko {:msg "Wrong bindings in λ form",
-           :term (lambda [x] x),
+           :term (λ [x] x),
            :from {:msg "Binding must have at least 2 elements", :term [x]}}])
 
 (example
@@ -275,15 +275,22 @@
  => [:ok (list (resolve 'latte.quant/ex) 'T '(λ [x T] P))])
 
 (defn parse-defined-term [def-env sdef t bound]
-  (let [def-name (first t)
-        arity (count (rest t))]
-    (if (< (:arity sdef) arity)
-      [:ko {:msg "Too many arguments for definition." :term t :def-name def-name :arity arity :nb-args (:arity sdef)}]
-      ;; else
-      (let [[status ts] (parse-terms def-env (rest t) bound)]
-        (if (= status :ko)
-          [:ko {:msg "Wrong argument" :term t :from ts}]
-          [:ok (list* (defenv/qualify-def def-env def-name) ts)])))))
+  (if (defenv/notation? sdef)
+    (let [notation-fn (defenv/get-notation-fn sdef)
+          [status t'] (apply notation-fn (rest t))]
+      (if (= status :ko)
+        [:ko t']
+        (parse-term def-env t' bound)))
+    ;; other definitions
+    (let [def-name (first t)
+          arity (count (rest t))]
+      (if (< (:arity sdef) arity)
+        [:ko {:msg "Too many arguments for definition." :term t :def-name def-name :arity arity :nb-args (:arity sdef)}]
+        ;; else
+        (let [[status ts] (parse-terms def-env (rest t) bound)]
+          (if (= status :ko)
+            [:ko {:msg "Wrong argument" :term t :from ts}]
+            [:ok (list* (defenv/qualify-def def-env def-name) ts)]))))))
 
 (example
  (parse-term {'ex (defenv/map->Definition {:arity 2})}
@@ -332,7 +339,7 @@
  (parse-term {} '(x y z t) '#{x y z t}) => '[:ok [[[x y] z] t]])
 
 (example
- (parse-term {} '(lambda [x :type] x :type :kind))
+ (parse-term {} '(λ [x :type] x :type :kind))
  => '[:ok (λ [x ✳] [[x ✳] □])])
 
 

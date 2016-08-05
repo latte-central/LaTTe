@@ -3,7 +3,8 @@
 
   (:refer-clojure :exclude [and or not])
 
-  (:require [latte.core :as latte :refer [definition defthm forall assume have proof]])
+  (:require [latte.core :as latte :refer [definition defthm
+                                          forall lambda assume have proof]])
 
   (:require [latte.prop :as p :refer [<=> and or not]])
   )

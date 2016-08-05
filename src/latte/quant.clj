@@ -10,7 +10,8 @@
 
   (:refer-clojure :exclude [and or not])
 
-  (:require [latte.core :as latte :refer [definition defthm defaxiom proof forall
+  (:require [latte.core :as latte :refer [definition defthm defaxiom proof
+                                          forall
                                           assume have]])
 
   (:require [latte.prop :as p :refer [and]])

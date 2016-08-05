@@ -22,15 +22,40 @@
 (defn axiom? [v]
   (instance? Axiom v))
 
+(defrecord Notation [name notation-fn])
+
+;; somewhat hacky but "safe"
+(defn- mk-args [n]
+  (vec (repeat n nil)))
+
+;; courtesy of #whocaresanyway@stackoverflow
+(defn- arg-count [f]
+  (let [m (first (.getDeclaredMethods (class f)))
+        p (.getParameterTypes m)]
+    (alength p)))
+
+(defn- dummy-call [f]
+  (let [n (arg-count f)]
+    (apply f (mk-args n))))
+
+(defn get-notation-fn [f]
+  (:notation-fn (dummy-call f)))
+
+(defn notation? [v]
+  (and (fn? v)
+       (instance? Notation (dummy-call v))))
+
 (defrecord Special [name arity special-fn])
 
 (defn special? [v]
   (instance? Special v))
 
+
 (defn latte-definition? [v]
   (or (definition? v)
       (theorem? v)
       (axiom? v)
+      (notation? v)
       (special? v)))
 
 ;;{
@@ -64,4 +89,3 @@
       (if-let [_ (get locals sym)]
         sym
         (resolve sym)))))
-

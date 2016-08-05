@@ -31,7 +31,8 @@
   (==> A B A))
 
 (proof impl-ignore
-    :term (lambda [x A] (lambda [y B] x)))
+    :term (lambda [x A]
+            (lambda [y B] x)))
 
 (defthm impl-trans
   "Implication is transitive."
@@ -231,7 +232,9 @@ This is a special version of [[and-elim-left]]."
     :script
   (assume [H1 (and A B)]
     (have a (==> (==> A B B) B) :by (H1 B))
-    (have b (==> A B B) :by (lambda [x A] (lambda [y B] y)))
+    (have b (==> A B B) :by (lambda [x A]
+                              (lambda [y B]
+                                y)))
     (have c B :by (a b))
     (qed c)))
 
