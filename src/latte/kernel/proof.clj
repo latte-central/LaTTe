@@ -196,20 +196,21 @@
     (if (= status :ko)
       [:ko {:msg "Cannot perform have step: incorrect term." :have-name name :from term}]
       (let [term (n/special-normalize def-env ctx term)
+            term' (n/normalize def-env ctx term)
             [status have-type] (if (and (symbol? have-type)
                                         (= (clojure.core/name have-type) "_"))
                                  [:ok nil]
                                  (stx/parse-term def-env have-type))]
         (if (= status :ko)
-          [:ko {:msg "Cannot perform have step: type mismatch." :have-name name :from have-type}]
+          [:ko {:msg "Cannot perform have step: erroneous type." :have-name name :from have-type}]
           (let [[status have-type]
                 (if (nil? have-type)
-                  (let [[status have-type] (ty/type-of-term def-env ctx term)]
+                  (let [[status have-type] (ty/type-of-term def-env ctx term')]
                     (if (= status :ko)
                       [:ko (assoc (dissoc have-type :msg)
                                   :msg (str "Cannot perform have step: " (:msg have-type)))]
                       [:ok have-type]))
-                  (let [[status computed-type] (type-of-term def-env ctx term)]
+                  (let [[status computed-type] (type-of-term def-env ctx term')]
                     (if (= status :ko)
                       [:ko {:msg "Cannot synthetize term type."
                             :from computed-type}]
