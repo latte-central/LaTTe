@@ -196,7 +196,7 @@
     (if (= status :ko)
       [:ko {:msg "Cannot perform have step: incorrect term." :have-name name :from term}]
       (let [term (n/special-normalize def-env ctx term)
-            term' (n/normalize def-env ctx term)
+            term' term ;; XXX: should this not be ??? (n/normalize def-env ctx term)
             [status have-type] (if (and (symbol? have-type)
                                         (= (clojure.core/name have-type) "_"))
                                  [:ok nil]

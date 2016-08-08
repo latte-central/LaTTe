@@ -72,28 +72,29 @@ classical logic."
   (==> (==> (not A) B)
        (or A B)))
 
-(proof not-impl-or-intro :script
-  (assume [H (==> (not A) B)]
-    (assume [Hnot (not (or A B))]
-      (assume [x A]
-        (have a1 _ :by (p/or-intro-left A B))
-        (have a2 (or A B) :by (a1 x))
-        (have a3 p/absurd :by (Hnot a2))
-        (have a (not A) :discharge [x a3]))
-      (assume [y B]
-        (have b1 _ :by (p/or-intro-right A B))
-        (have b2 (or A B) :by (b1 y))
-        (have b3 p/absurd :by (Hnot b2))
-        (have b (not B) :discharge [y b3]))
-      (shownorm b)
-      (have c B :by (H a))
-      (shownorm c)
-      (shownorm (b c))
-      (have d p/absurd :by (b c))
-      (shownorm d)
-      (have e (not (not (or A B))) :discharge [Hnot d]))
-    (have f (or A B) :by ((not-not-impl (or A B)) e))
-    (qed f)))
+;; XXX: there's a problem with this proof...
+;; (proof not-impl-or-intro :script
+;;   (assume [H (==> (not A) B)]
+;;     (assume [Hnot (not (or A B))]
+;;       (assume [x A]
+;;         (have a1 _ :by (p/or-intro-left A B))
+;;         (have a2 (or A B) :by (a1 x))
+;;         (have a3 p/absurd :by (Hnot a2))
+;;         (have a (not A) :discharge [x a3]))
+;;       (assume [y B]
+;;         (have b1 _ :by (p/or-intro-right A B))
+;;         (have b2 (or A B) :by (b1 y))
+;;         (have b3 p/absurd :by (Hnot b2))
+;;         (have b (not B) :discharge [y b3]))
+;;       (shownorm b)
+;;       (have c B :by (H a))
+;;       (shownorm c)
+;;       (shownorm (b c))
+;;       (have d p/absurd :by (b c))
+;;       (shownorm d)
+;;       (have e (not (not (or A B))) :discharge [Hnot d]))
+;;     (have f (or A B) :by ((not-not-impl (or A B)) e))
+;;     (qed f)))
 
 
 
