@@ -56,14 +56,15 @@
             [(list binder [x ty] body') red?]))))
     ;; application
     (stx/app? t)
-    (if (stx/lambda? (first t))
-      [(beta-reduction t) true]
-      (let [[left right] t
-            ;; 1) try left reduction
-            [left' red?] (beta-step left)]
-        (if red?
-          [[left' right] true]
-          ;; 2) try right reduction
+    (let [[left right] t
+          ;; 1) try left reduction
+          [left' red?] (beta-step left)]
+      (if red?
+        [[left' right] true]
+        ;; 2) try beta (if it's a redex)
+        (if (stx/lambda? left)
+          [(beta-reduction t) true]
+          ;; 3) try right reduction
           (let [[right' red?] (beta-step right)]
             [[left right'] red?]))))
     ;; reference
@@ -361,13 +362,20 @@
 
 ;; XXX : this is a critical function... need to be checked
 (defn beta-delta-special-normalize [def-env ctx t]
-  ;; (println "[beta-delta-special-normalize]: t=" t)
-  (let [[t' spec-red?] (special-step def-env ctx t)
-        [t'' delta-red?] (delta-step def-env t')
-        [t''' beta-red?] (beta-step t'')]
-    (if (or spec-red? delta-red? beta-red?)
-      (recur def-env ctx t''')
-      t''')))
+  ;;(println "[beta-delta-special-normalize]: t=" t)
+  (let [[t' spec-red?] (special-step def-env ctx t)]
+    (if spec-red?
+      (do ;;(println "  [special] t ==> " t')
+          (recur def-env ctx t'))
+      (let [[t' delta-red?] (delta-step def-env t)]
+        (if delta-red?
+          (do ;;(println "  [delta] t ==> " t')
+              (recur def-env ctx t'))
+          (let [[t' beta-red?] (beta-step t)]
+            (if beta-red?
+              (do ;;(println "  [beta] t ==> " t')
+                  (recur def-env ctx t'))
+              t')))))))
 
 (defn normalize
   ([t] (beta-delta-normalize {} t))
