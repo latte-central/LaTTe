@@ -209,12 +209,15 @@
                       [:ko (assoc (dissoc have-type :msg)
                                   :msg (str "Cannot perform have step: " (:msg have-type)))]
                       [:ok have-type]))
-                  (let [res (ty/type-check? def-env ctx term have-type)]
-                    (if-not res
-                      [:ko {:msg "Cannot perform have step: synthetized term and type do not match."
-                            :have-name name
-                            :term term :type have-type}]
-                      [:ok have-type])))]
+                  (let [[status computed-type] (type-of-term def-env ctx term)]
+                    (if (= status :ko)
+                      [:ko {:msg "Cannot synthetize term type."
+                            :from computed-type}]
+                      (if (not (n/beta-eq? def-env ctx have-type computed-type))
+                        [:ko {:msg "Cannot perform have step: synthetized term type and expected type do not match."
+                              :have-name name
+                              :term term :expected-type have-type :synthetized-type computed-type}]
+                        [:ok have-type]))))]
             (cond (= status :ko) [:ko have-type]
                   (nil? name) [:ok [def-env ctx]]
                   :else
@@ -292,6 +295,24 @@
     ;; (println "[showterm] parsed=" term)
     (if (= status :ko)
       (clojure.pprint/pprint term)
+      (let [term' (n/normalize def-env ctx term)]
+        (clojure.pprint/pprint term)
+        (let [[status ty] (ty/type-of-term def-env ctx term')] 
+          (if (= status :ko)
+            (clojure.pprint/pprint ty)
+            (do (print "::")
+                (clojure.pprint/pprint ty)))))))
+  (println "-----------------------------------------"))
+
+(defn do-shownorm-step [def-env ctx arg]
+  (println "[shownorm]" arg)
+  ;;(println "def-env:")
+  ;;(clojure.pprint/pprint def-env)
+  (println "-----------------------------------------")
+  (let [[status term] (stx/parse-term def-env arg)]
+    ;; (println "[showterm] parsed=" term)
+    (if (= status :ko)
+      (clojure.pprint/pprint term)
       (let [term (n/normalize def-env ctx term)]
         (clojure.pprint/pprint term)
         (let [[status ty] (ty/type-of-term def-env ctx term)] 
@@ -351,6 +372,9 @@
               (recur '() start-def-env start-ctx def-env ctx cont-stack))
           showterm
           (do (do-showterm-step def-env ctx (second script))
+              (recur '() start-def-env start-ctx def-env ctx cont-stack))
+          shownorm
+          (do (do-shownorm-step def-env ctx (second script))
               (recur '() start-def-env start-ctx def-env ctx cont-stack))
           showctx
           (do (do-showctx-step def-env ctx)
