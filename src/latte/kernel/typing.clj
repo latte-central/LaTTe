@@ -137,7 +137,7 @@
                 ;; (println "sort2' = " sort2' " sort? " (stx/sort? sort2'))
                 (if (not (stx/sort? sort2'))
                   [:ko {:msg "Not a valid codomain type in product (not a sort)" :term B :type sort2}]
-                  [:ok sort2'])))))))))
+                  [:ok sort2])))))))))
 
 (example
  (type-of-term {} [] '(Π [x ✳] x)) => '[:ok ✳])
@@ -269,6 +269,9 @@
       (defenv/special? ddef)
       (throw (ex-info "Special should not occur at typing time (please report)"
                       {:special ddef :term (list* name args)}))
+      (defenv/notation? ddef)
+      (throw (ex-info "Notation should not occur at typing time (please report)"
+                      {:notation ddef :term (list* name args)}))
       (and (defenv/theorem? ddef)
            (= (:proof ddef) false))
       [:ko {:msg "Theorem has no proof." :thm-name (:name ddef)}]
