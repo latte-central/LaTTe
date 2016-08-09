@@ -201,6 +201,7 @@
                                         (= (clojure.core/name have-type) "_"))
                                  [:ok nil]
                                  (stx/parse-term def-env have-type))]
+        ;;(println "   have-term = " term')
         (if (= status :ko)
           [:ko {:msg "Cannot perform have step: erroneous type." :have-name name :from have-type}]
           (let [[status have-type]
@@ -211,6 +212,7 @@
                                   :msg (str "Cannot perform have step: " (:msg have-type)))]
                       [:ok have-type]))
                   (let [[status computed-type] (type-of-term def-env ctx term')]
+                    ;;(println "  [computed-type] = " computed-type)
                     (if (= status :ko)
                       [:ko {:msg "Cannot synthetize term type."
                             :from computed-type}]

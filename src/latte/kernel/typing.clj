@@ -44,24 +44,29 @@
          type-of-ref)
 
 (defn type-of-term [def-env ctx t]
-  ;;(println "[type-of-term] ctx=" ctx " t=" t)
-  (cond
-    (stx/kind? t) [:ko {:msg "Kind has not type" :term t}]
-    (stx/type? t) (type-of-type)
-    (stx/variable? t) (type-of-var def-env ctx t)
-    ;; binders (lambda, prod)
-    (stx/binder? t)
-    (let [[binder [x ty] body] t]
-      (case binder
-        λ (type-of-abs def-env ctx x ty body)
-        Π (type-of-prod def-env ctx x ty body)
-        (throw (ex-info "No such binder (please report)" {:term t :binder binder}))))
-    ;; references
-    (stx/ref? t) (type-of-ref def-env ctx (first t) (rest t))
-    ;; applications
-    (stx/app? t) (type-of-app def-env ctx (first t) (second t))
-    :else
-    (throw (ex-info "Invalid term (please report)" {:term t}))))
+  (let [[status ty]
+        (cond
+          (stx/kind? t) [:ko {:msg "Kind has not type" :term t}]
+          (stx/type? t) (type-of-type)
+          (stx/variable? t) (type-of-var def-env ctx t)
+          ;; binders (lambda, prod)
+          (stx/binder? t)
+          (let [[binder [x ty] body] t]
+            (case binder
+              λ (type-of-abs def-env ctx x ty body)
+              Π (type-of-prod def-env ctx x ty body)
+              (throw (ex-info "No such binder (please report)" {:term t :binder binder}))))
+          ;; references
+          (stx/ref? t) (type-of-ref def-env ctx (first t) (rest t))
+          ;; applications
+          (stx/app? t) (type-of-app def-env ctx (first t) (second t))
+          :else
+          (throw (ex-info "Invalid term (please report)" {:term t})))]
+    ;;(println "--------------------")
+    ;;(println "[type-of-term] t=" t)
+    ;;(clojure.pprint/pprint ty)
+    ;;(println "--------------------")
+    [status ty]))
 
 (example
  (type-of-term {} [] '□) => '[:ko {:msg "Kind has not type" :term □}])
@@ -238,9 +243,16 @@
         (if (not (stx/prod? trator'))
           [:ko {:msg "Not a product type for operator (left-hand) in application." :term [rator rand] :operator-type trator}]
           (let [[_ [x A] B] trator']
+            ;; (println "[type-of-app] trator'=" trator')
             (if (not (type-check? def-env ctx rand A))
-              [:ko {:msg "Cannot apply: type mismatch" :term [rator rand] :domain A :operand rand}]
-              [:ok (stx/subst B x rand)])))))))
+              [:ko {:msg "Cannot apply: type domain mismatch" :term [rator rand] :domain A :operand rand}]
+              (do ;;(println "[type-of-app] subst...")
+                  ;;(println "    B = " B)
+                  ;;(println "    x = " x)
+                  ;;(println "    rand = " rand)
+                  (let [res (stx/subst B x rand)]
+                    ;;(println "   ===> " res)
+                    [:ok res])))))))))
 
 
 (example
@@ -260,44 +272,49 @@
 ;;}
 
 (defn type-of-ref [def-env ctx name args]
-  ;;(println "[type-of-ref] name=" name "args=" args)
-  (let [[status ddef] (defenv/fetch-definition def-env name)]
-    (cond
-      (= status :ko) [:ko ddef]
-      (not (defenv/latte-definition? ddef))
-      (throw (ex-info "Not a LaTTe definition (please report)." {:def ddef}))
-      (defenv/special? ddef)
-      (throw (ex-info "Special should not occur at typing time (please report)"
-                      {:special ddef :term (list* name args)}))
-      (defenv/notation? ddef)
-      (throw (ex-info "Notation should not occur at typing time (please report)"
-                      {:notation ddef :term (list* name args)}))
-      (and (defenv/theorem? ddef)
-           (= (:proof ddef) false))
-      [:ko {:msg "Theorem has no proof." :thm-name (:name ddef)}]
-      (> (count args) (:arity ddef))
-      [:ko {:msg "Too many arguments for definition." :term (list* name args) :arity (:arity ddef)}]
-      :else
-      (loop [args args, params (:params ddef), sub {}]
-        ;; (println "args=" args "params=" params "sub=" sub)
-        (if (seq args)
-          (let [arg (first args)
-                ty (stx/subst (second (first params)) sub)]
-            ;; (println "arg=" arg "ty=" ty)
-            (if (not (type-check? def-env ctx arg ty))
-              [:ko {:msg "Wrong argument type"
-                    :term (list* name args)
-                    :arg arg
-                    :expected-type ty}]
-              (recur (rest args) (rest params) (assoc sub (ffirst params) arg))))
-          ;; all args have been checked
-          (loop [params (reverse params), res (:type ddef)]
-            (if (seq params)
-              (recur (rest params) (list 'Π (first params) res))
-              ;; all params have been handled
-              (do
-                ;; (println "[type-of-ref] res = " res " sub = " sub)
-                [:ok (stx/subst res sub)]))))))))
+  (let [[status ty]
+        (let [[status ddef] (defenv/fetch-definition def-env name)]
+          (cond
+            (= status :ko) [:ko ddef]
+            (not (defenv/latte-definition? ddef))
+            (throw (ex-info "Not a LaTTe definition (please report)." {:def ddef}))
+            (defenv/special? ddef)
+            (throw (ex-info "Special should not occur at typing time (please report)"
+                            {:special ddef :term (list* name args)}))
+            (defenv/notation? ddef)
+            (throw (ex-info "Notation should not occur at typing time (please report)"
+                            {:notation ddef :term (list* name args)}))
+            (and (defenv/theorem? ddef)
+                 (= (:proof ddef) false))
+            [:ko {:msg "Theorem has no proof." :thm-name (:name ddef)}]
+            (> (count args) (:arity ddef))
+            [:ko {:msg "Too many arguments for definition." :term (list* name args) :arity (:arity ddef)}]
+            :else
+            (loop [args args, params (:params ddef), sub {}]
+              ;; (println "args=" args "params=" params "sub=" sub)
+              (if (seq args)
+                (let [arg (first args)
+                      ty (stx/subst (second (first params)) sub)]
+                  ;; (println "arg=" arg "ty=" ty)
+                  (if (not (type-check? def-env ctx arg ty))
+                    [:ko {:msg "Wrong argument type"
+                          :term (list* name args)
+                          :arg arg
+                          :expected-type ty}]
+                    (recur (rest args) (rest params) (assoc sub (ffirst params) arg))))
+                ;; all args have been checked
+                (loop [params (reverse params), res (:type ddef)]
+                  (if (seq params)
+                    (recur (rest params) (list 'Π (first params) res))
+                    ;; all params have been handled
+                    (do
+                      ;;(println "[type-of-ref] res = " res " sub = " sub)
+                      [:ok (stx/subst res sub)])))))))]
+    ;;(println "---------------------")
+    ;;(println "[type-of-ref] name=" name "args=" args)
+    ;;(clojure.pprint/pprint ty)
+    ;;(println "---------------------")
+    [status ty]))
 
 (example
  (type-of-term {'test (defenv/map->Definition

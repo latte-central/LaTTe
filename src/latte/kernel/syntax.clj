@@ -141,36 +141,42 @@
 (example
  (mk-fresh 'x '#{x x' x'' x'''}) => 'x-4)
 
-(defn subst- [t sub forbid]
-  (cond
-    ;; variables
-    (variable? t) [(get sub t t) (conj forbid t)]
-    ;; binders (λ, Π)
-    (binder? t)
-    (let [[binder [x ty] body] t
-          [x' sub' forbid']
-          (if (contains? forbid x)
-            (let [x' (mk-fresh x forbid)]
-              [x' (assoc sub x x') (conj forbid x')])
-            [x (dissoc sub x) forbid])
-          [ty' forbid''] (subst- ty sub forbid')
-          [body' forbid'''] (subst- body sub' forbid'')]
-      ;; (println "term=" (list binder [x' ty'] body') "sub=" sub')
-      [(list binder [x' ty'] body')
-       forbid'''])
-    ;; applications
-    (app? t)
-    (let [[rator forbid'] (subst- (first t) sub forbid)
-          [rand forbid''] (subst- (second t) sub forbid')]
-      [[rator rand] forbid''])
-    ;; references
-    (ref? t) (let [[args forbid']
-                   (reduce (fn [[ts forbid] t]
-                             (let [[t' forbid'] (subst- t sub forbid)]
-                               [(conj ts t') forbid'])) ['() forbid] (rest t))]
-               [(conj (into '() args) (first t)) forbid'])
-    ;; other cases
-    :else [t forbid]))
+(defn subst- [t sub forbid rebind]
+  (let [[t' forbid']
+        (cond
+          ;; variables
+          (variable? t) (if-let [x (get rebind t)]
+                          [x (conj forbid t)]
+                          [(get sub t t) (conj forbid t)])
+          ;; binders (λ, Π)
+          (binder? t)
+          (let [[binder [x ty] body] t
+                [x' rebind' forbid']
+                (if (contains? forbid x)
+                  (let [x' (mk-fresh x forbid)]
+                    [x' (assoc rebind x x') (conj forbid x')])
+                  [x rebind (conj forbid x)])
+                [ty' forbid''] (subst- ty sub forbid' rebind)
+                [body' forbid'''] (subst- body sub forbid'' rebind')]
+            ;; (println "term=" (list binder [x' ty'] body') "sub=" sub')
+            [(list binder [x' ty'] body')
+             forbid'''])
+          ;; applications
+          (app? t)
+          (let [[rator forbid'] (subst- (first t) sub forbid rebind)
+                [rand forbid''] (subst- (second t) sub forbid' rebind)]
+            [[rator rand] forbid''])
+          ;; references
+          (ref? t) (let [[args forbid']
+                         (reduce (fn [[ts forbid] t]
+                                   (let [[t' forbid'] (subst- t sub forbid rebind)]
+                                     [(conj ts t') forbid'])) ['() forbid] (rest t))]
+                     [(conj (into '() args) (first t)) forbid'])
+          ;; other cases
+          :else [t forbid])]
+    ;;(println "[subst-] t=" t "sub=" sub "forbid=" forbid "rebind=" rebind)
+    ;;(println "   ==> " t')
+    [t' forbid']))
 
 (defn subst
   ([t x u] (subst t {x u}))
@@ -179,7 +185,7 @@
                  (apply set/union (map vars (vals sub)))
                  (into #{} (keys sub))
                  (free-vars t))
-         [t' _] (subst- t sub forbid)]
+         [t' _] (subst- t sub forbid {})]
      t')))
 
 (example
@@ -213,6 +219,11 @@
  (subst '(test x y (λ [x ✳] (test x y x')) y) {'x :replace-x
                                                'x' :replace-x' })
  => '(test :replace-x y (λ [x'' ✳] (test x'' y :replace-x')) y))
+
+(example ;; XXX: this comes from a very subtile bug !
+ (subst '(Π [⇧ (Π [x' T] (Π [⇧ (Π [x T] (Π [⇧ [X x]] [[R x] x']))] [R z]))]
+            [R z]) 'z 'x)
+ => '(Π [⇧ (Π [x' T] (Π [⇧' (Π [x'' T] (Π [⇧'' [X x'']] [[R x''] x']))] [R x]))] [R x]))
 
 ;;{
 ;; ## Alpha-equivalence
