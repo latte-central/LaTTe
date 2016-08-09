@@ -2,11 +2,12 @@
   "Normalization and equivalence."
 
   (:require [clj-by.example :refer [example do-for-example]])
+
+  (:require [latte.kernel.utils :as utils :refer [vconcat]])
   (:require [latte.kernel.syntax :as stx])
   (:require [latte.kernel.defenv :as defenv :refer [definition? theorem? axiom? special?]])
   )
 
-;; (s/exercise ::sx/binder)
 
 ;;{
 ;; # Normalization
@@ -42,6 +43,19 @@
  (beta-reduction '[(λ [x ✳] [x x]) y])
  => '[y y])
 
+
+(declare beta-step)
+
+(defn beta-step-args [ts]
+  (loop [ts ts, ts' []]
+    (if (seq ts)
+      (let [[t' red?] (beta-step (first ts))]
+        (if red?
+          [(vconcat (conj ts' t')
+                    (rest ts)) true]
+          (recur (rest ts) (conj ts' t'))))
+      [ts' false])))
+
 (defn beta-step [t]
   (cond
     ;; binder
@@ -70,9 +84,7 @@
     ;; reference
     (stx/ref? t)
     (let [[def-name & args] t
-          [args' red?] (reduce (fn [[res red?] arg]
-                                 (let [[arg' red?'] (beta-step arg)]
-                                   [(conj res arg') (or red? red?')])) [[] false] args)]
+          [args' red?] (beta-step-args args)]
       [(list* def-name args') red?])
     ;; other cases
     :else [t false]))
@@ -136,7 +148,7 @@
   ([def-env t local?]
    ;; (println "[delta-reduction] t=" t)
    (if (not (stx/ref? t))
-     (throw (ex-info "Cannot delta-reduce: not a reference term." {:term t}))
+     (throw (ex-info "Cannot delta-reduce: not a reference term (please report)." {:term t}))
      (let [[name & args] t
            [status sdef] (if local?
                            (if-let [sdef (get def-env name)]
@@ -210,6 +222,18 @@
                   '(test [a b] c))
  => '[(λ [z ✳] [c (λ [t ✳] [[a b] [z t]])]) true])
 
+(declare delta-step)
+
+(defn delta-step-args [def-env ts local?]
+  (loop [ts ts, ts' []]
+    (if (seq ts)
+      (let [[t' red?] (delta-step def-env (first ts) local?)]
+        (if red?
+          [(vconcat (conj ts' t')
+                    (rest ts)) true]
+          (recur (rest ts) (conj ts' t'))))
+      [ts' false])))
+
 (defn delta-step
   ([def-env t] (delta-step def-env t false))
   ([def-env t local?]
@@ -238,9 +262,7 @@
      ;; reference
      (stx/ref? t)
      (let [[def-name & args] t
-           [args' red?] (reduce (fn [[res red?] arg]
-                                  (let [[arg' red?'] (delta-step def-env arg local?)]
-                                    [(conj res arg') (or red? red?')])) [[] false] args)]
+           [args' red?] (delta-step-args def-env args local?)]
        (if red?
          [(list* def-name args') red?]
          (delta-reduction def-env t local?)))
@@ -288,6 +310,18 @@
                 [term true]))
             [t false]))))))
 
+(declare special-step)
+
+(defn special-step-args [def-env ctx ts]
+  (loop [ts ts, ts' []]
+    (if (seq ts)
+      (let [[t' red?] (special-step def-env ctx (first ts))]
+        (if red?
+          [(vconcat (conj ts' t')
+                    (rest ts)) true]
+          (recur (rest ts) (conj ts' t'))))
+      [ts' false])))
+
 (defn special-step [def-env ctx t]
   ;; (println "[delta-step] t=" t)
   (cond
@@ -314,9 +348,7 @@
     ;; reference
     (stx/ref? t)
     (let [[def-name & args] t
-          [args' red?] (reduce (fn [[res red?] arg]
-                                 (let [[arg' red?'] (special-step def-env ctx arg)]
-                                   [(conj res arg') (or red? red?')])) [[] false] args)]
+          [args' red?] (special-step-args def-env ctx args)]
       (if red?
         [(list* def-name args') red?]
         (special-reduction def-env ctx t)))
@@ -352,15 +384,6 @@
       t')))
 
 ;; XXX : this is a critical function... need to be checked
-(defn beta-delta-normalize [def-env t]
-  ;; (println "[beta-delta-normalize]: t=" t)
-  (let [t' (delta-normalize def-env t)
-        [t'' red?] (beta-step t')]
-    (if red?
-      (recur def-env t'')
-      t'')))
-
-;; XXX : this is a critical function... need to be checked
 (defn beta-delta-special-normalize [def-env ctx t]
   ;;(println "[beta-delta-special-normalize]: t=" t)
   (let [[t' spec-red?] (special-step def-env ctx t)]
@@ -378,14 +401,13 @@
               t')))))))
 
 (defn normalize
-  ([t] (beta-delta-normalize {} t))
-  ([def-env t] (beta-delta-normalize def-env t))
+  ([t] (normalize {} [] t))
+  ([def-env t] (normalize def-env [] t))
   ([def-env ctx t] (beta-delta-special-normalize def-env ctx t)))
 
 (example
  (normalize '(λ [y [(λ [x □] x) ✳]] [(λ [x ✳] x) y]))
  => '(λ [y ✳] y))
-
 
 (defn beta-eq?
   ([t1 t2]

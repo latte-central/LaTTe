@@ -200,6 +200,19 @@
  => '[✳ (Π [x' ✳] [x x'])])
 ;; and not: '(:type (Π [x :type] (x x)))
 
+(example
+ (subst '(λ [x ✳] (test x y (λ [x ✳] (test x y z)) y)) {'x ':replace})
+ => '(λ [x' ✳] (test x' y (λ [x'' ✳] (test x'' y z)) y)))
+
+(example
+ (subst '(λ [x ✳] (test x y (λ [x ✳] (test x y x')) y)) {'x :replace-x
+                                                        'x' :replace-x' })
+ => '(λ [x'' ✳] (test x'' y (λ [x''' ✳] (test x''' y :replace-x')) y)))
+
+(example
+ (subst '(test x y (λ [x ✳] (test x y x')) y) {'x :replace-x
+                                               'x' :replace-x' })
+ => '(test :replace-x y (λ [x'' ✳] (test x'' y :replace-x')) y))
 
 ;;{
 ;; ## Alpha-equivalence
