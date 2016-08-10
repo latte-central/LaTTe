@@ -325,6 +325,7 @@ term `(%type-of term)` is replaced by the *type* of `term`."
 (defmacro try-proof
   "Tries (but does not register) a proof of theorem named `thm-name` using the given proof `method`
   and `steps`."
+  {:style/indent [2 :form :form [1]]}
   [thm-name method & steps]
   (let [def-env {}
         [status thm] (defenv/fetch-definition def-env thm-name)]
@@ -337,7 +338,7 @@ term `(%type-of term)` is replaced by the *type* of `term`."
                 :theorem thm-name
                 :error (dissoc proof-term :msg)}]
           `(do
-             [:ok {:qed (quote ~thm-name)}]))))))
+             [:ok {:proof-of (quote ~thm-name)}]))))))
 
 (defmacro proof
   "Provides a proof of theorem named `thm-name` using the given proof `method`
