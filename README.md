@@ -17,7 +17,7 @@
 
 ## What?
 
-LaTTe (or LaΠe) is a **proof assistant library** based on type theory (a variant of
+LaTTe is a **proof assistant library** based on type theory (a variant of
 λD as described in the book [Type theory and formal proof: an introduction](http://www.cambridge.org/fr/academic/subjects/computer-science/programming-languages-and-applied-logic/type-theory-and-formal-proof-introduction)).
  
 The specific feature of LaTTe is its design as a library (unlike most proof assistant, generally designed as tools) tightly integrated with the Clojure language. It is of course fully implemented in Clojure, but most importantly all the definitional aspects of the assistant (definitions, theorem and axioms) are handled using Clojure namespaces, definitions and macros.
@@ -70,7 +70,7 @@ Given the tight integration with the Clojure language, *existing Clojure develop
 
 ## How?
 
-Just read *this tutorial* (Soon...)
+There will be a *tutorial* at some point ...
 
 ## Who?
 
@@ -82,7 +82,15 @@ LaTTe may be of some interest for you:
 
 ## When?
 
-LaTTe is, at least for now, an experiment more than a finalized product, but contributions (e.g. mathematical content or enhancement/correction of the underlying machinery) are very much welcomed.
+LaTTe is, at least for now, an experiment more than a finalized product, but it is already usable.
+
+A few non-trivial formalizations have been conducted using LaTTe:
+
+ - some **typed set theory**: https://github.com/fredokun/latte-sets
+ - a (starting) formalization of **integer arithmetics**: https://github.com/fredokun/latte-integers 
+ - a (gorilla REPL) document about **Knaster-Tarski fixed point theorem(s)**: https://github.com/fredokun/fixed-points
+
+Contributions such as mathematical content or enhancement/correction of the underlying machinery are very much welcomed.
 
 ----
 Copyright (C) 2015-2016 Frederic Peschanski (MIT license, cf. `LICENSE`)
