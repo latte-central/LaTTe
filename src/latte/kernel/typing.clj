@@ -100,10 +100,13 @@
 
 (defn type-of-var [def-env ctx x]
   (if-let [ty (ctx-fetch ctx x)]
-    (let [[status sort] (type-of-term def-env ctx ty)]
+    (let [[status sort] (let [ty' (norm/normalize def-env ctx ty)]
+                          (if (stx/kind? ty')
+                            [:ok ty']
+                            (type-of-term def-env ctx ty)))]
       (if (= status :ko)
         [:ko {:msg "Cannot calculate type of variable." :term x :from sort}]
-        (if (stx/sort? (norm/normalize def-env ctx sort))
+        (if (stx/sort? sort)
           [:ok ty]
           [:ko {:msg "Not a correct type (super-type is not a sort)" :term x :type ty :sort sort}])))
     [:ko {:msg "No such variable in type context" :term x}]))
@@ -116,6 +119,18 @@
  => '[:ko {:msg "Cannot calculate type of variable.",
            :term x,
            :from {:msg "No such variable in type context", :term bool}}])
+
+(example
+ (type-of-term {} '[[y x] [x bool]] 'y)
+ => '[:ko {:msg "Cannot calculate type of variable.", :term y, :from {:msg "Cannot calculate type of variable.", :term x, :from {:msg "No such variable in type context", :term bool}}}])
+
+(example
+ (type-of-term {} '[[x ✳]] 'x)
+ => '[:ok ✳])
+
+(example
+ (type-of-term {} '[[x □]] 'x)
+ => '[:ok □])
 
 (example
  (type-of-term {} '[[bool ✳] [y bool]] 'x)
