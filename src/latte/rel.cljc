@@ -1,29 +1,22 @@
 (ns latte.rel
   "A **relation** between elements of
-a given type `T`, is formalized with type `(==> T T :type)`.
+  a given type `T`, is formalized with type `(==> T T :type)`.
 
-The type `(==> T U :type)` for arbitrary types `T` and `U` gives
+  The type `(==> T U :type)` for arbitrary types `T` and `U` gives
   the relations between elements of `T` and elements of `U`.
 
-With an extra property, this is also the type of **functional
- relations**, given by the type `(==> T U)`.
+  With an extra property, this is also the type of **functional
+  relations**, given by the type `(==> T U)`.
 
-This namespace provides some important properties about such
+  This namespace provides some important properties about such
   relations."
 
   (:refer-clojure :exclude [and or not])
-
-  (:require [latte.core :as latte :refer [definition defaxiom defthm
-                                          forall ==>
-                                          proof assume have]])
-
-  (:require [latte.prop :as p :refer [and or not]])
-
-  (:require [latte.equal :as eq :refer [equal]])
-
-  (:require [latte.quant :as q :refer [exists]])
-
-  )
+  (:require-macros [latte.core :as latte :refer [definition defaxiom defthm proof assume have]])
+  (:require [latte.core-init :refer [forall ==>]]
+            [latte.prop :as p :refer [and or not]]
+            [latte.equal :as eq :refer [equal]]
+            [latte.quant :as q :refer [exists]]))
 
 (definition rel
   "The type of relations."

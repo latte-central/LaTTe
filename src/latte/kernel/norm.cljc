@@ -1,12 +1,10 @@
 (ns latte.kernel.norm
   "Normalization and equivalence."
 
-  (:require [clj-by.example :refer [example do-for-example]])
-
-  (:require [latte.kernel.utils :as utils :refer [vconcat]])
-  (:require [latte.kernel.syntax :as stx])
-  (:require [latte.kernel.defenv :as defenv :refer [definition? theorem? axiom? special?]])
-  )
+  (:require-macros [clj-by.example :refer [example do-for-example]])
+  (:require [latte.kernel.syntax :as stx]
+            [latte.kernel.defenv :as defenv :refer [definition? theorem? axiom? special?]]
+            [latte.kernel.utils :as utils :refer [vconcat]]))
 
 
 ;;{

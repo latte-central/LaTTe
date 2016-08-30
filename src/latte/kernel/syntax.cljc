@@ -1,8 +1,7 @@
 
 (ns latte.kernel.syntax
-  (:require [clj-by.example :refer [example do-for-example]])
-  (:require [clojure.set :as set])
-  )
+  (:require-macros [clj-by.example :refer [example do-for-example]])
+  (:require [clojure.set :as set]))
 
 ;;{
 ;; # The syntax of type theory

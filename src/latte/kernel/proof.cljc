@@ -1,20 +1,16 @@
 (ns latte.kernel.proof
   "Declarative proof handling."
 
-  (:require [clojure.set :as set])
-
-  (:require [clj-by.example :refer [example do-for-example]])
-
-  (:require [latte.kernel.utils :as u])
-
-  (:require [latte.kernel.defenv :as defenv])
-  (:require [latte.kernel.presyntax :as stx])
-  (:require [latte.kernel.syntax :refer [free-vars]])
-  (:require [latte.kernel.typing :as ty :refer [type-of-term]])
-  (:require [latte.kernel.norm :as n])
-  (:require [latte.kernel.defs :as d])
-
-  )
+  (:require-macros [clj-by.example :refer [example do-for-example]])
+  (:require clojure.pprint
+            [clojure.set :as set]
+            [latte.kernel.syntax :refer [free-vars]]
+            [latte.kernel.typing :as ty :refer [type-of-term]]
+            [latte.kernel.utils :as u]
+            [latte.kernel.defenv :as defenv]
+            [latte.kernel.presyntax :as stx]
+            [latte.kernel.norm :as n]
+            [latte.kernel.defs :as d]))
 
 (def ^:private +examples-enabled+)
 
@@ -239,18 +235,7 @@
                             :from tdef}]
                       [:ok [(assoc def-env name tdef) ctx]])))))))))
 
-(example
- (do-have-step {}
-          '[[A ✳] [x A]]
-          'step [] 'A :by 'x)
- => '[:ok [{step #latte.kernel.defenv.Definition{:name step, :params [], :arity 0, :parsed-term x, :type A}} [[A ✳] [x A]]]])
-
-(example
- (let [{name :have-name params :params have-type :have-type method :method have-arg :have-arg}
-       (second (parse-have-step '(have step A :by x)))]
-   (do-have-step {} '[[A ✳] [x A]] name params have-type method have-arg))
- => '[:ok [{step #latte.kernel.defenv.Definition{:name step, :params [], :arity 0, :parsed-term x, :type A}}
-           [[A ✳] [x A]]]])
+;(example (do-have-step {} '[[A ✳] [x A]] 'step [] 'A :by 'x) => '[:ok [{step #latte.kernel.defenv.Definition{:name step, :params [], :arity 0, :parsed-term x, :type A}} [[A ✳] [x A]]]]) (example (let [{name :have-name params :params have-type :have-type method :method have-arg :have-arg} (second (parse-have-step '(have step A :by x)))] (do-have-step {} '[[A ✳] [x A]] name params have-type method have-arg)) => '[:ok [{step #latte.kernel.defenv.Definition{:name step, :params [], :arity 0, :parsed-term x, :type A}} [[A ✳] [x A]]]]) 
 
 (defn do-qed-step [start-def-env end-def-env start-ctx end-ctx term]
   (let [[status term] (stx/parse-term end-def-env term)]
