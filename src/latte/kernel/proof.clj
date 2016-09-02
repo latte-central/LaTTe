@@ -224,7 +224,7 @@
             (cond (= status :ko) [:ko have-type]
                   (nil? name) [:ok [def-env ctx]]
                   :else
-                  (let [[status tdef] (d/handle-term-definition
+                  (let [[status tdef] (d/handle-local-term-definition
                                        name
                                        def-env
                                        ctx
