@@ -5,16 +5,14 @@
   Users (as opposed to developpers) of the framework should
   mostly depend on this namespace."
 
-  (:require [clojure.pprint :as pp])
-
-  (:require [latte.kernel.utils :as u])
-  (:require [latte.kernel.presyntax :as stx])
-  (:require [latte.kernel.typing :as ty])
-  (:require [latte.kernel.norm :as n])
-  (:require [latte.kernel.defenv :as defenv])
-  (:require [latte.kernel.defs :as d])
-  (:require [latte.kernel.proof :as p])
-  )
+  (:require [clojure.pprint :as pp]
+            [latte.kernel.utils :as u]
+            [latte.kernel.presyntax :as stx]
+            [latte.kernel.typing :as ty]
+            [latte.kernel.norm :as n]
+            [latte.kernel.defenv :as defenv]
+            [latte.kernel.defs :as d]
+            [latte.kernel.proof :as p]))
 
 ;;{
 ;; ## Definitions (defined terms)
@@ -243,7 +241,7 @@ since they are arbitrary functions. The risk is limited, though, since they cann
                                                    :arglists (list (quote ~(vec (rest (rest def-params))))))))
      [:defined :special (quote ~def-name)]))
 
-(defspecial %type-of
+#_(defspecial %type-of ;;TODO: viebel
   "A special operator such that an occurrence of the
 term `(%type-of term)` is replaced by the *type* of `term`."
   [def-env ctx term]
@@ -367,7 +365,7 @@ term `(%type-of term)` is replaced by the *type* of `term`."
         (let [new-thm (assoc thm :proof proof-term)]
           ;;(println "HERE" "HERE" "HERE")
           ;;(println new-thm#)
-          (alter-var-root (resolve thm-name) (fn [_] new-thm))
+          ;TODO: viebel (alter-var-root (resolve thm-name) (fn [_] new-thm))
           `(do
              ;;(alter-var-root (var ~thm-name) (fn [_#] ~new-thm#))
              [:qed (quote ~thm-name)]))))))
@@ -377,48 +375,6 @@ term `(%type-of term)` is replaced by the *type* of `term`."
 ;;}
 
 
-(defnotation lambda
-  "The `lambda` notation for abstractions.
-
-The simplest form is `(lambda [x T] e)` with
-as `bindings` the variable `x` of type `T`, and
-`e` as the abstraction `body`.
-
-The low-level equivalent is `(λ [x T] e)`.
-
-The extended notation `(lambda [x y z T] e)` is
-equivalent to `(lambda [x T] (lambda [y T] (lambda [z T] e)))`."
-  [bindings body]
-  [:ok (list 'λ bindings body)])
-
-(alter-meta! #'lambda update-in [:style/indent] (fn [_] [1 :form :form]))
-
-(defnotation forall
-  "The `lambda` notation for product abstractions.
-
-The expression `(forall [x T] U)` is the type of an
-abstraction of the form `(lambda [x T] e)` with `e`
- of type `U` when `x` is of type `P`.
-
-The low-level equivalent is `(Π [x T] U)`.
-
-The extended notation `(forall [x y z T] U)` is
-equivalent to `(forall [x T] (forall [y T] (forall [z T] U)))`."
-  [bindings body]
-  [:ok (list 'Π bindings body)])
-
-(alter-meta! #'forall update-in [:style/indent] (fn [_] [1 :form :form]))
-
-(defnotation ==>
-  "The function type, or equivalently logical implication.
-
-  `(==> A B)` is `(Π [x A] B)` where `x` does not occur free in `B`.
-
-Implication is right arrociative:
-
-'(==> A B C) ≡ `(==> A (==> B C))`."
-  [& arguments]
-  [:ok (list* '⟶ arguments)])
 
 (defmacro assume
   {:style/indent [1 :form [1]]} 

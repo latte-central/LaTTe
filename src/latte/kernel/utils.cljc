@@ -1,6 +1,5 @@
 (ns latte.kernel.utils
-  (:require [clj-by.example :refer [example do-for-example]])
-  )
+  (:require-macros [clj-by.example :refer [example do-for-example]]))
 
 (def ^:private +examples-enabled+)
 
