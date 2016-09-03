@@ -1,9 +1,9 @@
 
 (ns latte.kernel.presyntax
-  (:require [clj-by.example :refer [example do-for-example]])
-
-  (:require [latte.kernel.defenv :as defenv])
-  )
+  (:require-macros [clj-by.example :refer [example do-for-example]])
+  (:require 
+    #?(:cljs [cljs.analyzer.api :refer [ns-resolve]])
+    [latte.kernel.defenv :as defenv]))
 
 (def ^:private +examples-enabled+)
 
@@ -270,12 +270,13 @@
                 [:ko {:msg (str "Wrong body in `exists` form") :term t :from body}]
                 (loop [i (dec (count bindings)), res body]
                   (if (>= i 0)
-                    (recur (dec i) (list (resolve 'latte.quant/ex) (second (bindings i)) (list 'λ (bindings i) res)))
+                    (recur (dec i) (list #?(:clj (resolve 'latte.quant/ex)
+                                            :cljs (ns-resolve (.getName *ns*) 'latte.quant/ex)) (second (bindings i)) (list 'λ (bindings i) res)))
                     [:ok res]))))))))))
 
 (example
  (parse-term {} '(∃ [x T] P))
- => [:ok (list (resolve 'latte.quant/ex) 'T '(λ [x T] P))])
+ => [:ok (list (ns-resolve *ns* 'latte.quant/ex) 'T '(λ [x T] P))])
 
 (defn parse-defined-term [def-env sdef t bound]
   (if (defenv/notation? sdef)

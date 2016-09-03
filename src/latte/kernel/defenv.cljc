@@ -1,6 +1,6 @@
 (ns latte.kernel.defenv
   "The definitional environment."
-
+  #?(:cljs (:require [cljs.analyzer.api :refer [ns-resolve]]))
   )
 
 ;;{
@@ -29,8 +29,9 @@
   (vec (repeat n nil)))
 
 ;; courtesy of #whocaresanyway@stackoverflow
-(defn- arg-count [f]
-  (let [m (first (.getDeclaredMethods (class f)))
+(defn- arg-count [f];TODO: viebel
+  1
+  #_(let [m (first (.getDeclaredMethods (class f))) 
         p (.getParameterTypes m)]
     (alength p)))
 
@@ -67,7 +68,8 @@
   (cond
     (symbol? sym) (if-let [ldef (get locals sym)]
                     [:ok ldef]
-                    (if-let [symvar (resolve sym)]
+                    (if-let [symvar #?(:clj (resolve sym)
+                                       :cljs (ns-resolve (.getName *ns*) sym))]
                       (recur locals symvar)
                       [:ko {:msg "No such (local) definition" :def sym}]))
     (var? sym) (let [gdef @sym]
@@ -88,4 +90,5 @@
         (throw (ex-info "Value to qualify should be a var or a symbol (please report)" {:sym sym :type (type sym)})))
       (if-let [_ (get locals sym)]
         sym
-        (resolve sym)))))
+        #?(:clj (resolve sym)
+           :cljs (ns-resolve (.getName *ns*) sym))))))
