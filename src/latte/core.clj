@@ -5,16 +5,15 @@
   Users (as opposed to developpers) of the framework should
   mostly depend on this namespace."
 
-  (:require [clojure.pprint :as pp])
-
-  (:require [latte.kernel.utils :as u])
-  (:require [latte.kernel.presyntax :as stx])
-  (:require [latte.kernel.typing :as ty])
-  (:require [latte.kernel.norm :as n])
-  (:require [latte.kernel.defenv :as defenv])
-  (:require [latte.kernel.defs :as d])
-  (:require [latte.kernel.proof :as p])
-  )
+  (:require [clojure.pprint :as pp]
+       
+            [latte.kernel.utils :as u]
+            [latte.kernel.presyntax :as stx]
+            [latte.kernel.typing :as ty]
+            [latte.kernel.norm :as n]
+            [latte.kernel.defenv :as defenv]
+            [latte.kernel.defs :as d]
+            [latte.kernel.proof :as p]))
 
 ;;{
 ;; ## Definitions (defined terms)

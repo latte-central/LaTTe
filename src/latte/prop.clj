@@ -4,13 +4,11 @@
 
   (:refer-clojure :exclude [and or not])
 
-  (:require [latte.kernel.syntax :as stx])
-  (:require [latte.kernel.typing :as ty])
-
-  (:require [latte.core :as latte :refer [definition term type-of defthm defspecial
+  (:require [latte.kernel.syntax :as stx]
+            [latte.kernel.typing :as ty]
+            [latte.core :as latte :refer [definition term type-of defthm defspecial
                                           lambda forall ==>
-                                          assume proof try-proof]])
-  )
+                                          assume proof try-proof]]))
 
 (defthm impl-refl
   "Implication is reflexive."
@@ -162,6 +160,29 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
     (have b C :by ((a) y))
     (have c (and A B) :discharge [C z b])
     (qed c)))
+
+(defspecial %and-intro
+  "A special introduction rule that takes a proof
+`a` of type `A`, a proof `b` of type `B` and yields
+a proof of type `(and A B)`.
+
+This is a special version of [[and-intro]]."
+  [def-env ctx a b]
+  (let [[status-a ty-a] (ty/type-of-term def-env ctx a)
+        [status-b ty-b] (ty/type-of-term def-env ctx b)]
+    (cond
+      (= status-a :ko)
+      (throw (ex-info "Cannot type left-hand term."
+                      {:special 'latte.prop/%and-intro
+                       :term a
+                       :from ty-a}))
+      (= status-b :ko)
+      (throw (ex-info "Cannot type right-hand term."
+                      {:special 'latte.prop/%and-intro
+                       :term b
+                       :from ty-b}))
+      :else
+      [[(list #'and-intro ty-a ty-b) a] b])))
 
 (defthm and-elim-left
   "Elimination rule for logical conjunction.

@@ -12,12 +12,10 @@
 
   (:require [latte.core :as latte :refer [definition defthm defaxiom defnotation proof
                                           forall ==>
-                                          assume have]])
+                                          assume have]]
 
-  (:require [latte.prop :as p :refer [and]])
-  (:require [latte.equal :as eq :refer [equal]])
-  )
-
+            [latte.prop :as p :refer [and]]
+            [latte.equal :as eq :refer [equal]]))
 
 (definition ex
   "The encoding for the existential quantifier.
@@ -117,8 +115,7 @@ Remark: this is a second-order, intuitionistic definition that
          (equal T y (the T P u)))))
 
 (proof the-lemma :script
-  (have a (single T P) :by ((p/and-elim-right (ex T P)
-                                              (single T P)) u))
+  (have a (single T P) :by (p/%and-elim-right u))
   (have b (P (the T P u)) :by (the-prop T P u))
   (assume [y T
            Hy (P y)]

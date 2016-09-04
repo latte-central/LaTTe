@@ -15,15 +15,10 @@ This namespace provides some important properties about such
 
   (:require [latte.core :as latte :refer [definition defaxiom defthm
                                           forall ==>
-                                          proof assume have]])
-
-  (:require [latte.prop :as p :refer [and or not]])
-
-  (:require [latte.equal :as eq :refer [equal]])
-
-  (:require [latte.quant :as q :refer [exists]])
-
-  )
+                                          proof assume have]]
+            [latte.prop :as p :refer [and or not]]
+            [latte.equal :as eq :refer [equal]]
+            [latte.quant :as q :refer [exists]]))
 
 (definition rel
   "The type of relations."

@@ -5,10 +5,8 @@
 
   (:require [latte.core :as latte :refer [definition defthm
                                           forall lambda ==>
-                                          assume have proof]])
-
-  (:require [latte.prop :as p :refer [<=> and or not]])
-  )
+                                          assume have proof]]
+            [latte.prop :as p :refer [<=> and or not]]))
 
 (definition equal
   "The intuitionistic, second-order definition of equality.
