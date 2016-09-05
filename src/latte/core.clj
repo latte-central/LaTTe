@@ -333,9 +333,10 @@ term `(%type-of term)` is replaced by the *type* of `term`."
       (let [[status proof-term]
             (p/check-proof def-env (reverse (:params thm)) (:type thm) method steps)]
         (if (= status :ko)
-          [:ko {:msg (str "Proof failed: " (:msg proof-term))
-                :theorem thm-name
-                :error (dissoc proof-term :msg)}]
+          (let [res [:ko {:msg (str "Proof failed: " (:msg proof-term))
+                         :theorem thm-name
+                          :error (dissoc proof-term :msg)}]]
+            (list 'quote res))
           `(do
              [:ok {:proof-of (quote ~thm-name)}]))))))
 
