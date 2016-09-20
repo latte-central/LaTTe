@@ -1,9 +1,7 @@
 
 (ns latte.kernel.presyntax
-  (:require [clj-by.example :refer [example do-for-example]])
-
-  (:require [latte.kernel.defenv :as defenv])
-  )
+  (:require [clj-by.example :refer [example do-for-example]]
+            [latte.kernel.defenv :as defenv]))
 
 (def ^:private +examples-enabled+)
 

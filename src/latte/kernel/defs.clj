@@ -1,12 +1,12 @@
+
 (ns latte.kernel.defs
   "Handling definitions."
 
-  (:require [latte.kernel.utils :as u])
-  (:require [latte.kernel.presyntax :as stx])
-  (:require [latte.kernel.defenv :refer [->Definition ->Theorem ->Axiom]])
-  (:require [latte.kernel.typing :as ty])
-  (:require [latte.kernel.norm :as n])
-  )
+  (:require [latte.kernel.utils :as u]
+            [latte.kernel.presyntax :as stx]
+            [latte.kernel.defenv :refer [->Definition ->Theorem ->Axiom]]
+            [latte.kernel.typing :as ty]
+            [latte.kernel.norm :as n]))
 
 ;;{
 ;; ## Term definitions

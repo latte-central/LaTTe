@@ -1,20 +1,15 @@
 (ns latte.kernel.proof
   "Declarative proof handling."
 
-  (:require [clojure.set :as set])
-
-  (:require [clj-by.example :refer [example do-for-example]])
-
-  (:require [latte.kernel.utils :as u])
-
-  (:require [latte.kernel.defenv :as defenv])
-  (:require [latte.kernel.presyntax :as stx])
-  (:require [latte.kernel.syntax :refer [free-vars]])
-  (:require [latte.kernel.typing :as ty :refer [type-of-term]])
-  (:require [latte.kernel.norm :as n])
-  (:require [latte.kernel.defs :as d])
-
-  )
+  (:require [clojure.set :as set]
+            [clj-by.example :refer [example do-for-example]]
+            [latte.kernel.utils :as u]
+            [latte.kernel.defenv :as defenv]
+            [latte.kernel.presyntax :as stx]
+            [latte.kernel.syntax :refer [free-vars]]
+            [latte.kernel.typing :as ty :refer [type-of-term]]
+            [latte.kernel.norm :as n]
+            [latte.kernel.defs :as d]))
 
 (def ^:private +examples-enabled+)
 
