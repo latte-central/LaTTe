@@ -382,4 +382,4 @@
     ;; at end of script
     (if (seq cont-stack)
       (recur (first cont-stack) start-def-env start-ctx def-env ctx (rest cont-stack))
-      [:ko {:msg "Missing `qed` step in proof."}])))
+      [:ko {:msg "Missing `qed` step in proof." :info :proof-incomplete}])))

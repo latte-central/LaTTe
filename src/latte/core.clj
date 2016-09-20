@@ -6,7 +6,6 @@
   mostly depend on this namespace."
 
   (:require [clojure.pprint :as pp]
-       
             [latte.kernel.utils :as u]
             [latte.kernel.presyntax :as stx]
             [latte.kernel.typing :as ty]
@@ -333,10 +332,16 @@ term `(%type-of term)` is replaced by the *type* of `term`."
       (let [[status proof-term]
             (p/check-proof def-env (reverse (:params thm)) (:type thm) method steps)]
         (if (= status :ko)
-          (let [res [:ko {:msg (str "Proof failed: " (:msg proof-term))
-                         :theorem thm-name
-                          :error (dissoc proof-term :msg)}]]
-            (list 'quote res))
+          (if (= (get proof-term :info)
+                 :proof-incomplete)
+            ;; proof is incomplete
+            `[:ko {:proof-incomplete (quote ~thm-name)}]
+            ;; real error
+            (let [res [:ko {:msg (str "Proof failed: " (:msg proof-term))
+                            :theorem thm-name
+                            :error (dissoc proof-term :msg)}]]
+              (list 'quote res)))
+          ;; proof is ok
           `(do
              [:ok {:proof-of (quote ~thm-name)}]))))))
 
