@@ -1,4 +1,4 @@
-(defproject latte "0.3.3-SNAPSHOT"
+(defproject latte "0.3.4-SNAPSHOT"
   :description "LaTTe : a Laboratory for Type Theory Experiments"
   :url "https://github.com/fredokun/LaTTe.git"
   :license {:name "MIT Licence"
@@ -8,5 +8,5 @@
   :codox {:metadata {:doc/format :markdown}
           :namespaces [latte.core latte.prop latte.classic
                        latte.quant latte.equal latte.rel]}
-  :plugins [[lein-codox "0.9.5"]])
+  :plugins [[lein-codox "0.10.0"]])
 
