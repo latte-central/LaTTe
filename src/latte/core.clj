@@ -297,7 +297,7 @@ term `(%type-of term)` is replaced by the *type* of `term`."
     (let [ty (ty/type-of def-env ctx t)]
       (list 'quote ty))))
 
-(defmacro check-type? [& args]
+(defmacro type-check? [& args]
   (let [def-env {}
         t (stx/parse def-env (last (butlast args)))
         ty (stx/parse def-env (last args))
