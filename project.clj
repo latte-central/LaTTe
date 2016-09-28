@@ -1,4 +1,4 @@
-(defproject latte "0.3.4-SNAPSHOT"
+(defproject latte "0.3.5-SNAPSHOT"
   :description "LaTTe : a Laboratory for Type Theory Experiments"
   :url "https://github.com/fredokun/LaTTe.git"
   :license {:name "MIT Licence"
