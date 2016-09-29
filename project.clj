@@ -5,7 +5,8 @@
             :url "http://opensource.org/licenses/MIT"}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [clj-by-example "0.1.0"]]
-  :codox {:metadata {:doc/format :markdown}
+  :codox {:output-path "docs"
+          :metadata {:doc/format :markdown}
           :namespaces [latte.core latte.prop latte.classic
                        latte.quant latte.equal latte.rel]}
   :plugins [[lein-codox "0.10.0"]])
