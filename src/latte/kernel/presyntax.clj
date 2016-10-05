@@ -6,7 +6,7 @@
 (def ^:private +examples-enabled+)
 
 (def +reserved-symbols+
-  '#{□ ✳ λ Π ⟶ ∃})
+  '#{□ ✳ λ Π ⟶ ∃ ∀})
 
 (defn reserved-symbol? [s]
   (or (contains? +reserved-symbols+ s)
@@ -68,7 +68,8 @@
   (= t 'λ))
 
 (defn product-kw? [t]
-  (= t 'Π))
+  (or (= t 'Π)
+      (= t '∀)))
 
 (defn arrow-kw? [t]
   (= t '⟶))
@@ -350,5 +351,3 @@
                  (if (= status :ko)
                    (throw (ex-info "Parse error" t'))
                    t'))))
-
-
