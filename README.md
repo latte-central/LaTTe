@@ -1,6 +1,6 @@
 # LaTTe
 
-http://fredokun.github.io/LaTTe/
+http://latte-central.github.io/LaTTe/
 
 ```text
              ((((
