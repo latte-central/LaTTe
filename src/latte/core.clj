@@ -146,11 +146,11 @@
 ;; ## Definitions of axioms
 ;;}
 
-(defn parse-defaxiom-args [args]
+(defn parse-defaxiom-args [kind args]
     (when (> (count args) 4)
-      (throw (ex-info "Too many arguments for defaxiom" {:max-arity 4 :nb-args (count args)})))
+      (throw (ex-info (str "Too many arguments for " kind) {:max-arity 4 :nb-args (count args)})))
     (when (< (count args) 2)
-      (throw (ex-info "Not enough arguments for defaxiom" {:min-arity 2 :nb-args (count args)})))
+      (throw (ex-info (str "Not enough arguments for " kind) {:min-arity 2 :nb-args (count args)})))
   (let [body (last args)
         params (if (= (count args) 2)
                  []
@@ -160,32 +160,58 @@
               "No documentation.")
         def-name (first args)]
     (when (not (symbol? def-name))
-      (throw (ex-info "Name of defaxiom must be a symbol." {:def-name def-name})))
+      (throw (ex-info (str "Name of " kind " must be a symbol.") {:def-name def-name})))
     (when (not (string? doc))
-      (throw (ex-info "Documentation string for defaxiom must be ... a string." {:def-name def-name :doc doc})))
+      (throw (ex-info (str "Documentation string for " kind "must be ... a string.") {:def-name def-name :doc doc})))
     (when (not (vector? params))
-      (throw (ex-info "Parameters of defaxiom must be a vector." {:def-name def-name :params params})))
+      (throw (ex-info (str "Parameters of " kind "must be a vector.") {:def-name def-name :params params})))
     [def-name doc params body]))
 
-(defmacro defaxiom
-  [& args]
-  (let [[def-name doc params ty] (parse-defaxiom-args args)]
-    ;;(println "def-name =" def-name " doc =" doc " params =" params " ty =" ty)
+(defn handle-defaxiom
+  "Handling of `defaxiom` and `defprimitive` forms."
+  [kind args]
+  (let [[def-name doc params ty] (parse-defaxiom-args (if (= kind :axiom)
+                                                        "defaxiom"
+                                                        "defprimitive") args)]
     (when (defenv/registered-definition? {} def-name)
-      (do
-        ;;(throw (ex-info "Cannot redefine term." {:name def-name})))
-        ;; TODO: maybe disallow redefining if type is changed ?
-        ;;       otherwise only warn ?
-        (println "[Warning] redefinition as axiom: " def-name)))
+      (println "[Warning] redefinition as" (if (= kind :axiom)
+                                             "axiom"
+                                             "primitive") ":" def-name))
     (let [definition (d/handle-axiom-declaration def-name {} params ty)
-          quoted-def# definition]
-      `(do
-         (def ~def-name ~quoted-def#)
-         (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
-                                                       :doc (mk-doc "Axiom" (quote ~ty) ~doc)
-                                                       :arglists (list (quote ~params)))))
-         [:declared :axiom (quote ~def-name)]))))
+          metadata {:doc (mk-doc (if (= kind :axiom)
+                                   "Axiom"
+                                   "Primitive") ty doc)
+                    :arglists (list params)}]
+      [def-name definition metadata])))
 
+(defmacro defaxiom
+  "Declaration of an axiom with the specified `name` (first argument)
+  an optional `docstring` (second argument), a vector of `parameters`
+ and the axiom statement (last argument).
+ Each parameter is a pair `[x T]` with `x` the parameter name and `T` its
+  type. 
+
+  An axiom is accepted without a proof, and should thus be used with
+extra care. The LaTTe rule of thumb is that theorems should be
+favored, but axioms are sometimes required (e.g. the law of the excluded
+ middle) or more \"reasonable\" because of the proof length or complexity.
+In all cases the introduction of an axiom must be justified with strong
+ (albeit informal) arguments."
+  [& args]
+  (let [[def-name definition metadata] (handle-defaxiom :axiom args)]
+    `(do
+       (def ~def-name ~definition)
+       (alter-meta! (var ~def-name) #(merge % (quote  ~metadata))) 
+       [:defined :axiom (quote ~def-name)])))
+
+(defmacro defprimitive
+  "Declaration of a primitive, i.e. an axiomatic definition."
+  [& args]
+  (let [[def-name definition metadata] (handle-defthm :primitive args)]
+    `(do
+       (def ~def-name ~definition)
+       (alter-meta! (var ~def-name) #(merge % ~metadata)) 
+       [:defined :primitive (quote ~def-name)])))
 
 ;;{
 ;; ## Notations
