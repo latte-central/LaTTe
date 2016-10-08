@@ -8,7 +8,7 @@
             [latte.kernel.typing :as ty]
             [latte.core :as latte :refer [definition term type-of defthm defspecial
                                           lambda forall ==>
-                                          assume proof try-proof]]))
+                                          assume have qed proof try-proof]]))
 
 (defthm impl-refl
   "Implication is reflexive."

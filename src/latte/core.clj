@@ -77,11 +77,11 @@
 ;; ## Definitions of theorems
 ;;}
 
-(defn parse-defthm-args [args]
+(defn parse-defthm-args [kind args]
     (when (> (count args) 4)
-      (throw (ex-info "Too many arguments for defthm" {:max-arity 4 :nb-args (count args)})))
+      (throw (ex-info (str "Too many arguments for " kind) {:max-arity 4 :nb-args (count args)})))
     (when (< (count args) 2)
-      (throw (ex-info "Not enough arguments for defthm" {:min-arity 2 :nb-args (count args)})))
+      (throw (ex-info (str "Not enough arguments for " kind) {:min-arity 2 :nb-args (count args)})))
   (let [body (last args)
         params (if (= (count args) 2)
                  []
@@ -91,31 +91,56 @@
               "No documentation.")
         def-name (first args)]
     (when (not (symbol? def-name))
-      (throw (ex-info "Name of defthm must be a symbol." {:def-name def-name})))
+      (throw (ex-info (str "Name of " kind " must be a symbol.") {:def-name def-name})))
     (when (not (string? doc))
-      (throw (ex-info "Documentation string for defthm must be ... a string." {:def-name def-name :doc doc})))
+      (throw (ex-info (str "Documentation string for " kind "must be ... a string.") {:def-name def-name :doc doc})))
     (when (not (vector? params))
-      (throw (ex-info "Parameters of defthm must be a vector." {:def-name def-name :params params})))
+      (throw (ex-info (str "Parameters of " kind "must be a vector.") {:def-name def-name :params params})))
     [def-name doc params body]))
 
-(defmacro defthm
-  [& args]
-  (let [[def-name doc params ty] (parse-defthm-args args)]
-    ;;(println "def-name =" def-name " doc =" doc " params =" params " ty =" ty)
+(defn handle-defthm
+  "Handling of `defthm` and `deflemma` forms."
+  [kind args]
+  (let [[def-name doc params ty] (parse-defthm-args (if (= kind :theorem)
+                                                      "defthm"
+                                                      "deflemma") args)]
     (when (defenv/registered-definition? {} def-name)
-      (do
-        ;;(throw (ex-info "Cannot redefine term." {:name def-name})))
-        ;; TODO: maybe disallow redefining if type is changed ?
-        ;;       otherwise only warn ?
-        (println "[Warning] redefinition as theorem: " def-name)))
+      (println "[Warning] redefinition as" (if (= kind :theorem)
+                                             "theorem"
+                                             "lemma") ":" def-name))
     (let [definition (d/handle-thm-declaration def-name {} params ty)
-          quoted-def# definition]
-      `(do
-         (def ~def-name ~quoted-def#)
-         (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
-                                                       :doc (mk-doc "Theorem" (quote ~ty) ~doc)
-                                                       :arglists (list (quote ~params)))))
-         [:declared :theorem (quote ~def-name)]))))
+          metadata {:doc (mk-doc (if (= kind :theorem)
+                                   "Theorem"
+                                   "Lemma") ty doc)
+                    :arglists (list params)
+                    :private (= kind :lemma)}]
+      [def-name definition metadata])))
+
+(defmacro defthm
+  "Declaration of a theorem of the specified `name` (first argument)
+  an optional `docstring` (second argument), a vector of `parameters`
+ and the theorem proposition (last argument).
+ Each parameter is a pair `[x T]` with `x` the parameter name and `T` its
+  type. 
+
+  A theorem declared must then be demonstrated using the `proof` form."
+  [& args]
+  (let [[def-name definition metadata] (handle-defthm :theorem args)]
+    `(do
+       (def ~def-name ~definition)
+       (alter-meta! (var ~def-name) #(merge % (quote  ~metadata))) 
+       [:declared :theorem (quote ~def-name)])))
+
+
+(defmacro deflemma
+  "Declaration of a lemma, i.e. an auxiliary theorem. In LaTTe a lemma
+  is private. To export a theorem the `defthm` form must be used instead."
+  [& args]
+  (let [[def-name definition metadata] (handle-defthm :lemma args)]
+    `(do
+       (def ~def-name ~definition)
+       (alter-meta! (var ~def-name) #(merge % ~metadata)) 
+       [:declared :lemma (quote ~def-name)])))
 
 ;;{
 ;; ## Definitions of axioms
@@ -434,3 +459,7 @@ Implication is right arrociative:
   {:style/indent [1]}
   [& args]
   `((quote have) ~@args))
+
+(defmacro qed
+  [& args]
+  `((quote qed) ~@args))
