@@ -88,5 +88,3 @@ classical logic."
     (have f (or A B) :by ((not-not-impl (or A B)) e))
     (qed f)))
 
-
-

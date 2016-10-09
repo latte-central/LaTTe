@@ -350,10 +350,12 @@ This is the introduction by the right operand."
 (defthm or-elim
   "Elimination rule for logical disjunction.
 
-Remark: this rule is not very useful since it only
-reflects the definition of `or`. This is unlike for classical logic, 
-which offers a much simpler elimination process.
-"
+Remark: this rule,
+reflecting the definition of [[or]], provides a
+ constructive way to eliminate disjunctions. 
+A simpler elimination process is offered if one
+ of the two disjuncts does not hold: 
+cf. [[or-not-elim-left]] and [[or-not-elim-right]]."
   [[A :type] [B :type]]
   (==> (or A B)
        (forall [C :type]
@@ -373,6 +375,46 @@ which offers a much simpler elimination process.
     (have b (==> (==> B C) C) :by (a H2))
     (have c C :by (b H3))
     (qed c)))
+
+(defthm or-not-elim-left
+  "An elimination rule for disjunction, simpler than [[or-elim]].
+This eliminates to the left operand."
+  [[A :type] [B :type]]
+  (==> (or A B) (not B)
+       A))
+
+(proof or-not-elim-left
+    :script
+  (assume [H1 (or A B)
+           H2 (not B)]
+    (have <a> (==> (==> A A) (==> B A) A) :by (H1 A))
+    (have <b> (==> A A) :by (impl-refl A))
+    (assume [x B]
+      (have <c> absurd :by (H2 x))
+      (have <d> A :by (<c> A))
+      (have <e> (==> B A) :discharge [x <d>]))
+    (have <f> A :by (<a> <b> <e>))
+    (qed <f>)))
+
+(defthm or-not-elim-right
+  "An elimination rule for disjunction, simpler than [[or-elim]].
+This eliminates to the right operand."
+  [[A :type] [B :type]]
+  (==> (or A B) (not A)
+       B))
+
+(proof or-not-elim-right
+    :script
+  (assume [H1 (or A B)
+           H2 (not A)]
+    (have <a> (==> (==> A B) (==> B B) B) :by (H1 B))
+    (have <b> (==> B B) :by (impl-refl B))
+    (assume [x A]
+      (have <c> absurd :by (H2 x))
+      (have <d> B :by (<c> B))
+      (have <e> (==> A B) :discharge [x <d>]))
+    (have <f> B :by (<a> <e> <b>))
+    (qed <f>)))
 
 (defthm or-sym
   "Symmetry of disjunction.
