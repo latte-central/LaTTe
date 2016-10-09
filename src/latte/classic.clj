@@ -57,7 +57,7 @@ This can be seen as an elimination rule for ¬¬ (not-not) propositions."
 (proof not-not :script
   (have a (==> A (not (not A))) :by (p/impl-not-not A))
   (have b (==> (not (not A)) A) :by (not-not-impl A))
-  (have c _ :by (p/%and-intro a b))
+  (have c _ :by (p/and-intro% a b))
   (qed c))
 
 (defthm not-impl-or-intro

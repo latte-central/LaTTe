@@ -78,7 +78,7 @@ This namespace provides some important properties about such
 
 (proof bijective-is-surjective :script
   (assume [H (bijective T U F)]
-    (have a (surjective T U F) :by (p/%and-elim-right H))
+    (have a (surjective T U F) :by (p/and-elim-right% H))
     (qed a)))
 
 (defthm bijective-is-injective
@@ -89,7 +89,7 @@ This namespace provides some important properties about such
 
 (proof bijective-is-injective :script
   (assume [H (bijective T U F)]
-    (have a (injective T U F) :by (p/%and-elim-left H))
+    (have a (injective T U F) :by (p/and-elim-left% H))
     (qed a)))
 
 

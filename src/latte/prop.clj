@@ -161,7 +161,7 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
     (have c (and A B) :discharge [C z b])
     (qed c)))
 
-(defspecial %and-intro
+(defspecial and-intro%
   "A special introduction rule that takes a proof
 `a` of type `A`, a proof `b` of type `B` and yields
 a proof of type `(and A B)`.
@@ -173,12 +173,12 @@ This is a special version of [[and-intro]]."
     (cond
       (= status-a :ko)
       (throw (ex-info "Cannot type left-hand term."
-                      {:special 'latte.prop/%and-intro
+                      {:special 'latte.prop/and-intro%
                        :term a
                        :from ty-a}))
       (= status-b :ko)
       (throw (ex-info "Cannot type right-hand term."
-                      {:special 'latte.prop/%and-intro
+                      {:special 'latte.prop/and-intro%
                        :term b
                        :from ty-b}))
       :else
@@ -223,7 +223,7 @@ This is a special version of [[and-intro]]."
                             [:ko nil nil]
                             [:ok a b]))))))))))))))
 
-(defspecial %and-elim-left
+(defspecial and-elim-left%
   "A special elimination rule that takes a proof
 of type `(and A B)` and yields a proof of `A`.
 
@@ -231,14 +231,14 @@ This is a special version of [[and-elim-left]]."
   [def-env ctx and-term]
   (let [[status ty] (ty/type-of-term def-env ctx and-term)]
     (if (= status :ko)
-      (throw (ex-info "Cannot type term." {:special 'latte.prop/%and-elim-left
+      (throw (ex-info "Cannot type term." {:special 'latte.prop/and-elim-left%
                                            :term and-term
                                            :from ty}))
       (do
-        ;; (println "[%and-elim-left] ty=" ty)
+        ;; (println "[and-elim-left%] ty=" ty)
         (let [[status A B] (decompose-and-type def-env ctx ty)]
           (if (= status :ko)
-            (throw (ex-info "Not an `and`-type." {:special 'latte.prop/%and-elim-left
+            (throw (ex-info "Not an `and`-type." {:special 'latte.prop/and-elim-left%
                                                   :term and-term
                                                   :type ty}))
             [(list #'and-elim-left A B) and-term]))))))
@@ -260,7 +260,7 @@ This is a special version of [[and-elim-left]]."
     (have c B :by (a b))
     (qed c)))
 
-(defspecial %and-elim-right
+(defspecial and-elim-right%
   "A special elimination rule that takes a proof
 of type `(and A B)` and yields a proof of `B`.
 
@@ -268,14 +268,14 @@ This is a special version of [[and-elim-right]]."
   [def-env ctx and-term]
   (let [[status ty] (ty/type-of-term def-env ctx and-term)]
     (if (= status :ko)
-      (throw (ex-info "Cannot type term." {:special 'latte.prop/%and-elim-right
+      (throw (ex-info "Cannot type term." {:special 'latte.prop/and-elim-right%
                                            :term and-term
                                            :from ty}))
       (do
         (let [[status A B] (decompose-and-type def-env ctx ty)]
-          ;; (println "[%and-elim-right] A=" A "B=" B)
+          ;; (println "[and-elim-right%] A=" A "B=" B)
           (if (= status :ko)
-            (throw (ex-info "Not an `and`-type." {:special 'latte.prop/%and-elim-right
+            (throw (ex-info "Not an `and`-type." {:special 'latte.prop/and-elim-right%
                                                   :term and-term
                                                   :type ty}))
             [(list #'and-elim-right A B) and-term]))))))
@@ -289,9 +289,9 @@ This is a special version of [[and-elim-right]]."
 (proof and-sym :script
   (assume [H (and A B)]
     ;; (have a A :by ((and-elim-left A B) H))
-    (have <a> A :by (%and-elim-left H))
+    (have <a> A :by (and-elim-left% H))
     ;;(have b B :by ((and-elim-right A B) H))
-    (have <b> B :by (%and-elim-right H))
+    (have <b> B :by (and-elim-right% H))
     (have <c> (==> B A
                  (and B A)) :by (and-intro B A))
     (have <d> (and B A) :by (<c> <b> <a>))

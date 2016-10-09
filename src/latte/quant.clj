@@ -115,7 +115,7 @@ Remark: this is a second-order, intuitionistic definition that
          (equal T y (the T P u)))))
 
 (proof the-lemma :script
-  (have a (single T P) :by (p/%and-elim-right u))
+  (have a (single T P) :by (p/and-elim-right% u))
   (have b (P (the T P u)) :by (the-prop T P u))
   (assume [y T
            Hy (P y)]
