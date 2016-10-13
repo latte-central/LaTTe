@@ -208,7 +208,7 @@ In all cases the introduction of an axiom must be justified with strong
   "Declaration of a primitive, i.e. an axiomatic definition (this is indeed
   a synonymous of [[defaxiom]])."
   [& args]
-  (let [[def-name definition metadata] (handle-defthm :primitive args)]
+  (let [[def-name definition metadata] (handle-defaxiom :primitive args)]
     `(do
        (def ~def-name ~definition)
        (alter-meta! (var ~def-name) #(merge % ~metadata)) 
