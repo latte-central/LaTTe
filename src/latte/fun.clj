@@ -111,6 +111,33 @@
       (have <d> _ :discharge [y <c>]))
     (qed <d>)))
 
+(defthm bijective-unique
+  "A bijective function has exactly one antecedent for each image."
+  [[T :type] [U :type] [f (==> T U)]]
+  (==> (bijective T U f)
+       (forall [y U] (q/unique T (lambda [x T] (equal U (f x) y))))))
 
+(proof bijective-unique
+    :script
+  (assume [Hf (bijective T U f)]
+    (have <a> (injective T U f)
+          :by ((bijective-is-injective T U f) Hf))
+    (have <b> (surjective T U f)
+          :by ((bijective-is-surjective T U f) Hf))
+    (assume [y U]
+      (have <c> (q/ex T (lambda [x T] (equal U (f x) y)))
+            :by (<b> y))
+      (have <d> (q/single T (lambda [x T] (equal U (f x) y)))
+            :by ((injective-single T U f)
+                 <a> y))
+      (have <e> (q/unique T (lambda [x T] (equal U (f x) y)))
+            :by (p/and-intro% <c> <d>))
+      (qed <e>))))
 
+(definition inverse
+  "The inverse of function `f`."
+  [[T :type] [U :type] [f (==> T U)] [b (bijective T U f)]]
+  (lambda [y U]
+    (q/the T (lambda [x T] (equal U (f x) y))
+           ((bijective-unique T U f) b y))))
 
