@@ -141,3 +141,30 @@
     (q/the T (lambda [x T] (equal U (f x) y))
            ((bijective-unique T U f) b y))))
 
+(defthm inverse-surjective
+  "The inverse function of a bijection, is surjective."
+  [[T :type] [U :type] [f (==> T U)] [b (bijective T U f)]]
+  (surjective U T (inverse T U f b)))
+
+(proof inverse-surjective
+    :script
+  (have <a> (injective T U f) :by ((bijective-is-injective T U f) b))
+  (have inv-f (==> U T) :by (inverse T U f b))
+  (assume [x T]
+    (have y U :by (f x))
+    (have <b> (equal U (f (inv-f y)) (f x))
+          :by (q/the-prop T
+                          (lambda [z T] (equal U (f z) y))
+                          (((bijective-unique T U f) b) y)))
+    (have <c> (equal T (inv-f y) x) :by (<a> (inv-f y) x <b>))
+    (have <d> (exists [y U] (equal T (inv-f y) x))
+          :by ((q/ex-intro U (lambda [z U] (equal T (inv-f z) x)) y)
+               <c>))
+    (qed <d>)))
+
+(defthm inverse-injective
+  "The inverse function of a bijection, is injective."
+  [[T :type] [U :type] [f (==> T U)] [b (bijective T U f)]]
+  (injective U T (inverse T U f b)))
+
+
