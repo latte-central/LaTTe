@@ -141,6 +141,37 @@
     (q/the T (lambda [x T] (equal U (f x) y))
            ((bijective-unique T U f) b y))))
 
+(defthm inverse-prop
+  "The basic property of the inverse function."
+  [[T :type] [U :type] [f (==> T U)] [b (bijective T U f)]]
+  (forall [y U] (equal U (f ((inverse T U f b) y)) y)))
+
+(proof inverse-prop
+    :script
+  (assume [y U]
+    (have <a> (equal U (f ((inverse T U f b) y)) y)
+          :by (q/the-prop T
+                          (lambda [z T] (equal U (f z) y))
+                          (((bijective-unique T U f) b) y)))
+    (qed <a>)))
+
+(defthm inverse-prop-conv
+  "The basic property of the inverse function,
+ the converse of [[inverse-prop]]."
+  [[T :type] [U :type] [f (==> T U)] [b (bijective T U f)]]
+  (forall [x T] (equal T ((inverse T U f b) (f x)) x)))
+
+(proof inverse-prop-conv
+    :script
+  (assume [x T]
+    (have <a> (equal U (f ((inverse T U f b) (f x))) (f x))
+          :by ((inverse-prop T U f b) (f x)))
+    (have <b> (equal T ((inverse T U f b) (f x)) x)
+          :by (((bijective-is-injective T U f) b)
+               ((inverse T U f b) (f x)) x
+               <a>))
+    (qed <b>)))
+
 (defthm inverse-surjective
   "The inverse function of a bijection, is surjective."
   [[T :type] [U :type] [f (==> T U)] [b (bijective T U f)]]
@@ -153,18 +184,53 @@
   (assume [x T]
     (have y U :by (f x))
     (have <b> (equal U (f (inv-f y)) (f x))
-          :by (q/the-prop T
-                          (lambda [z T] (equal U (f z) y))
-                          (((bijective-unique T U f) b) y)))
+          :by ((inverse-prop T U f b) (f x)))
     (have <c> (equal T (inv-f y) x) :by (<a> (inv-f y) x <b>))
     (have <d> (exists [y U] (equal T (inv-f y) x))
           :by ((q/ex-intro U (lambda [z U] (equal T (inv-f z) x)) y)
                <c>))
     (qed <d>)))
 
+
 (defthm inverse-injective
   "The inverse function of a bijection, is injective."
   [[T :type] [U :type] [f (==> T U)] [b (bijective T U f)]]
   (injective U T (inverse T U f b)))
+
+(proof inverse-injective
+    :script
+  (have inv-f (==> U T) :by (inverse T U f b))
+  (assume [x U
+           y U
+           Hxy (equal T (inv-f x) (inv-f y))]
+    (have <a> (equal U (f (inv-f x)) (f (inv-f y)))
+          :by ((eq/eq-cong T U f (inv-f x) (inv-f y)) Hxy))
+    (have <b> (equal U x (f (inv-f x)))
+          :by ((eq/eq-sym U (f (inv-f x)) x)
+               ((inverse-prop T U f b) x)))
+    (have <c> (equal U (f (inv-f y)) y)
+          :by ((inverse-prop T U f b) y))
+    (have <d> (equal U x (f (inv-f y)))
+          :by ((eq/eq-trans U x (f (inv-f x)) (f (inv-f y)))
+               <b> <a>))
+    (have <e> (equal U x y)
+          :by ((eq/eq-trans U x (f (inv-f y)) y)
+               <d> <c>))
+    (have <f> (forall [x y U]
+                (==> (equal T (inv-f x) (inv-f y))
+                     (equal U x y)))
+          :discharge [x y Hxy <e>]))
+  (qed <f>))
+
+(defthm inverse-bijective
+  "The inverse of a bijection is a bijection."
+  [[T :type] [U :type] [f (==> T U)] [b (bijective T U f)]]
+  (bijective U T (inverse T U f b)))
+
+(proof inverse-bijective
+    :script
+  (have <a> _ :by (p/and-intro% (inverse-injective T U f b)
+                                (inverse-surjective T U f b)))
+  (qed <a>))
 
 
