@@ -82,9 +82,9 @@ In LaTTe, this simple proof can also be expressed, e.g. as follows:
 This can be interpred as follows:
 
 > The proof of the theorem [[latte.rel/bijective-is-surjective]] is a function
-> that can take a proof that something is bijective, and deduce from this
-> that this same something is also surjective. This proof is applied to
-> the axiom `succ-bijective` to yield the expected result.
+> that takes some `proof-of-bijection-for-...` as a parameter, and deduces that
+> this `proof-of-bijection-for-...` is also a `proof-of-surjection-for-...`. This
+> proof is applied to the axiom `succ-bijective` to yield the expected result.
 
 The last form of mathematical content available is a notion of a library,
  book or theory, allowing to regroup a set of definitions, axioms, theorems
@@ -112,7 +112,7 @@ A primary functionality of a proof assistant is to encode mathematical content s
 A clearly controversial but totally assumed choice of LaTTe is to adopt a programming language
  notation instead of a mathematical one. The immediate advantage is that the parsing problem
   becomes trivial, it is performed by the programming language itself ! This is the Lisp way
-   of seing things, which is conveyed (and amélioré) by the Clojure language.
+   of seing things, which is conveyed (and improved) by the Clojure language.
    
 TODO exemple en maths, équivalent en LaTTe.
 

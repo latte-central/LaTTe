@@ -471,7 +471,7 @@ equivalent to `(forall [x T] (forall [y T] (forall [z T] U)))`."
 
   `(==> A B)` is `(Π [x A] B)` where `x` does not occur free in `B`.
 
-Implication is right arrociative:
+Implication is right associative:
 
 '(==> A B C) ≡ `(==> A (==> B C))`."
   [& arguments]
