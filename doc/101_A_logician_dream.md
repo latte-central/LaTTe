@@ -112,7 +112,7 @@ A primary functionality of a proof assistant is to encode mathematical content s
 A clearly controversial but totally assumed choice of LaTTe is to adopt a programming language
  notation instead of a mathematical one. The immediate advantage is that the parsing problem
   becomes trivial, it is performed by the programming language itself ! This is the Lisp way
-   of seing things, which is conveyed (and amélioré) by the Clojure language.
+   of seing things, which is conveyed (and improved) by the Clojure language.
    
 TODO exemple en maths, équivalent en LaTTe.
 
