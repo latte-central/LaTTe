@@ -9,5 +9,5 @@
           :metadata {:doc/format :markdown}
           :namespaces [latte.core latte.prop latte.classic
                        latte.quant latte.equal latte.rel latte.fun]}
-  :plugins [[lein-codox "0.10.0"]])
+  :plugins [[lein-codox "0.10.1"]])
 
