@@ -58,7 +58,7 @@
 </code></pre>
 <p>This can be interpred as follows:</p>
 <blockquote>
-  <p>The proof of the theorem <a href="null">latte.rel/bijective-is-surjective</a> is a function that can take a proof that something is bijective, and deduce from this that this same something is also surjective. This proof is applied to the axiom <code>succ-bijective</code> to yield the expected result.</p>
+  <p>The proof of the theorem <a href="null">latte.rel/bijective-is-surjective</a> is a function that takes some <code>proof-of-bijection-for-...</code> as a parameter, and deduces that this <code>proof-of-bijection-for-...</code> is also a <code>proof-of-surjection-for-...</code>. This proof is applied to the axiom <code>succ-bijective</code> to yield the expected result.</p>
 </blockquote>
 <p>The last form of mathematical content available is a notion of a library,  book or theory, allowing to regroup a set of definitions, axioms, theorems  and proofs under a common name (e.g. <em>group theory</em>, <em>graph theory</em>, etc.). Latte here only exploit the Clojure programming environment, where the primary  feature is called a namespace (but there is also a powerful notion of  deployable library based on the JVM ecosystem).</p>
 <h2><a href="#the-mathematical-notation" name="the-mathematical-notation"></a>The mathematical notation</h2>
@@ -66,7 +66,7 @@
 <p>Advantage: all the mathematical literature is based on this notation</p>
 <p>Drawback: it is not completely formal, and its support on a computer is difficult</p>
 <p>A primary functionality of a proof assistant is to encode mathematical content so that  it is “understood” by the computer. Many proof assistant accept a language  very close to the common mathematical notation. It cannot be the same because many  ambiguities and such must be solved to match the level of formality required  by a computing environment. This is the infamous <em>parsing</em> problem, which  is in fact a difficult problem.</p>
-<p>A clearly controversial but totally assumed choice of LaTTe is to adopt a programming language  notation instead of a mathematical one. The immediate advantage is that the parsing problem  becomes trivial, it is performed by the programming language itself ! This is the Lisp way  of seing things, which is conveyed (and amélioré) by the Clojure language.</p>
+<p>A clearly controversial but totally assumed choice of LaTTe is to adopt a programming language  notation instead of a mathematical one. The immediate advantage is that the parsing problem  becomes trivial, it is performed by the programming language itself ! This is the Lisp way  of seing things, which is conveyed (and improved) by the Clojure language.</p>
 <p>TODO exemple en maths, équivalent en LaTTe.</p>
 <h2><a href="#informal-vs-formal-reasoning" name="informal-vs-formal-reasoning"></a>Informal vs. formal reasoning</h2>
 <p>The language of mathematics is highly codified and makes use of many symbols, but it is still  mostly informal. In a way, the language used for describing and reasoning about the obviously highly formal concepts  of mathematics is itself rather … informal. Mathematical logics aims at a better, more formal,  notion of “a language of mathematics”. If philosophers approached this problem already centuries ago, the  most important developments had to wait for a sufficent development of mathematics itself. Here follow some  important events, dates and people involved in the problematic.</p>
