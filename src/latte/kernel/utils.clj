@@ -44,6 +44,13 @@
 (example
  (vectorn? [1 2 3 4 5 6 7] 4) => false)
 
+(defn safe-get
+  "A safe(r) variant of `get` for collections with non-`nil` keys."
+  [coll key]
+  (if-let [val (get coll key)]
+    val
+    (throw (ex-info "No such value is collection" {:coll coll :key key}))))
+
 
 
 

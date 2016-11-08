@@ -82,10 +82,8 @@
       (have <b> (equal U (g x) (g y))
             :by (Hf (g x) (g y) <a>))
       (have <c> (equal T x y)
-            :by (Hg x y <b>))
-      (have <d> (injective T V (compose T U V f g))
-            :discharge [x y Hinj <c>]))
-    (qed <d>)))
+            :by (Hg x y <b>)))
+    (qed <c>)))
 
 (defthm injective-single
   "An injective function has at most one antecedent for each image."
@@ -105,11 +103,8 @@
                :by ((eq/eq-trans U (f x1) y (f x2))
                     Hx1
                     ((eq/eq-sym U (f x2) y) Hx2)))
-        (have <b> (equal T x1 x2) :by (Hf x1 x2 <a>))
-        (have <c> (q/single T (lambda [x T] (equal U (f x) y)))
-              :discharge [x1 x2 Hx1 Hx2 <b>]))
-      (have <d> _ :discharge [y <c>]))
-    (qed <d>)))
+        (have <b> (equal T x1 x2) :by (Hf x1 x2 <a>))))
+    (qed <b>)))
 
 (defthm bijective-unique
   "A bijective function has exactly one antecedent for each image."
@@ -215,12 +210,8 @@
                <b> <a>))
     (have <e> (equal U x y)
           :by ((eq/eq-trans U x (f (inv-f y)) y)
-               <d> <c>))
-    (have <f> (forall [x y U]
-                (==> (equal T (inv-f x) (inv-f y))
-                     (equal U x y)))
-          :discharge [x y Hxy <e>]))
-  (qed <f>))
+               <d> <c>)))
+  (qed <e>))
 
 (defthm inverse-bijective
   "The inverse of a bijection is a bijection."

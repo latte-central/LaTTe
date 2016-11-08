@@ -43,10 +43,9 @@ This can be seen as an elimination rule for ¬¬ (not-not) propositions."
          (assume [z (not A)]
            (have d p/absurd :by (H z))
            (have e (==> p/absurd A) :by (p/ex-falso A))
-           (have f A :by (e d))
-           (have g (==> (not A) A) :discharge [z (f)]))
-         (have h A :by (c g))
-         (qed h)))
+           (have f A :by (e d)))
+         (have g A :by (c f))
+         (qed g)))
 
 
 (defthm not-not
@@ -75,16 +74,13 @@ classical logic."
       (assume [x A]
         (have a1 _ :by (p/or-intro-left A B))
         (have a2 (or A B) :by (a1 x))
-        (have a3 p/absurd :by (Hnot a2))
-        (have a (not A) :discharge [x a3]))
+        (have a p/absurd :by (Hnot a2)))
       (assume [y B]
         (have b1 _ :by (p/or-intro-right A B))
         (have b2 (or A B) :by (b1 y))
-        (have b3 p/absurd :by (Hnot b2))
-        (have b (not B) :discharge [y b3]))
+        (have b p/absurd :by (Hnot b2)))
       (have c B :by (H a))
-      (have d p/absurd :by (b c))
-      (have e (not (not (or A B))) :discharge [Hnot d]))
-    (have f (or A B) :by ((not-not-impl (or A B)) e))
-    (qed f)))
+      (have d p/absurd :by (b c)))
+    (have e (or A B) :by ((not-not-impl (or A B)) d))
+    (qed e)))
 
