@@ -71,12 +71,7 @@ Remark: this is a second-order, intuitionistic definition that
            y (forall [z T] (==> (P z) A))]
     (have a (==> (P x) A) :by (y x))
     (have b A :by (a H))
-    (have c (==> (forall [z T] (==> (P z) A))
-                 A) :discharge [y b])
-    (have d (forall [A :type]
-              (==> (forall [z T] (==> (P z) A))
-                   A)) :discharge [A c])
-    (qed d)))
+    (qed b)))
 
 (definition single
   "The constraint that \"there exists at most\"..."
@@ -122,8 +117,6 @@ Remark: this is a second-order, intuitionistic definition that
     (have c (==> (P y)
                  (P (the T P u))
                  (equal T y (the T P u))) :by (a y (the T P u)))
-    (have d (equal T y (the T P u)) :by (c Hy b))
-    (have e _ :discharge [Hy d])
-    (have f _ :discharge [y e]))
-  (qed f))
+    (have d (equal T y (the T P u)) :by (c Hy b)))
+  (qed d))
 
