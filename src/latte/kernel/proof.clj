@@ -114,6 +114,7 @@
  => '[:ko {:msg "Not a proper type in assume step", :type-arg x, :parsed-term x}])
 
 (defn do-discharge-step [def-env ctx deps x]
+  #_(println "[discharge] x=" x "deps=" deps)
   (cond
     (not= (ffirst ctx) x)
     (throw (ex-info "Discharge failure: variable not in head of context (please report)." {:variable x :context ctx}))
@@ -121,12 +122,14 @@
     (throw (ex-info "Discharge failure: variable not in head of dependencies (please report)." {:variable x :deps deps}))
     :else
     (let [def-env' (reduce (fn [env def-name]
+                             #_(println "[discharge-step] env=" env "def-name=" def-name)
                              (assoc env
                                     def-name
                                     (d/handle-local-term-discharge
                                      (u/safe-get def-env def-name)
-                                     (ffirst ctx) (second (first ctx))))) def-env (second (first deps)))]
-      [def-env (rest ctx) (rest deps)])))
+                                     (ffirst ctx) (second (first ctx)))))
+                           def-env (second (first deps)))]
+      [def-env' (rest ctx) (rest deps)])))
 
 (defn parse-have-name [have-name]
   (cond
@@ -165,7 +168,7 @@
     (if (= status :ko)
       [:ko {:msg "Cannot perform have step: incorrect term." :have-name name :from term}]
       (let [term (n/special-normalize def-env ctx term) ;; <-- need to remove the specials ASAP
-            term' term ;; XXX: full normalization should not be needed ... (n/normalize def-env ctx term)
+            term'(n/delta-normalize-local def-env term) ;; XXX: full normalization should not be needed ... (n/normalize def-env ctx term)
             [status have-type] (if (and (symbol? have-type)
                                         (= (clojure.core/name have-type) "_"))
                                  [:ok nil]
@@ -195,7 +198,7 @@
                   :else
                   (let [[status tdef] (d/handle-local-term-definition
                                        name
-                                       term
+                                       term'
                                        have-type)]
                     ;;(println "[have-step] term=" term)
                     ;;(println "            def=" (:parsed-term tdef))
@@ -221,6 +224,7 @@
 
 
 (defn discharge-all [def-env ctx deps]
+  #_(println "[discharge-all] deps=" deps)
   (loop [deps deps, ctx ctx, def-env' def-env]
     (if (seq deps)
       (let [[x xdeps] (first deps)
@@ -236,7 +240,7 @@
     (let [[status term] (stx/parse-term def-env' term)]
       (if (= status :ko)
         [:ko {:msg "Cannot do QED step: parse error." :error term}]
-        [:ok (n/delta-normalize-local def-env' term)]))))
+        [:ok (n/delta-normalize def-env' term)]))))
 
 (defn do-showdef-step [def-env arg]
   (println "[showdef]" arg)
@@ -293,10 +297,10 @@
   (println "-----------------------------------------"))
 
 (defn evaluate-script [script def-env ctx deps cont-stack]
-  ;; (println "[evaluate-script] ctx=" ctx)
-  ;; (println "---------------------------------------------")
-  ;; (clojure.pprint/pprint script)
-  ;; (println "---------------------------------------------")
+  #_(println "[evaluate-script] ctx=" ctx "deps=" deps)
+  #_(println "---------------------------------------------")
+  #_(clojure.pprint/pprint script)
+  #_(println "---------------------------------------------")
   (if (seq script)
     (if (sequential? (first script))
       (recur (first script) def-env ctx deps (conj cont-stack (rest script)))
@@ -315,10 +319,8 @@
                     (recur body (first res) (second res) (nth res 2)
                            (conj cont-stack (list 'discharge x))))))))
           discharge
-          (let [[status res] (do-discharge-step def-env deps ctx (second script))]
-            (if (= status :ko)
-              [:ko res]
-              (recur '() (first res) (second res) (nth res 2) cont-stack)))
+          (let [[def-env' ctx' deps'] (do-discharge-step def-env ctx deps (second script))]
+            (recur '() def-env' ctx' deps' cont-stack))
           have
           (let [[status info] (parse-have-step script)]
             (if (= status :ko)

@@ -47,8 +47,7 @@
            x A]
     (have <a> B :by (H1 x))
     (have <b> C :by (H2 <a>))
-    (have <c> (==> A C) :discharge [x <b>])
-    (qed <c>)))
+    (qed <b>)))
 
 (definition absurd
   "Absurdity."
@@ -158,8 +157,7 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
            z (==> A B C)]
     (have a (==> B C) :by (z x))
     (have b C :by ((a) y))
-    (have c (and A B) :discharge [C z b])
-    (qed c)))
+    (qed b)))
 
 (defspecial and-intro%
   "A special introduction rule that takes a proof
@@ -319,12 +317,7 @@ This is the introduction by the left operand."
            H1 (==> A C)
            H2 (==> B C)]
     (have a C :by (H1 x))
-    (have b (==> (==> B C) C) :discharge [H2 a])
-    (have c (==> (==> A C)
-                   (==> B C)
-                   C) :discharge [H1 b])
-    (have d (or A B) :discharge [C c])
-    (qed d)))
+    (qed a)))
 
 (defthm or-intro-right
   "Introduction rule for logical disjunction.
@@ -340,12 +333,7 @@ This is the introduction by the right operand."
            H1 (==> A C)
            H2 (==> B C)]
     (have a C :by (H2 y))
-    (have b (==> (==> B C) C) :discharge [H2 a])
-    (have c (==> (==> A C)
-                   (==> B C)
-                   C) :discharge [H1 b])
-    (have d (or A B) :discharge [C c])
-    (qed d)))
+    (qed a)))
 
 (defthm or-elim
   "Elimination rule for logical disjunction.
@@ -391,10 +379,9 @@ This eliminates to the left operand."
     (have <b> (==> A A) :by (impl-refl A))
     (assume [x B]
       (have <c> absurd :by (H2 x))
-      (have <d> A :by (<c> A))
-      (have <e> (==> B A) :discharge [x <d>]))
-    (have <f> A :by (<a> <b> <e>))
-    (qed <f>)))
+      (have <d> A :by (<c> A)))
+    (have <e> A :by (<a> <b> <d>))
+    (qed <e>)))
 
 (defthm or-not-elim-right
   "An elimination rule for disjunction, simpler than [[or-elim]].
@@ -411,10 +398,9 @@ This eliminates to the right operand."
     (have <b> (==> B B) :by (impl-refl B))
     (assume [x A]
       (have <c> absurd :by (H2 x))
-      (have <d> B :by (<c> B))
-      (have <e> (==> A B) :discharge [x <d>]))
-    (have <f> B :by (<a> <e> <b>))
-    (qed <f>)))
+      (have <d> B :by (<c> B)))
+    (have <e> B :by (<a> <d> <b>))
+    (qed <e>)))
 
 (defthm or-sym
   "Symmetry of disjunction.
@@ -428,16 +414,11 @@ characteristic of or-elimination."
 (proof or-sym :script
   (assume [H1 (or A B)
            D :type
-           H2 (==> A D)
-           H3 (==> B D)]
+           H2 (==> B D)
+           H3 (==> A D)]
     (have a _ :by (H1 D))
-    (have b D :by (a H2 H3))
-    (have c (==> (==> A D) D) :discharge [H2 b])
-    (have d (==> (==> B D)
-                 (==> A D)
-                 D) :discharge [H3 c])
-    (have e (or B A) :discharge [D d])
-    (qed e)))
+    (have b D :by (a H3 H2))
+    (qed b)))
 
 (defthm or-not-impl-elim
   "An alternative elimination rule for disjunction."
@@ -447,18 +428,17 @@ characteristic of or-elimination."
 
 (proof or-not-impl-elim :script
   (assume [H (or A B)
-           Hn (not A)
-           x A]
-    (have a absurd :by (Hn x))
-    "Thanks to absurdity we can get anything we want."
-    (have b B :by (a B))
-    (have c (==> A B) :discharge [x b])
-    (have d (==> B B) :by (impl-refl B))
-    (have e (==> (==> A B)
+           Hn (not A)]
+    (assume [x A]
+      (have a absurd :by (Hn x))
+      "Thanks to absurdity we can get anything we want."
+      (have b B :by (a B)))
+    (have c (==> B B) :by (impl-refl B))
+    (have d (==> (==> A B)
                  (==> B B)
                  B) :by (H B))
-    (have f B :by (e c d))
-    (qed f)))
+    (have e B :by (d b c))
+    (qed e)))
 
 (definition <=>
   "Logical equivalence or 'if and only if'."
@@ -569,3 +549,5 @@ characteristic of or-elimination."
     (have i _ :by (iff-intro A C))
     (have k (<=> A C) :by (i d h))
     (qed k)))
+
+
