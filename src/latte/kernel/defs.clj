@@ -43,19 +43,12 @@
                 ;; use computed type
                 [:ok (->Definition def-name params (count params) body ty)]))))))))
 
-(defn handle-local-term-definition [def-name def-env ctx params body def-type]
-  (let [[status params] (reduce (fn [[sts params] [x ty]]
-                                  (let [[status ty] (stx/parse-term def-env ty)]
-                                    (if (= status :ko)
-                                      (reduced [:ko ty])
-                                      [:ok (conj params [x ty])]))) [:ok []] params)]
-    (if (= status :ko)
-      [:ko params]
-      (let [def-ty (loop [params params, def-ty def-type]
-                     (if (seq params)
-                       (recur (rest params) (list 'Π (first params) def-ty))
-                       def-ty))]
-        [:ok (->Definition def-name params (count params) body def-ty)]))))
+(defn handle-local-term-definition [def-name body def-type]
+  [:ok (->Definition def-name [] 0 body def-type)])
+
+(defn handle-local-term-discharge [local-def x ty]
+  (let [{def-name :name parsed-term :parsed-term type :type} local-def]
+    (->Definition def-name [] 0 (list 'λ [x ty] parsed-term) (list 'Π [x ty] type))))
 
 ;;{
 ;; ## Theorem definitions
