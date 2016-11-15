@@ -139,7 +139,7 @@
   (let [[def-name definition metadata] (handle-defthm :lemma args)]
     `(do
        (def ~def-name ~definition)
-       (alter-meta! (var ~def-name) #(merge % ~metadata)) 
+       (alter-meta! (var ~def-name) #(merge % (quote ~metadata))) 
        [:declared :lemma (quote ~def-name)])))
 
 ;;{
