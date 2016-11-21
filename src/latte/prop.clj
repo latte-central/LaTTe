@@ -364,6 +364,64 @@ cf. [[or-not-elim-left]] and [[or-not-elim-right]]."
     (have c C :by (b H3))
     (qed c)))
 
+
+;; (or A B)
+;; = (forall [C :type]
+;;       (forall [_ (forall [_ A] C)]
+;;          (forall [_ (forall [_ B C])]
+;;               C)))
+
+(defn decompose-or-type [def-env ctx t]
+  (if (clojure.core/and (seq? t) 
+                        (= (count t) 3)
+                        (= (first t) #'latte.prop/or))
+    [:ok (second t) (nth t 2)]
+    (let [[t ok?] (latte.kernel.norm/delta-step def-env t)]
+      (if ok?
+        (recur def-env ctx t)
+        (let [t (latte.kernel.norm/normalize def-env ctx t)]
+          (if-not (stx/prod? t)
+            [:ko nil nil]
+            (let [[_ [C _] body] t]
+              (if-not (stx/prod? body)
+                [:ko nil nil]
+                (let [[_ [_ AC] C'] body]
+                  (if-not (and (= C' C) (stx/prod? AC))
+                    [:ko nil nil]
+                    (let [[_ [_ A] C'] AC]
+                      (if-not (and (= C' C) (stx/prod? body))
+                        [:ko nil nil]
+                        (let [[_ [_ BC] C'] body]
+                          (if-not (and (= C' C) (stx/prod? AC))
+                            [:ko nil nil]
+                            (let [[_ [_ B] C'] BC]
+                              (if-not (= C' C)
+                                [:ko nil nil]
+                                [:ok A B]))))))))))))))))
+
+(defspecial or-elim%
+  "A special elimination rule that takes a proof
+ `or-term` of type `(or A B)`, a proposition `prop`,
+a proof `left-proof` of type `(==> A prop)`, 
+a proof `right-proof` of type `(==> B prop)`, and thus
+concludes that `prop` holds by `[[or-elim]]`.
+
+This is (for now) the easiest rule to use for proof-by-cases."
+  [def-env ctx or-term prop left-proof right-proof]
+  (let [[status ty] (ty/type-of-term def-env ctx or-term)]
+    (if (= status :ko)
+      (throw (ex-info "Cannot type term." {:special 'latte.prop/or-elim%
+                                           :term or-term
+                                           :from ty}))
+      (do
+        ;; (println "[and-elim-left%] ty=" ty)
+        (let [[status A B] (decompose-or-type def-env ctx ty)]
+          (if (= status :ko)
+            (throw (ex-info "Not an `or`-type." {:special 'latte.prop/or-elim%
+                                                 :term or-term
+                                                 :type ty}))
+            [(list #'or-elim A B) or-term prop left-proof right-proof]))))))
+
 (defthm or-not-elim-left
   "An elimination rule for disjunction, simpler than [[or-elim]].
 This eliminates to the left operand."
