@@ -420,7 +420,7 @@ This is (for now) the easiest rule to use for proof-by-cases."
             (throw (ex-info "Not an `or`-type." {:special 'latte.prop/or-elim%
                                                  :term or-term
                                                  :type ty}))
-            [(list #'or-elim A B) or-term prop left-proof right-proof]))))))
+            [[[[(list #'or-elim A B) or-term] prop] left-proof] right-proof]))))))
 
 (defthm or-not-elim-left
   "An elimination rule for disjunction, simpler than [[or-elim]].
