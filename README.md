@@ -74,7 +74,7 @@ Given the tight integration with the Clojure language, *existing Clojure develop
 
 There will be a *tutorial* at some point ...
 
-The *reference documentation* is at: http://fredokun.github.io/LaTTe/
+The *reference documentation* is at: http://latte-central.github.io/LaTTe/
 
 ## Who?
 
@@ -90,9 +90,9 @@ LaTTe is, at least for now, an experiment more than a finalized product, but it 
 
 A few non-trivial formalizations have been conducted using LaTTe:
 
- - some **typed set theory**: https://github.com/fredokun/latte-sets
- - a (starting) formalization of **integer arithmetics**: https://github.com/fredokun/latte-integers 
- - a (gorilla REPL) document about **Knaster-Tarski fixed point theorem(s)**: https://github.com/fredokun/fixed-points
+ - some **typed set theory**: https://github.com/latte-central/latte-sets
+ - a (starting) formalization of **integer arithmetics**: https://github.com/latte-central/latte-integers 
+ - a (gorilla REPL) document about **Knaster-Tarski fixed point theorem(s)**: https://github.com/latte-central/fixed-points
 
 Contributions such as mathematical content or enhancement/correction of the underlying machinery are very much welcomed.
 
