@@ -23,7 +23,6 @@ LaTTe is a **proof assistant library** based on type theory (a variant of
 λD as described in the book [Type theory and formal proof: an introduction](http://www.cambridge.org/fr/academic/subjects/computer-science/programming-languages-and-applied-logic/type-theory-and-formal-proof-introduction)).
 
 **New!** Watch Latte *live* at: https://www.youtube.com/watch?v=5YTCY7wm0Nw
-> (only if you can stand a somewhat embarrassing french accent...)
 
 The specific feature of LaTTe is its design as a library (unlike most proof assistant, generally designed as tools) tightly integrated with the Clojure language. It is of course fully implemented in Clojure, but most importantly all the definitional aspects of the assistant (definitions, theorem and axioms) are handled using Clojure namespaces, definitions and macros.
 
