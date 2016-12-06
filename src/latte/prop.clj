@@ -93,7 +93,7 @@
           (throw (ex-info "Type in the middle mismatch" {:special 'latte.prop/impl-trans%
                                                          :left-rhs-type B
                                                          :right-lhs-type B'})))
-        [(list #'iff-trans A B C) impl-term1 impl-term2])))))
+        [[(list #'iff-trans A B C) impl-term1] impl-term2])))))
 
 (definition absurd
   "Absurdity."
@@ -652,6 +652,16 @@ This eliminates to the right operand."
     (have b (==> A B) :by (a H))
     (qed b)))
 
+(defn decompose-iff-type
+  [def-env ctx t]
+  (let [[status L R] (decompose-and-type def-env ctx t)]
+    (if (= status :ko)
+      [:ko nil nil]
+      (let [[status A B] (decompose-impl-type def-env ctx L)]
+        (if (= status :ko)
+          [:ko nil nil]
+          [:ok A B])))))
+
 (defspecial iff-elim-if%
   "Left (if) elimination for `<=>`, a special version of [[iff-elim-if]]."
   [def-env ctx iff-term]
@@ -661,9 +671,9 @@ This eliminates to the right operand."
                                            :term iff-term
                                            :from ty}))
       (do
-        (let [[status A B] (decompose-and-type def-env ctx ty)]
+        (let [[status A B] (decompose-iff-type def-env ctx ty)]
           (if (= status :ko)
-            (throw (ex-info "Not an `and`-type." {:special 'latte.prop/iff-elim-if%
+            (throw (ex-info "Not an `iff`-type." {:special 'latte.prop/iff-elim-if%
                                                   :term iff-term
                                                   :type ty}))
             [(list #'iff-elim-if A B) iff-term]))))))
@@ -693,9 +703,9 @@ This eliminates to the right operand."
                                            :term iff-term
                                            :from ty}))
       (do
-        (let [[status A B] (decompose-and-type def-env ctx ty)]
+        (let [[status A B] (decompose-iff-type def-env ctx ty)]
           (if (= status :ko)
-            (throw (ex-info "Not an `and`-type." {:special 'latte.prop/iff-elim-only-if%
+            (throw (ex-info "Not an `iff`-type." {:special 'latte.prop/iff-elim-only-if%
                                                   :term iff-term
                                                   :type ty}))
             [(list #'iff-elim-only-if A B) iff-term]))))))
@@ -725,16 +735,12 @@ This eliminates to the right operand."
       (throw (ex-info "Cannot type term." {:special 'latte.prop/iff-sym%
                                            :term iff-term
                                            :from ty})))
-    (let [[status C _] (decompose-and-type def-env ctx ty)]
+    (let [[status A B] (decompose-iff-type def-env ctx ty)]
       (when (= status :ko)
-        (throw (ex-info "Not an `and`-type." {:special 'latte.prop/iff-sym%
+        (throw (ex-info "Not an `iff`-type." {:special 'latte.prop/iff-sym%
                                               :term iff-term
                                               :type ty})))
-      (when-not (stx/prod? C)
-        (throw (ex-info "Not a product type." {:special 'latte.prop/iff-sym%
-                                               :term C})))
-      (let [[_ [A _] B] C]
-        [(list #'iff-sym A B) iff-term]))))
+      [(list #'iff-sym A B) iff-term])))
 
 (defthm iff-trans
   "Transitivity of logical equivalence."
@@ -758,5 +764,42 @@ This eliminates to the right operand."
     (have i _ :by (iff-intro A C))
     (have k (<=> A C) :by (i d h))
     (qed k)))
+
+
+(defspecial iff-trans%
+  "Transitivity of `<=>`, a special version of [[iff-trans]]."
+  [def-env ctx iff-term1 iff-term2]
+  (let [[status ty1] (ty/type-of-term def-env ctx iff-term1)]
+    (when (= status :ko)
+      (throw (ex-info "Cannot type term." {:special 'latte.prop/iff-trans%
+                                           :term iff-term1
+                                           :from ty1})))
+    (let [[status ty2] (ty/type-of-term def-env ctx iff-term2)]
+      (when (= status :ko)
+        (throw (ex-info "Cannot type term." {:special 'latte.prop/iff-trans%
+                                             :term iff-term2
+                                             :from ty2})))
+      (let [[status A B] (decompose-iff-type def-env ctx ty1)]
+        (when (= status :ko)
+          (throw (ex-info "Not an `iff`-type." {:special 'latte.prop/iff-trans%
+                                                :term iff-term1
+                                                :type ty1})))
+        (let [[status C D] (decompose-iff-type def-env ctx ty2)]
+          (when (= status :ko)
+            (throw (ex-info "Not an `iff`-type." {:special 'latte.prop/iff-trans%
+                                                  :term iff-term2
+                                                  :type ty2})))
+          (cond
+            (norm/beta-eq? def-env ctx B C)
+            [[(list #'iff-trans A B D) iff-term1] iff-term2]
+            ;; allow a symmetry
+            (norm/beta-eq? def-env ctx B D)
+            [[(list #'iff-trans A B C) iff-term1] iff-term2]
+            :else
+            (throw (ex-info "Type in the middle mismatch"
+                            {:special 'latte.prop/iff-trans%
+                             :left-lhs-type B
+                             :right-lhs-type C
+                             :right-rhs-type D}))))))))
 
 
