@@ -6,6 +6,7 @@
 
   (:require [latte.kernel.syntax :as stx]
             [latte.kernel.typing :as ty]
+            [latte.kernel.norm :as norm]
             [latte.core :as latte :refer [definition term type-of defthm defspecial
                                           lambda forall ==>
                                           assume have qed proof try-proof]]))
@@ -48,6 +49,51 @@
     (have <a> B :by (H1 x))
     (have <b> C :by (H2 <a>))
     (qed <b>)))
+
+(defn decompose-impl-type
+  [def-env ctx t]
+  (if (stx/prod? t)
+    (let [[_ [_ A] B] t]
+      ;; TODO: check that the product variable is not in use ?
+      [:ok A B])
+    (let [[t ok?] (latte.kernel.norm/delta-step def-env t)]
+      (if ok?
+        (recur def-env ctx t)
+        (let [t (latte.kernel.norm/normalize def-env ctx t)]
+          (if (stx/prod? t)
+            (let [[_ [_ A] B] t]
+              ;; TODO: check that the product variable is not in use ?
+              [:ok A B])))))))
+
+(defspecial impl-trans%
+  "Transitivity of implication, a special version of [[impl-trans]]."
+  [def-env ctx impl-term1 impl-term2]
+  (let [[status ty1] (ty/type-of-term def-env ctx impl-term1)]
+    (when (= status :ko)
+      (throw (ex-info "Cannot type term." {:special 'latte.prop/impl-trans%
+                                           :term impl-term1
+                                           :from ty1})))    
+    (let [[status ty2] (ty/type-of-term def-env ctx impl-term2)]
+      (when (= status :ko)
+        (throw (ex-info "Cannot type term." {:special 'latte.prop/impl-trans%
+                                             :term impl-term2
+                                             :from ty2})))
+      (let [[status A B] (decompose-impl-type def-env ctx ty1)]
+        (when (= status :ko)
+          (throw (ex-info "Not an `==>`-type." {:special 'latte.prop/impl-trans%
+                                                :term impl-term1
+                                                :type ty1})))
+      (let [[status B' C] (decompose-impl-type def-env ctx ty2)]
+        (when (= status :ko)
+          (throw (ex-info "Not an `==>`-type." {:special 'latte.prop/impl-trans%
+                                                :term impl-term2
+                                                :type ty2})))
+        
+        (when-not (norm/beta-eq? def-env ctx B B')
+          (throw (ex-info "Type in the middle mismatch" {:special 'latte.prop/impl-trans%
+                                                         :left-rhs-type B
+                                                         :right-lhs-type B'})))
+        [(list #'iff-trans A B C) impl-term1 impl-term2])))))
 
 (definition absurd
   "Absurdity."
