@@ -646,11 +646,11 @@ This eliminates to the right operand."
 (proof iff-elim-if
     :script
   (assume [H (<=> A B)]
-    have (a (==> (<=> A B)
+    (have a (==> (<=> A B)
                  (==> A B))
-           :by (and-elim-left (==> A B) (==> B A)))
-    (have b (==> A B) :by (a H))
-    (qed b)))
+          :by (and-elim-left (==> A B) (==> B A)))
+    (have b (==> A B) :by (a H)))
+  (qed b))
 
 (defn decompose-iff-type
   [def-env ctx t]
