@@ -113,7 +113,6 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
     (have a absurd :by (H x))
     (qed a)))
 
-
 (definition truth
   "Logical truth."
   []
@@ -503,10 +502,7 @@ This eliminates to the right operand."
     (qed <e>)))
 
 (defthm or-sym
-  "Symmetry of disjunction.
-
-Remark: the proof for this theorem illustrates the non-trivial
-characteristic of or-elimination."
+  "Symmetry of disjunction."
   [[A :type] [B :type]]
   (==> (or A B)
        (or B A)))
@@ -519,6 +515,22 @@ characteristic of or-elimination."
     (have a _ :by (H1 D))
     (have b D :by (a H3 H2))
     (qed b)))
+
+(defspecial or-sym%
+  "Symmetry of disjunction, a special version of [[or-sym]]."
+  [def-env ctx or-term]
+  (let [[status ty] (ty/type-of-term def-env ctx or-term)]
+    (if (= status :ko)
+      (throw (ex-info "Cannot type term." {:special 'latte.prop/or-sym%
+                                           :term or-term
+                                           :from ty}))
+      (do
+        (let [[status A B] (decompose-or-type def-env ctx ty)]
+          (if (= status :ko)
+            (throw (ex-info "Not an `or`-type." {:special 'latte.prop/or-sym%
+                                                 :term or-term
+                                                 :type ty}))
+            [(list #'or-sym A B) or-term]))))))
 
 (defthm or-not-impl-elim
   "An alternative elimination rule for disjunction."
@@ -588,11 +600,27 @@ characteristic of or-elimination."
 (proof iff-elim-if
     :script
   (assume [H (<=> A B)]
-    (have a (==> (<=> A B)
+    have (a (==> (<=> A B)
                  (==> A B))
-          :by (and-elim-left (==> A B) (==> B A)))
+           :by (and-elim-left (==> A B) (==> B A)))
     (have b (==> A B) :by (a H))
     (qed b)))
+
+(defspecial iff-elim-if%
+  "Left (if) elimination for `<=>`, a special version of [[iff-elim-if]]."
+  [def-env ctx iff-term]
+  (let [[status ty] (ty/type-of-term def-env ctx iff-term)]
+    (if (= status :ko)
+      (throw (ex-info "Cannot type term." {:special 'latte.prop/iff-elim-if%
+                                           :term iff-term
+                                           :from ty}))
+      (do
+        (let [[status A B] (decompose-and-type def-env ctx ty)]
+          (if (= status :ko)
+            (throw (ex-info "Not an `and`-type." {:special 'latte.prop/iff-elim-if%
+                                                  :term iff-term
+                                                  :type ty}))
+            [(list #'iff-elim-if A B) iff-term]))))))
 
 (defthm iff-elim-only-if
   "Elimination rule for logical equivalence.
@@ -610,6 +638,22 @@ characteristic of or-elimination."
     (have b (==> B A) :by (a H))
     (qed b)))
 
+(defspecial iff-elim-only-if%
+  "Right (only if) elimination for `<=>`, a special version of [[iff-elim-only-if]]."
+  [def-env ctx iff-term]
+  (let [[status ty] (ty/type-of-term def-env ctx iff-term)]
+    (if (= status :ko)
+      (throw (ex-info "Cannot type term." {:special 'latte.prop/iff-elim-only-if%
+                                           :term iff-term
+                                           :from ty}))
+      (do
+        (let [[status A B] (decompose-and-type def-env ctx ty)]
+          (if (= status :ko)
+            (throw (ex-info "Not an `and`-type." {:special 'latte.prop/iff-elim-only-if%
+                                                  :term iff-term
+                                                  :type ty}))
+            [(list #'iff-elim-only-if A B) iff-term]))))))
+
 (defthm iff-sym
   "Symmetry of logical equivalence."
   [[A :type] [B :type]]
@@ -626,6 +670,25 @@ characteristic of or-elimination."
                  (<=> B A)) :by (iff-intro B A))
     (have d (<=> B A) :by (c a b))
     (qed d)))
+
+(defspecial iff-sym%
+  "Symmetry of `<=>`, a special version of [[iff-sym]]."
+  [def-env ctx iff-term]
+  (let [[status ty] (ty/type-of-term def-env ctx iff-term)]
+    (when (= status :ko)
+      (throw (ex-info "Cannot type term." {:special 'latte.prop/iff-sym%
+                                           :term iff-term
+                                           :from ty})))
+    (let [[status C _] (decompose-and-type def-env ctx ty)]
+      (when (= status :ko)
+        (throw (ex-info "Not an `and`-type." {:special 'latte.prop/iff-sym%
+                                              :term iff-term
+                                              :type ty})))
+      (when-not (stx/prod? C)
+        (throw (ex-info "Not a product type." {:special 'latte.prop/iff-sym%
+                                               :term C})))
+      (let [[_ [A _] B] C]
+        [(list #'iff-sym A B) iff-term]))))
 
 (defthm iff-trans
   "Transitivity of logical equivalence."
