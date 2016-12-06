@@ -295,6 +295,22 @@ This is a special version of [[and-elim-right]]."
     (have <d> (and B A) :by (<c> <b> <a>))
     (qed <d>)))
 
+(defspecial and-sym%
+  "Symmetry of conjunction, a special version of [[and-sym]]."
+  [def-env ctx and-term]
+  (let [[status ty] (ty/type-of-term def-env ctx and-term)]
+    (if (= status :ko)
+      (throw (ex-info "Cannot type term." {:special 'latte.prop/and-sym%
+                                           :term and-term
+                                           :from ty}))
+      (do
+        (let [[status A B] (decompose-and-type def-env ctx ty)]
+          (if (= status :ko)
+            (throw (ex-info "Not an `and`-type." {:special 'latte.prop/and-sym%
+                                                  :term and-term
+                                                  :type ty}))
+            [(list #'and-sym A B) and-term]))))))
+
 (definition or
   "logical disjunction."
   [[A :type] [B :type]]

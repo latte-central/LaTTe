@@ -15,6 +15,20 @@ This corresponds to Leibniz's *indiscernibility of identicals*."
   (forall [P (==> T :type)]
     (<=> (P x) (P y))))
 
+;; (defn decompose-equal-type [def-env ctx t]
+;;   (if (clojure.core/and (seq t)
+;;                         (= (count t) 4)
+;;                         (= (first t) #'latte.equal/equal))
+;;     [:ok (second t) (nth t 2) (nth t 3)]
+;;     (let [[t ok?] (latte.kernel.norm/delta-step def-env t)]
+;;       (if ok?
+;;         (recur def-env ctx t)
+;;         (let [t (latte.kernel.norm/normalize def-env ctx t)]
+;;           (if-not (stx/prod? t)
+;;             [:ko nil nil]
+;;             (let [[_ [P ptype] body] t]
+;; ))
+
 (defthm eq-refl
   "The reflexivity property of equality."
   [[T :type] [x T]]
