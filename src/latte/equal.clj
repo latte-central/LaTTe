@@ -137,6 +137,21 @@ This corresponds to Leibniz's *indiscernibility of identicals*."
     (have b (P y) :by ((p/iff-elim-if (P x) (P y)) a H2))
     (qed b)))
 
+(defspecial eq-subst%
+  "Substitutivity of `equal`, a special version of [[eq-subst]]."
+  [def-env ctx P eq-term Px]
+  (let [[status eq-ty] (ty/type-of-term def-env ctx eq-term)]
+    (when (= status :ko)
+      (throw (ex-info "Cannot type term." {:special 'latte.prop/eq-subst%
+                                           :term eq-term
+                                           :from eq-ty})))
+    (let [[status T x y] (decompose-equal-type def-env ctx eq-ty)]
+      (when (= status :ko)
+        (throw (ex-info "Cannot infer an `equal`-type." {:special 'latte.prop/eq-subst%
+                                                         :term eq-term
+                                                         :type eq-ty})))
+      [[(list #'eq-subst T P x y) eq-term] Px])))
+
 (defthm eq-cong
   "Congruence property of equality."
   [[T :type] [U :type] [f (==> T U)] [x T] [y T]]
