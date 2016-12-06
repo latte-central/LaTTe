@@ -93,7 +93,7 @@
           (throw (ex-info "Type in the middle mismatch" {:special 'latte.prop/impl-trans%
                                                          :left-rhs-type B
                                                          :right-lhs-type B'})))
-        [[(list #'iff-trans A B C) impl-term1] impl-term2])))))
+        [[(list #'latte.prop/impl-trans A B C) impl-term1] impl-term2])))))
 
 (definition absurd
   "Absurdity."

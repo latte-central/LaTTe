@@ -3,10 +3,14 @@
 
   (:refer-clojure :exclude [and or not])
 
-  (:require [latte.core :as latte :refer [definition defthm
+  (:require
+   [latte.kernel.syntax :as stx]
+   [latte.kernel.norm :as norm]
+   [latte.kernel.typing :as ty]
+   [latte.core :as latte :refer [definition defthm defspecial
                                           forall lambda ==>
                                           assume have proof]]
-            [latte.prop :as p :refer [<=> and or not]]))
+   [latte.prop :as p :refer [<=> and or not]]))
 
 (definition equal
   "The intuitionistic, second-order definition of equality.
@@ -15,19 +19,18 @@ This corresponds to Leibniz's *indiscernibility of identicals*."
   (forall [P (==> T :type)]
     (<=> (P x) (P y))))
 
-;; (defn decompose-equal-type [def-env ctx t]
-;;   (if (clojure.core/and (seq t)
-;;                         (= (count t) 4)
-;;                         (= (first t) #'latte.equal/equal))
-;;     [:ok (second t) (nth t 2) (nth t 3)]
-;;     (let [[t ok?] (latte.kernel.norm/delta-step def-env t)]
-;;       (if ok?
-;;         (recur def-env ctx t)
-;;         (let [t (latte.kernel.norm/normalize def-env ctx t)]
-;;           (if-not (stx/prod? t)
-;;             [:ko nil nil]
-;;             (let [[_ [P ptype] body] t]
-;; ))
+(defn decompose-equal-type [def-env ctx t]
+  (if (clojure.core/and (seq t)
+                        (= (count t) 4)
+                        (= (first t) #'latte.equal/equal))
+    [:ok (second t) (nth t 2) (nth t 3)]
+    (let [[t ok?] (latte.kernel.norm/delta-step def-env t)]
+      (if ok?
+        (recur def-env ctx t)
+        ;; XXX: cannot decompose further becayse
+        ;; we cannot retrieve the x and y of the
+        ;; definition ... needs a form of unification.
+        [:ko nil nil nil]))))
 
 (defthm eq-refl
   "The reflexivity property of equality."
@@ -51,6 +54,22 @@ This corresponds to Leibniz's *indiscernibility of identicals*."
     (have a (<=> (P x) (P y)) :by (Heq P))
     (have b (<=> (P y) (P x)) :by ((p/iff-sym (P x) (P y)) a))
     (qed b)))
+
+(defspecial eq-sym%
+  "Symmetry of equality, a special version of [[eq-sym]]."
+  [def-env ctx eq-term]
+  (let [[status ty] (ty/type-of-term def-env ctx eq-term)]
+    (if (= status :ko)
+      (throw (ex-info "Cannot type term." {:special 'latte.prop/eq-sym%
+                                           :term eq-term
+                                           :from ty}))
+      (do
+        (let [[status T x y] (decompose-equal-type def-env ctx ty)]
+          (if (= status :ko)
+            (throw (ex-info "Cannot infer an `equal`-type." {:special 'latte.prop/eq-sym%
+                                                             :term eq-term
+                                                             :type ty}))
+            [(list #'eq-sym T x y) eq-term]))))))
 
 (defthm eq-trans
   "The transitivity property of equality."
