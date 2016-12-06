@@ -789,15 +789,9 @@ This eliminates to the right operand."
             (throw (ex-info "Not an `iff`-type." {:special 'latte.prop/iff-trans%
                                                   :term iff-term2
                                                   :type ty2})))
-          (cond
-            (norm/beta-eq? def-env ctx B C)
+          (if (norm/beta-eq? def-env ctx B C)
             [[(list #'iff-trans A B D) iff-term1] iff-term2]
-            ;; allow a symmetry
-            (norm/beta-eq? def-env ctx B D)
-            [[(list #'iff-trans A B C) iff-term1] iff-term2]
-            :else
             (throw (ex-info "Type in the middle mismatch"
                             {:special 'latte.prop/iff-trans%
                              :left-lhs-type B
-                             :right-lhs-type C
-                             :right-rhs-type D}))))))))
+                             :right-lhs-type C}))))))))

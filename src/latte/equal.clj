@@ -88,6 +88,41 @@ This corresponds to Leibniz's *indiscernibility of identicals*."
           :by ((p/iff-trans (P x) (P y) (P z)) a b))
     (qed c)))
 
+(defspecial eq-trans%
+  "Transitivity of `equal`, a special version of [[eq-trans]]."
+  [def-env ctx eq-term1 eq-term2]
+  (let [[status ty1] (ty/type-of-term def-env ctx eq-term1)]
+    (when (= status :ko)
+      (throw (ex-info "Cannot type term." {:special 'latte.prop/eq-trans%
+                                           :term eq-term1
+                                           :from ty1})))
+    (let [[status ty2] (ty/type-of-term def-env ctx eq-term2)]
+      (when (= status :ko)
+        (throw (ex-info "Cannot type term." {:special 'latte.prop/eq-trans%
+                                             :term eq-term2
+                                             :from ty2})))
+      (let [[status T1 x1 y1] (decompose-equal-type def-env ctx ty1)]
+        (when (= status :ko)
+          (throw (ex-info "Cannot infer an `equal`-type." {:special 'latte.prop/eq-trans%
+                                                           :term eq-term1
+                                                           :type ty1})))
+        (let [[status T2 x2 y2] (decompose-equal-type def-env ctx ty2)]
+          (when (= status :ko)
+            (throw (ex-info "Cannot infer an `equal`-type." {:special 'latte.prop/eq-trans%
+                                                             :term eq-term2
+                                                             :type ty2})))
+          (when-not (norm/beta-eq? def-env ctx T1 T2)
+            (throw (ex-info "Equal type mismatch"
+                            {:special 'latte.prop/eq-trans%
+                             :left-type T1
+                             :right-type T2})))
+          (when-not (norm/beta-eq? def-env ctx y1 x2)
+            (throw (ex-info "Term in the middle mismatch"
+                            {:special 'latte.prop/eq-trans%
+                             :left-rhs-term y1
+                             :right-lhs-term x2})))
+          [[(list #'eq-trans T1 x1 y1 y2) eq-term1] eq-term2])))))
+
 (defthm eq-subst
   "Substitutivity property of equality."
   [[T :type] [P (==> T :type)] [x T] [y T]]
