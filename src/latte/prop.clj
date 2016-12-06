@@ -614,8 +614,8 @@ This eliminates to the right operand."
   (have a (==> A A) :by (impl-refl A))
   (have b (==> (==> A A)
                (==> A A)
-               (<=> A A)) :by
-        (and-intro (==> A A) (==> A A)))
+               (<=> A A))
+        :by (and-intro (==> A A) (==> A A)))
   (have c (<=> A A) :by (b a a))
   (qed c))
 
@@ -719,8 +719,8 @@ This eliminates to the right operand."
 (proof iff-sym
     :script
   (assume [H (<=> A B)]
-    (have a (==> B A) :by ((iff-elim-only-if A B) H))
-    (have b (==> A B) :by ((iff-elim-if A B) H))
+    (have a (==> B A) :by (iff-elim-only-if% H))
+    (have b (==> A B) :by (iff-elim-if% H))
     (have c (==> (==> B A)
                  (==> A B)
                  (<=> B A)) :by (iff-intro B A))
@@ -753,12 +753,12 @@ This eliminates to the right operand."
     :script
   (assume [H1 (<=> A B)
            H2 (<=> B C)]
-    (have a (==> A B) :by ((iff-elim-if A B) H1))
-    (have b (==> B C) :by ((iff-elim-if B C) H2))
+    (have a (==> A B) :by (iff-elim-if% H1))
+    (have b (==> B C) :by (iff-elim-if% H2))
     (have c _ :by (impl-trans A B C))
     (have d (==> A C) :by (c a b))
-    (have e (==> C B) :by ((iff-elim-only-if B C) H2))
-    (have f (==> B A) :by ((iff-elim-only-if A B) H1))
+    (have e (==> C B) :by (iff-elim-only-if% H2))
+    (have f (==> B A) :by (iff-elim-only-if% H1))
     (have g _ :by (impl-trans C B A))
     (have h (==> C A) :by (g e f))
     (have i _ :by (iff-intro A C))
@@ -801,5 +801,3 @@ This eliminates to the right operand."
                              :left-lhs-type B
                              :right-lhs-type C
                              :right-rhs-type D}))))))))
-
-
