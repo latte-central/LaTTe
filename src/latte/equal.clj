@@ -24,13 +24,17 @@ This corresponds to Leibniz's *indiscernibility of identicals*."
                         (= (count t) 4)
                         (= (first t) #'latte.equal/equal))
     [:ok (second t) (nth t 2) (nth t 3)]
-    (let [[t ok?] (latte.kernel.norm/delta-step def-env t)]
+    (let [[t ok?] (norm/delta-step def-env t)]
+      (println "[decompose-equal-type] delta-term=" t " (reduced ? " ok? ")")
       (if ok?
         (recur def-env ctx t)
-        ;; XXX: cannot decompose further becayse
-        ;; we cannot retrieve the x and y of the
-        ;; definition ... needs a form of unification.
-        [:ko nil nil nil]))))
+        (let [[t ok?] (norm/beta-step t)]
+          (if ok?
+            (recur def-env ctx t)
+            ;; XXX: cannot decompose further because
+            ;; we cannot retrieve the x and y of the
+            ;; definition ... needs a form of unification.
+            [:ko nil nil nil]))))))
 
 (defthm eq-refl
   "The reflexivity property of equality."
