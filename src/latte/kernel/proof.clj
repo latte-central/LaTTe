@@ -168,7 +168,7 @@
     (if (= status :ko)
       [:ko {:msg "Cannot perform have step: incorrect term." :have-name name :from term}]
       (let [term (n/special-normalize def-env ctx term) ;; <-- need to remove the specials ASAP
-            term'(n/delta-normalize-local def-env term) ;; XXX: full normalization should not be needed ... (n/normalize def-env ctx term)
+            term' (n/delta-normalize-local def-env term) ;; XXX: full normalization should not be needed ... (n/normalize def-env ctx term)
             [status have-type] (if (and (symbol? have-type)
                                         (= (clojure.core/name have-type) "_"))
                                  [:ok nil]

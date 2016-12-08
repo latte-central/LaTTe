@@ -25,7 +25,7 @@ This corresponds to Leibniz's *indiscernibility of identicals*."
                         (= (first t) #'latte.equal/equal))
     [:ok (second t) (nth t 2) (nth t 3)]
     (let [[t ok?] (norm/delta-step def-env t)]
-      (println "[decompose-equal-type] delta-term=" t " (reduced ? " ok? ")")
+      ;; (println "[decompose-equal-type] delta-term=" t " (reduced ? " ok? ")")
       (if ok?
         (recur def-env ctx t)
         (let [[t ok?] (norm/beta-step t)]
