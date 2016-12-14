@@ -41,8 +41,7 @@
   (str "\n```\n"
        (with-out-str
          (pp/pprint content))
-       "```\n**" kind "**"
-       "\n\n"
+       "```\n**" kind "**: "
        explanation))
 
 (defmacro definition
