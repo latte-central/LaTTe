@@ -45,45 +45,40 @@
 (declare beta-step)
 
 (defn beta-step-args [ts]
-  (loop [ts ts, ts' []]
+  (loop [ts ts, ts' [], red? false]
     (if (seq ts)
-      (let [[t' red?] (beta-step (first ts))]
-        (if red?
-          [(vconcat (conj ts' t')
-                    (rest ts)) true]
-          (recur (rest ts) (conj ts' t'))))
-      [ts' false])))
+      (let [[t' red-1?] (beta-step (first ts))]
+        (recur (rest ts) (conj ts' t') (or red? red-1?)))
+      [ts' red?])))
 
 (defn beta-step [t]
   (cond
     ;; binder
     (stx/binder? t)
-    (let [[binder [x ty] body] t]
-      ;; 1) try reduction in binding type
-      (let [[ty' red?] (beta-step ty)]
-        (if red?
-          [(list binder [x ty'] body) true]
-          ;; 2) try reduction in body
-          (let [[body' red?] (beta-step body)]
-            [(list binder [x ty] body') red?]))))
+    (let [[binder [x ty] body] t
+          ;; 1) try reduction in binding type
+          [ty' red-1?] (beta-step ty)
+          ;; 2) also try reduction in body
+          [body' red-2?] (beta-step body)]
+      [(list binder [x ty'] body') (or red-1? red-2?)])
     ;; application
     (stx/app? t)
     (let [[left right] t
           ;; 1) try left reduction
-          [left' red?] (beta-step left)]
-      (if red?
-        [[left' right] true]
-        ;; 2) try beta (if it's a redex)
-        (if (stx/lambda? left)
-          [(beta-reduction t) true]
-          ;; 3) try right reduction
-          (let [[right' red?] (beta-step right)]
-            [[left right'] red?]))))
+          [left' lred?] (beta-step left)
+          ;; 2) also try right reduction
+          [right' rred?] (beta-step right)]
+      (if (stx/lambda? left')
+        ;; we have a redex
+        [(beta-reduction [left' right']) true]
+        ;; or we stay with an application
+        [[left' right'] (or lred? rred?)]))
     ;; reference
     (stx/ref? t)
     (let [[def-name & args] t
-          [args' red?] (beta-step-args args)]
-      [(list* def-name args') red?])
+          [args' red?] (beta-step-args args)
+          t' (if red? (list* def-name args') t)]
+      [t' red?])
     ;; other cases
     :else [t false]))
 
@@ -223,14 +218,11 @@
 (declare delta-step)
 
 (defn delta-step-args [def-env ts local?]
-  (loop [ts ts, ts' []]
+  (loop [ts ts, ts' [], red? false]
     (if (seq ts)
-      (let [[t' red?] (delta-step def-env (first ts) local?)]
-        (if red?
-          [(vconcat (conj ts' t')
-                    (rest ts)) true]
-          (recur (rest ts) (conj ts' t'))))
-      [ts' false])))
+      (let [[t' red-1?] (delta-step def-env (first ts) local?)]
+        (recur (rest ts) (conj ts' t') (or red? red-1?)))
+      [ts' red?])))
 
 (defn delta-step
   ([def-env t] (delta-step def-env t false))
@@ -239,31 +231,27 @@
    (cond
      ;; binder
      (stx/binder? t)
-     (let [[binder [x ty] body] t]
-       ;; 1) try reduction in binding type
-       (let [[ty' red?] (delta-step def-env ty local?)]
-         (if red?
-           [(list binder [x ty'] body) true]
-           ;; 2) try reduction in body
-           (let [[body' red?] (delta-step def-env body local?)]
-             [(list binder [x ty] body') red?]))))
+     (let [[binder [x ty] body] t
+           ;; 1) try reduction in binding type
+           [ty' red1?] (delta-step def-env ty local?)
+           ;; 2) also try reduction in body
+           [body' red2?] (delta-step def-env body local?)]
+       [(list binder [x ty'] body') (or red1? red2?)])
      ;; application
      (stx/app? t)
      (let [[left right] t
            ;; 1) try left reduction
-           [left' red?] (delta-step def-env left local?)]
-       (if red?
-         [[left' right] true]
-         ;; 2) try right reduction
-         (let [[right' red?] (delta-step def-env right local?)]
-           [[left right'] red?])))
+           [left' lred?] (delta-step def-env left local?)
+           ;; 2) also try right reduction
+           [right' rred?] (delta-step def-env right local?)]
+       [[left' right'] (or lred? rred?)])
      ;; reference
      (stx/ref? t)
      (let [[def-name & args] t
-           [args' red?] (delta-step-args def-env args local?)]
-       (if red?
-         [(list* def-name args') red?]
-         (delta-reduction def-env t local?)))
+           [args' red1?] (delta-step-args def-env args local?)
+           t' (if red1? (list* def-name args') t)
+           [t'' red2?] (delta-reduction def-env t' local?)]
+       [t'' (or red1? red2?)])
      ;; other cases
      :else [t false])))
 
@@ -311,14 +299,11 @@
 (declare special-step)
 
 (defn special-step-args [def-env ctx ts]
-  (loop [ts ts, ts' []]
+  (loop [ts ts, ts' [], red? false]
     (if (seq ts)
-      (let [[t' red?] (special-step def-env ctx (first ts))]
-        (if red?
-          [(vconcat (conj ts' t')
-                    (rest ts)) true]
-          (recur (rest ts) (conj ts' t'))))
-      [ts' false])))
+      (let [[t' red1?] (special-step def-env ctx (first ts))]
+        (recur (rest ts) (conj ts' t') (or red? red1?)))
+      [ts' red?])))
 
 (defn special-step [def-env ctx t]
   ;; (println "[delta-step] t=" t)
@@ -327,29 +312,25 @@
     (stx/binder? t)
     (let [[binder [x ty] body] t]
       ;; 1) try reduction in binding type
-      (let [[ty' red?] (special-step def-env ctx ty)]
-        (if red?
-          [(list binder [x ty'] body) true]
-          ;; 2) try reduction in body
-          (let [[body' red?] (special-step def-env ctx body)]
-            [(list binder [x ty] body') red?]))))
+      (let [[ty' red1?] (special-step def-env ctx ty)
+            ;; 2) try reduction in body
+            [body' red2?] (special-step def-env ctx body)]
+        [(list binder [x ty'] body') (or red1? red2?)]))
     ;; application
     (stx/app? t)
     (let [[left right] t
           ;; 1) try left reduction
-          [left' red?] (special-step def-env ctx left)]
-      (if red?
-        [[left' right] true]
-        ;; 2) try right reduction
-        (let [[right' red?] (special-step def-env ctx right)]
-          [[left right'] red?])))
+          [left' lred?] (special-step def-env ctx left)
+          ;; 2) try right reduction
+          [right' rred?] (special-step def-env ctx right)]
+      [[left' right'] (or lred? rred?)])
     ;; reference
     (stx/ref? t)
     (let [[def-name & args] t
-          [args' red?] (special-step-args def-env ctx args)]
-      (if red?
-        [(list* def-name args') red?]
-        (special-reduction def-env ctx t)))
+          [args' red1?] (special-step-args def-env ctx args)
+          t' (if red1? (list* def-name args') t)
+          [t'' red2?] (special-reduction def-env ctx t')]
+      [t'' (or red1? red2?)])
     ;; other cases
     :else [t false]))
 
