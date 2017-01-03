@@ -1,6 +1,10 @@
 (ns latte.kernel.equiv
 
-  "A fast(er) equivalence algorithm."
+  "An alternative beta-equivalence algorithm.
+
+  This version is for now slower than the normalization
+  algorithm. So it is deactivated but could be used at
+  least for a double-check in proof steps."
 
   (:require [latte.kernel.syntax :as stx]
             [latte.kernel.norm :as norm]))
