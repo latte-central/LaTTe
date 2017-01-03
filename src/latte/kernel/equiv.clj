@@ -6,11 +6,12 @@
             [latte.kernel.norm :as norm]))
 
 
-
 (defn mkfresh-id [vmap]
   (count vmap))
 
 (declare beta-equiv-args)
+(declare dig-equiv)
+
 (defn beta-equiv
   ([def-env ctx t1 t2] (beta-equiv def-env ctx t1 t2 {} {}))
   ([def-env ctx t1 t2 vmap1 vmap2]
@@ -26,7 +27,7 @@
           [:ok {}]
           (let [[t1' red1?] (norm/delta-reduction def-env t1)
                 [t2' red2?] (norm/delta-reduction def-env t2)]
-            (if (or (red1? red2?))
+            (if (or red1? red2?)
               (recur def-env ctx t1' t2' vmap1 vmap2)
               [:ko {:msg "Mismatch references"
                     :term1 t1
@@ -73,8 +74,9 @@
       (and (stx/variable? t1)
            (stx/variable? t2))
 
-      (if (= (get vmap1 t1)
-             (get vmap2 t2))
+      (if (or (= (get vmap1 t1 ::left)
+                 (get vmap2 t2 ::right))
+              (= t1 t2))
         [:ok {}]
         [:ko {:msg "Mismatch variables"
               :term1 t1
@@ -114,14 +116,35 @@
       (let [[rator1 rand1] t1
             [rator2 rand2] t2]
         (let [[status info] (beta-equiv def-env ctx rator1 rator2 vmap1 vmap2)]
-          (if (= status :ko)
-            [status info]
-            (recur def-env ctx rand1 rand2 vmap1 vmap2))))
-
+          (if (= status :ok)
+            (let [[status info] (beta-equiv def-env ctx rand1 rand2 vmap1 vmap2)]
+              (if (= status :ok)
+                [status info]
+                (dig-equiv def-env ctx t1 t2 vmap1 vmap2)))
+            (dig-equiv def-env ctx t1 t2 vmap1 vmap2))))
       :else
-      [:ko {:msg "Mismatch terms"
-            :term1 t1
-            :term2 t2}])))
+      (dig-equiv def-env ctx t1 t2 vmap1 vmap2))))
+
+
+
+(defn dig-equiv
+  [def-env ctx t1 t2 vmap1 vmap2]
+  (let [[t1' red1?] (norm/delta-step def-env t1)]
+    (if red1?
+      (beta-equiv def-env ctx t1' t2 vmap1 vmap2)
+      (let [[t1' red1?] (norm/beta-step t1)]
+        (if red1?
+          (beta-equiv def-env ctx t1' t2 vmap1 vmap2)
+          (let [[t2' red2?] (norm/delta-step def-env t2)]
+            (if red2?
+              (beta-equiv def-env ctx t1 t2' vmap1 vmap2)
+              (let [[t2' red2?] (norm/beta-step t2)]
+                (if red2?
+                  (beta-equiv def-env ctx t1 t2' vmap1 vmap2)
+                  [:ko {:msg "Mismatch terms"
+                        :term1 t1
+                        :term2 t2}])))))))))
+
 
 (defn beta-equiv-args
   [def-env ctx args1 args2 vmap1 vmap2]

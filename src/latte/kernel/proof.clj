@@ -9,7 +9,8 @@
             [latte.kernel.syntax :refer [free-vars]]
             [latte.kernel.typing :as ty :refer [type-of-term]]
             [latte.kernel.norm :as n]
-            [latte.kernel.defs :as d]))
+            [latte.kernel.defs :as d]
+            [latte.kernel.equiv :as equiv]))
 
 (def ^:private +examples-enabled+)
 
@@ -31,11 +32,22 @@
         (if (= status :ko)
           [:ko {:msg (str "type error, " (:msg ptype))
                 :error (dissoc ptype :msg)}]
-          (if (not (n/beta-eq? def-env ctx thm-ty ptype))
-            [:ko {:msg "proof checking error (type mismatch)"
-                  :expected-type thm-ty
-                  :proof-type ptype}]
-            [:ok proof]))))))
+          (let [[status info] (equiv/beta-equiv def-env ctx thm-ty ptype)]
+            (if (= status :ok)
+              [:ok proof]
+              ;; XXX : this is a double-check, a slower algorithm for beta-equiv
+              (if (not (n/beta-eq? def-env ctx thm-ty ptype))
+                [:ko {:msg "proof checking error (type mismatch)"
+                      :expected-type thm-ty
+                      :proof-type ptype
+                      :info info}]
+                (do (println "Warning: (fast) beta-equiv failure (please report)")
+                    (println "Theorem type:")
+                    (clojure.pprint/pprint thm-ty)
+                    (println "Proof type:")
+                    (clojure.pprint/pprint ptype)
+                    ;; but still the proof is correct
+                    [:ok proof])))))))))
 
 (defn check-proof
   [def-env ctx thm-ty method steps]
@@ -188,11 +200,22 @@
                     (if (= status :ko)
                       [:ko {:msg "Cannot synthetize term type."
                             :from computed-type}]
-                      (if (not (n/beta-eq? def-env ctx have-type computed-type))
-                        [:ko {:msg "Cannot perform have step: synthetized term type and expected type do not match."
-                              :have-name name
-                              :term term :expected-type have-type :synthetized-type computed-type}]
-                        [:ok have-type]))))]
+                      (let [[status info] (equiv/beta-equiv def-env ctx have-type computed-type)]
+                        (if (= status :ok)
+                          [:ok have-type]
+                          ;; XXX: double-check
+                          (if (not (n/beta-eq? def-env ctx have-type computed-type))
+                            [:ko {:msg "Cannot perform have step: synthetized term type and expected type do not match."
+                                  :have-name name
+                                  :term term :expected-type have-type :synthetized-type computed-type
+                                  :info info}]
+                            (do
+                              (println "Warning: (fast) beta-equiv failure (please report)")
+                              (println "Have type:")
+                              (clojure.pprint/pprint have-type)
+                              (println "Computed type:")
+                              (clojure.pprint/pprint computed-type)
+                              [:ok have-type])))))))]
             (cond (= status :ko) [:ko have-type]
                   (nil? name) [:ok [def-env ctx]]
                   :else
