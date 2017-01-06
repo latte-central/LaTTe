@@ -598,6 +598,66 @@ This eliminates to the right operand."
     (have e B :by (d b c))
     (qed e)))
 
+(defthm or-assoc
+  [[A :type] [B :type] [C :type]]
+  (==> (or (or A B) C)
+       (or A (or B C))))
+
+(proof or-assoc
+    :script
+  (assume [H1 (or (or A B)
+                 C)]
+    (assume [H2 (or A B)]
+      (assume [H3 A]
+        (have <a> (or A (or B C))
+              :by (or-intro-left% H3 (or B C))))
+      (assume [H4 B]
+        (have <b1> (or B C)
+              :by (or-intro-left% H4 C))
+        (have <b> (or A (or B C))
+              :by (or-intro-right% A <b1>)))
+      (have <c> _
+            :by (or-elim% H2 (or A (or B C))
+                          <a> <b>)))
+    (assume [H5 C]
+      (have <d1> (or B C)
+            :by (or-intro-right% B H5))
+      (have <d> (or A (or B C))
+            :by (or-intro-right% A <d1>)))
+    (have <e> _ :by (or-elim% H1 (or A (or B C))
+                              <c> <d>)))
+  (qed <e>))
+
+(defthm or-assoc-conv
+  [[A :type] [B :type] [C :type]]
+  (==> (or A (or B C))
+       (or (or A B) C)))
+
+(proof or-assoc-conv
+    :script
+  (assume [H1 (or A (or B C))]
+    (assume [H2 A]
+      (have <a1> (or A B)
+            :by (or-intro-left% H2 B))
+      (have <a> (or (or A B) C)
+            :by (or-intro-left% <a1> C)))
+    (assume [H3 (or B C)]
+      (assume [H4 B]
+        (have <b1> (or A B)
+              :by (or-intro-right% A H4))
+        (have <b> (or (or A B) C)
+              :by (or-intro-left% <b1> C)))
+      (assume [H5 C]
+        (have <c> (or (or A B) C)
+              :by (or-intro-right% (or A B) H5)))
+      (have <d> _
+            :by (or-elim% H3 (or (or A B) C)
+                          <b> <c>)))
+    (have <e> _
+          :by (or-elim% H1 (or (or A B) C)
+                        <a> <d>)))
+  (qed <e>))
+
 (definition <=>
   "Logical equivalence or 'if and only if'."
   [[A :type] [B :type]]
