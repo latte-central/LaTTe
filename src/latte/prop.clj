@@ -658,6 +658,31 @@ This eliminates to the right operand."
                         <a> <d>)))
   (qed <e>))
 
+(defspecial or-assoc%
+  "Associativity of disjunction, a special that subsumes both
+[[or-assoc]] and [[or-assoc-conv]]."
+  [def-env ctx or-term]
+  (let [[status ty] (ty/type-of-term def-env ctx or-term)]
+    (if (= status :ko)
+      (throw (ex-info "Cannot type term." {:special 'latte.prop/or-assoc%
+                                           :term or-term
+                                           :from ty}))
+      (let [[status A B] (decompose-or-type def-env ctx ty)]
+        (if (= status :ko)
+          (throw (ex-info "Not an `or`-type." {:special 'latte.prop/or-assoc%
+                                               :term or-term
+                                               :type ty}))
+          (let [[status A1 A2] (decompose-or-type def-env ctx A)]
+            (if (= status :ok)
+              [(list #'or-assoc A1 A2 B) or-term]
+              (let [[status B1 B2] (decompose-or-type def-env ctx B)]
+                (if (= status :ok)
+                  [(list #'or-assoc-conv A B1 B2) or-term]
+                  (throw (ex-info "Not an associative `or`-type."
+                                  {:special 'latte.prop/or-assoc%
+                                   :term or-term
+                                   :type ty})))))))))))
+
 (definition <=>
   "Logical equivalence or 'if and only if'."
   [[A :type] [B :type]]
