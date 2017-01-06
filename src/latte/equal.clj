@@ -115,12 +115,13 @@ This corresponds to Leibniz's *indiscernibility of identicals*."
             (throw (ex-info "Cannot infer an `equal`-type." {:special 'latte.prop/eq-trans%
                                                              :term eq-term2
                                                              :type ty2})))
-          (when-not (norm/beta-eq? def-env ctx T1 T2)
+          ;; XXX: these are redundant and probably take time ...
+          #_(when-not (norm/beta-eq? def-env ctx T1 T2)
             (throw (ex-info "Equal type mismatch"
                             {:special 'latte.prop/eq-trans%
                              :left-type T1
                              :right-type T2})))
-          (when-not (norm/beta-eq? def-env ctx y1 x2)
+          #_(when-not (norm/beta-eq? def-env ctx y1 x2)
             (throw (ex-info "Term in the middle mismatch"
                             {:special 'latte.prop/eq-trans%
                              :left-rhs-term y1

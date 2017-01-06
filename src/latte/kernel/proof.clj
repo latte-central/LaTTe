@@ -241,7 +241,7 @@
     (let [[status term] (stx/parse-term def-env' term)]
       (if (= status :ko)
         [:ko {:msg "Cannot do QED step: parse error." :error term}]
-        [:ok (n/delta-normalize def-env' term)]))))
+        [:ok (n/delta-normalize-local def-env' term)]))))
 
 (defn do-showdef-step [def-env arg]
   (println "[showdef]" arg)
