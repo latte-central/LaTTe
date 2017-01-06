@@ -382,16 +382,16 @@ This is the introduction by the left operand."
 
 (defspecial or-intro-left%
   "Left introduction for disjunction, a special version of [[or-intro-left]]."
-  [def-env ctx left-type right-term]
-  (when-not (ty/proper-type? def-env ctx left-type)
+  [def-env ctx left-term right-type]
+  (when-not (ty/proper-type? def-env ctx right-type)
     (throw (ex-info "Not a type." {:special 'latte.prop/or-intro-left%
-                                   :term left-type})))
-  (let [[status right-type] (ty/type-of-term def-env ctx right-term)]
+                                   :term right-type})))
+  (let [[status left-type] (ty/type-of-term def-env ctx left-term)]
     (when (= status :ko)
       (throw (ex-info "Cannot type term." {:special 'latte.prop/or-intro-left%
-                                           :term right-term
-                                           :from right-type})))
-    [(list #'or-intro-left left-type right-type) right-term]))
+                                           :term left-term
+                                           :from left-type})))
+    [(list #'or-intro-left left-type right-type) left-term]))
 
 (defthm or-intro-right
   "Introduction rule for logical disjunction.
@@ -411,16 +411,16 @@ This is the introduction by the right operand."
 
 (defspecial or-intro-right%
   "Right introduction for disjunction, a special version of [[or-intro-right]]."
-  [def-env ctx left-term right-type]
-  (when-not (ty/proper-type? def-env ctx right-type)
+  [def-env ctx left-type right-term]
+  (when-not (ty/proper-type? def-env ctx left-type)
     (throw (ex-info "Not a type." {:special 'latte.prop/or-intro-right%
-                                   :term right-type})))
-  (let [[status left-type] (ty/type-of-term def-env ctx left-term)]
+                                   :term left-type})))
+  (let [[status right-type] (ty/type-of-term def-env ctx right-term)]
     (when (= status :ko)
       (throw (ex-info "Cannot type term." {:special 'latte.prop/or-intro-right%
-                                           :term left-term
-                                           :from left-type})))
-    [(list #'or-intro-right left-type right-type) left-term]))
+                                           :term right-term
+                                           :from right-type})))
+    [(list #'or-intro-right left-type right-type) right-term]))
 
 (defthm or-elim
   "Elimination rule for logical disjunction.
