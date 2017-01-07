@@ -14,6 +14,27 @@
 
 (def ^:private +examples-enabled+)
 
+;; uncomment for timing
+;; (def ^:private +timing-enabled+)
+
+(defmacro timing [explain expr]
+  (if-let [ex-var (find-var (symbol (str *ns*) "+timing-enabled+"))]
+    (if (var-get ex-var)
+      `(let [start-time# (u/nano-time)
+             res# ~expr
+             end-time# (u/nano-time)
+             elapsed# (float (/ (- end-time# start-time#)
+                                1000000))]
+         (println ~explain (str "(" elapsed# " ms)"))
+         res#)
+      `~expr)
+    `~expr))
+
+(defmacro when-timing [expr]
+  (when-let [ex-var (find-var (symbol (str *ns*) "+timing-enabled+"))]
+    (when (var-get ex-var)
+      `~expr)))
+
 ;;{
 ;; # Proof top-level form
 ;;}
@@ -27,19 +48,24 @@
     (if (= status :ko)
       [:ko {:msg (str "wrong proof term,  " (:msg proof))
             :error (dissoc proof :msg)}]
-      (let [[status ptype] (ty/type-of-term def-env ctx proof)]
+      (let [[status ptype] (timing "- infer proof type"
+                                   (ty/type-of-term def-env ctx proof))]
         ;; (println "[check-proof-term] type-of-proof=" ptype)
         (if (= status :ko)
           [:ko {:msg (str "type error, " (:msg ptype))
                 :error (dissoc ptype :msg)}]
-          (if (not (n/beta-eq? def-env ctx thm-ty ptype))
+          (if (not (timing "- check proof type against theorem type"
+                           (n/beta-eq? def-env ctx thm-ty ptype)))
             [:ko {:msg "proof checking error (type mismatch)"
                   :expected-type thm-ty
                   :proof-type ptype}]
-            [:ok proof]))))))
+            (do
+              (when-timing
+                  (println "=================================================================="))
+              [:ok proof])))))))
 
 (defn check-proof
-  [def-env ctx thm-ty method steps]
+  [def-env ctx thm-name thm-ty method steps]
   (let [[status proof-term]
         (case method
           :term (cond
@@ -49,7 +75,10 @@
                   [:ko {:msg "too many proof steps, direct method requires a single term" :steps steps}]
                   :else
                   [:ok (first steps)])
-          :script (evaluate-script steps def-env ctx [] '())
+          :script (do
+                    (when-timing
+                        (println "=== Checking proof of theorem" thm-name "(timing enabled) ==="))
+                    (evaluate-script steps def-env ctx [] '()))
           [:ko {:msg "no such proof method" :method method}])]
     (if (= status :ko)
       [:ko proof-term]
@@ -168,48 +197,60 @@
     ;; check synthetized term
     (if (= status :ko)
       [:ko {:msg "Cannot perform have step: incorrect term." :have-name name :from term}]
-      (let [term (n/special-normalize def-env ctx term) ;; <-- need to remove the specials ASAP
-            term' (n/delta-normalize-local def-env term) ;; XXX: full normalization should not be needed ... (n/normalize def-env ctx term)
-            [status have-type] (if (and (symbol? have-type)
-                                        (= (clojure.core/name have-type) "_"))
-                                 [:ok nil]
-                                 (stx/parse-term def-env have-type))]
-        ;;(println "   have-term = " term')
-        (if (= status :ko)
-          [:ko {:msg "Cannot perform have step: erroneous type." :have-name name :from have-type}]
-          (let [[status have-type]
-                (if (nil? have-type)
-                  (let [[status have-type] (ty/type-of-term def-env ctx term')]
-                    (if (= status :ko)
-                      [:ko (assoc (dissoc have-type :msg)
-                                  :msg (str "Cannot perform have step: " (:msg have-type)))]
-                      [:ok have-type]))
-                  (let [[status computed-type] (type-of-term def-env ctx term')]
-                    ;;(println "  [computed-type] = " computed-type)
-                    (if (= status :ko)
-                      [:ko {:msg "Cannot synthetize term type."
-                            :from computed-type}]
-                      (if (not (n/beta-eq? def-env ctx have-type computed-type))
-                        [:ko {:msg "Cannot perform have step: synthetized term type and expected type do not match."
+      (do
+        (when-timing
+            (println "- check step" name))
+        (let [term (timing "  => handling specials"
+                           ;; XXX: need to remove the specials ASAP
+                           (n/special-normalize def-env ctx term)) 
+              term' (timing "  => unfolding local definitions"
+                            ;; XXX: full normalization should
+                            ;; not be needed ...
+                            ;; (n/normalize def-env ctx term) ???
+                            (n/delta-normalize-local def-env term))
+              [status have-type] (if (and (symbol? have-type)
+                                          (= (clojure.core/name have-type) "_"))
+                                   [:ok nil]
+                                   (stx/parse-term def-env have-type))]
+          ;;(println "   have-term = " term')
+          (if (= status :ko)
+            [:ko {:msg "Cannot perform have step: erroneous type." :have-name name :from have-type}]
+            (let [[status have-type]
+                  (if (nil? have-type)
+                    (let [[status have-type] (timing "  => infer step type"
+                                                     (ty/type-of-term def-env ctx term'))]
+                      (if (= status :ko)
+                        [:ko (assoc (dissoc have-type :msg)
+                                    :msg (str "Cannot perform have step: " (:msg have-type)))]
+                        [:ok have-type]))
+                    (let [[status computed-type] (timing "  => compute step type"
+                                                         (type-of-term def-env ctx term'))]
+                      ;;(println "  [computed-type] = " computed-type)
+                      (if (= status :ko)
+                        [:ko {:msg "Cannot synthetize term type."
+                              :from computed-type}]
+                        (if (timing "  => compare with specified type"
+                                    (not (n/beta-eq? def-env ctx have-type computed-type)))
+                          [:ko {:msg "Cannot perform have step: synthetized term type and expected type do not match."
+                                :have-name name
+                                :term term :expected-type have-type :synthetized-type computed-type}]
+                          [:ok have-type]))))]
+              (cond (= status :ko) [:ko have-type]
+                    (nil? name) [:ok [def-env ctx]]
+                    :else
+                    (let [[status tdef] (d/handle-local-term-definition
+                                         name
+                                         term'
+                                         have-type)]
+                      ;;(println "[have-step] term=" term)
+                      ;;(println "            def=" (:parsed-term tdef))
+                      (if (= status :ko)
+                        [:ko {:msg "Cannot perform have step: wrong local definition."
                               :have-name name
-                              :term term :expected-type have-type :synthetized-type computed-type}]
-                        [:ok have-type]))))]
-            (cond (= status :ko) [:ko have-type]
-                  (nil? name) [:ok [def-env ctx]]
-                  :else
-                  (let [[status tdef] (d/handle-local-term-definition
-                                       name
-                                       term'
-                                       have-type)]
-                    ;;(println "[have-step] term=" term)
-                    ;;(println "            def=" (:parsed-term tdef))
-                    (if (= status :ko)
-                      [:ko {:msg "Cannot perform have step: wrong local definition."
-                            :have-name name
-                            :from tdef}]
-                      (let [deps' (mapv (fn [[x xdeps]]
-                                          [x (conj xdeps name)]) deps)]
-                        [:ok [(assoc def-env name tdef) ctx deps']]))))))))))
+                              :from tdef}]
+                        (let [deps' (mapv (fn [[x xdeps]]
+                                            [x (conj xdeps name)]) deps)]
+                          [:ok [(assoc def-env name tdef) ctx deps']])))))))))))
 
 (example
  (do-have-step

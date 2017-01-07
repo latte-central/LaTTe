@@ -381,7 +381,7 @@ term `(type-of% term)` is replaced by the *type* of `term`."
     (if (= status :ko)
       [:ko {:msg "No such theorem." :name thm-name}]
       (let [[status proof-term]
-            (p/check-proof def-env (reverse (:params thm)) (:type thm) method steps)]
+            (p/check-proof def-env (reverse (:params thm)) thm-name (:type thm) method steps)]
         (if (= status :ko)
           (if (= (get proof-term :info)
                  :proof-incomplete)
@@ -416,7 +416,7 @@ term `(type-of% term)` is replaced by the *type* of `term`."
     (when (= status :ko)
       (throw (ex-info "No such theorem." {:name thm-name})))
     (let [[status proof-term]
-          (p/check-proof def-env (reverse (:params thm)) (:type thm) method steps)]
+          (p/check-proof def-env (reverse (:params thm)) thm-name (:type thm) method steps)]
       (if (= status :ko)
         (throw (ex-info (str "Proof failed: " (:msg proof-term)) {:theorem thm-name
                                                                   :error (dissoc proof-term :msg)}))

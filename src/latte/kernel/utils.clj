@@ -52,5 +52,7 @@
     (throw (ex-info "No such value is collection" {:coll coll :key key}))))
 
 
-
+(defn nano-time []
+  "Fetch the current time (with high precision)"
+  (System/nanoTime))
 
