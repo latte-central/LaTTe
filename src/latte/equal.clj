@@ -136,20 +136,20 @@ The parameter `eq-terms` is a vector of at least two equalities.
 For example:
 
 ```
-(eq-trans* [eq1 eq2])
+(eq-trans* eq1 eq2)
 ==> (eq-trans% eq1 eq2)
 
-(eq-trans* [eq1 eq2 eq3])
+(eq-trans* eq1 eq2 eq3)
 ==> (eq-trans% (eq-trans% eq1 eq2) eq3)
 
-(eq-trans* [eq1 eq2 eq3 eq4])
+(eq-trans* eq1 eq2 eq3 eq4)
 ==> (eq-trans% (eq-trans% (eq-trans% eq1 eq2) eq3) eq4)
 ````
 etc.
 `"
-  [def-env ctx eq-terms]
-  (when-not (and (vector? eq-terms) (>= count eq-terms 2))
-    (throw (ex-info "Argument `eq-terms` must be a vector of size at least 2."
+  [def-env ctx & eq-terms]
+  (when-not (and (seq eq-terms) ((>= count eq-terms 2)))
+    (throw (ex-info "There must be at least two arguments."
                     {:special 'latte.prop/eq-trans*
                      :arg eq-terms})))
   (let [[status ty1] (ty/type-of-term def-env ctx (first eq-terms))]

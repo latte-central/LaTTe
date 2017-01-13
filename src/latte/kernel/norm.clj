@@ -287,14 +287,14 @@
           [status sdef] (defenv/fetch-definition def-env name)]
       (if (= status :ko)
         [t false] ;; No error?  or (throw (ex-info "No such definition" {:term t :def-name name}))
-        (if (> (count args) (:arity sdef))
-          (throw (ex-info "Too many arguments to instantiate special." {:term t :def-name name :nb-params (count (:arity sdef)) :nb-args (count args)}))
+        ;;(if (> (count args) (:arity sdef))
+          ;;(throw (ex-info "Too many arguments to instantiate special." {:term t :def-name name :nb-params (count (:arity sdef)) :nb-args (count args)}))
           (if (special? sdef)
-            (if (< (count args) (:arity sdef))
-              (throw (ex-info "Not enough argument for special definition." { :term t :arity (:arity sdef)}))
-              (let [term (apply (:special-fn sdef) def-env ctx args)]
-                [term true]))
-            [t false]))))))
+            ;;(if (< (count args) (:arity sdef))
+              ;;(throw (ex-info "Not enough argument for special definition." { :term t :arity (:arity sdef)}))
+            (let [term (apply (:special-fn sdef) def-env ctx args)]
+              [term true]) ;;)
+            [t false]))))) ;;)
 
 (declare special-step)
 

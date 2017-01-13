@@ -10,11 +10,11 @@
 </code></pre>
 <p><strong>Theorem</strong>: The symmetry property of equality.</p></div></div></div><div class="public anchor" id="var-eq-sym.25"><h3>eq-sym%</h3><div class="usage"><code>(eq-sym% eq-term)</code></div><div class="doc"><div class="markdown"><p>Symmetry of equality, a special version of <a href="latte.equal.html#var-eq-sym">eq-sym</a>.</p></div></div></div><div class="public anchor" id="var-eq-trans"><h3>eq-trans</h3><div class="usage"><code>(eq-trans [T :type] [x T] [y T] [z T])</code></div><div class="doc"><div class="markdown"><pre><code>(==&gt; (equal T x y) (equal T y z) (equal T x z))
 </code></pre>
-<p><strong>Theorem</strong>: The transitivity property of equality.</p></div></div></div><div class="public anchor" id="var-eq-trans.25"><h3>eq-trans%</h3><div class="usage"><code>(eq-trans% eq-term1 eq-term2)</code></div><div class="doc"><div class="markdown"><p>Transitivity of <code>equal</code>, a special version of <a href="latte.equal.html#var-eq-trans">eq-trans</a>.</p></div></div></div><div class="public anchor" id="var-eq-trans*"><h3>eq-trans*</h3><div class="usage"><code>(eq-trans* eq-terms)</code></div><div class="doc"><div class="markdown"><p>Transitivity of <code>equal</code>, a n-ary version of <a href="latte.equal.html#var-eq-trans.25">eq-trans%</a>. The parameter <code>eq-terms</code> is a vector of at least two equalities.</p>
+<p><strong>Theorem</strong>: The transitivity property of equality.</p></div></div></div><div class="public anchor" id="var-eq-trans.25"><h3>eq-trans%</h3><div class="usage"><code>(eq-trans% eq-term1 eq-term2)</code></div><div class="doc"><div class="markdown"><p>Transitivity of <code>equal</code>, a special version of <a href="latte.equal.html#var-eq-trans">eq-trans</a>.</p></div></div></div><div class="public anchor" id="var-eq-trans*"><h3>eq-trans*</h3><div class="usage"><code>(eq-trans* &amp; eq-terms)</code></div><div class="doc"><div class="markdown"><p>Transitivity of <code>equal</code>, a n-ary version of <a href="latte.equal.html#var-eq-trans.25">eq-trans%</a>. The parameter <code>eq-terms</code> is a vector of at least two equalities.</p>
 <p>For example:</p>
-<p>``` (eq-trans* [eq1 eq2]) ==&gt; (eq-trans% eq1 eq2)</p>
-<p>(eq-trans* [eq1 eq2 eq3]) ==&gt; (eq-trans% (eq-trans% eq1 eq2) eq3)</p>
-<p>(eq-trans* [eq1 eq2 eq3 eq4]) ==&gt; (eq-trans% (eq-trans% (eq-trans% eq1 eq2) eq3) eq4) ```<code>
+<p>``` (eq-trans* eq1 eq2) ==&gt; (eq-trans% eq1 eq2)</p>
+<p>(eq-trans* eq1 eq2 eq3) ==&gt; (eq-trans% (eq-trans% eq1 eq2) eq3)</p>
+<p>(eq-trans* eq1 eq2 eq3 eq4) ==&gt; (eq-trans% (eq-trans% (eq-trans% eq1 eq2) eq3) eq4) ```<code>
 etc.
 </code></p></div></div></div><div class="public anchor" id="var-equal"><h3>equal</h3><div class="usage"><code>(equal [T :type] [x T] [y T])</code></div><div class="doc"><div class="markdown"><pre><code>(forall [P (==&gt; T :type)] (&lt;=&gt; (P x) (P y)))
 </code></pre>

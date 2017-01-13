@@ -45,7 +45,7 @@
   (and (fn? v)
        (instance? Notation (dummy-call v))))
 
-(defrecord Special [name arity special-fn])
+(defrecord Special [name special-fn])
 
 (defn special? [v]
   (instance? Special v))

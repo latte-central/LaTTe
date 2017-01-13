@@ -286,7 +286,8 @@
     ;; other definitions
     (let [def-name (first t)
           arity (count (rest t))]
-      (if (< (:arity sdef) arity)
+      (if (and (get sdef :arity)
+               (< (:arity sdef) arity))
         [:ko {:msg "Too many arguments for definition." :term t :def-name def-name :arity arity :nb-args (:arity sdef)}]
         ;; else
         (let [[status ts] (parse-terms def-env (rest t) bound)]

@@ -285,7 +285,7 @@ since they are arbitrary functions. The risk is limited, though, since they cann
         ;;       otherwise only warn ?
         (println "[Warning] redefinition as special: " def-name)))
   `(do
-     (def ~def-name (defenv/->Special (quote ~def-name) ~(- (count def-params) 2)
+     (def ~def-name (defenv/->Special (quote ~def-name)
                       (fn ~def-params (do ~@def-body))))
      (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
                                                    :doc ~def-doc
