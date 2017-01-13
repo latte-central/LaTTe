@@ -281,6 +281,7 @@
 ;;}
 
 (defn special-reduction [def-env ctx t]
+  ;; (println "[special-reduction] t=" t)
   (if (not (stx/ref? t))
     (throw (ex-info "Cannot special-reduce: not a reference term." {:term t}))
     (let [[name & args] t
@@ -291,10 +292,13 @@
           ;;(throw (ex-info "Too many arguments to instantiate special." {:term t :def-name name :nb-params (count (:arity sdef)) :nb-args (count args)}))
           (if (special? sdef)
             ;;(if (< (count args) (:arity sdef))
-              ;;(throw (ex-info "Not enough argument for special definition." { :term t :arity (:arity sdef)}))
-            (let [term (apply (:special-fn sdef) def-env ctx args)]
-              [term true]) ;;)
-            [t false]))))) ;;)
+            ;;(throw (ex-info "Not enough argument for special definition." { :term t :arity (:arity sdef)}))
+            (do
+              ;; (println "[special-reduction] sdef=" sdef)
+              (let [term (apply (:special-fn sdef) def-env ctx args)]
+                [term true])) ;;)
+            [t false])))))
+;;)
 
 (declare special-step)
 

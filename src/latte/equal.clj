@@ -148,10 +148,12 @@ For example:
 etc.
 `"
   [def-env ctx & eq-terms]
-  (when-not (and (seq eq-terms) ((>= count eq-terms 2)))
-    (throw (ex-info "There must be at least two arguments."
-                    {:special 'latte.prop/eq-trans*
-                     :arg eq-terms})))
+  ;; (println "[eq-trans*] eq-terms=" eq-terms)
+  ;; (when-not (and (seq eq-terms) (>= (count eq-terms) 2))
+  ;;   (println "  ==> here 1")
+  ;;   (throw (ex-info "There must be at least two arguments."
+  ;;                   {:special 'latte.prop/eq-trans*
+  ;;                    :arg eq-terms})))
   (let [[status ty1] (ty/type-of-term def-env ctx (first eq-terms))]
     (when (= status :ko)
       (throw (ex-info "Cannot type term." {:special 'latte.prop/eq-trans*
@@ -162,22 +164,44 @@ etc.
         (throw (ex-info "Cannot infer an `equal`-type." {:special 'latte.prop/eq-trans*
                                                          :term (first eq-terms)
                                                          :type ty1})))
-      (loop [eq-terms (rest eq-terms), x1 x1, y1 y1, ret (first eq-terms)]
-        (if (seq eq-terms)
-          (let [[status ty2] (ty/type-of-term def-env ctx (first eq-terms))]
+      (loop [eq-terms' (rest eq-terms), x1 x1, y1 y1, ret (first eq-terms)]
+        (if (seq eq-terms')
+          (let [[status ty2] (ty/type-of-term def-env ctx (first eq-terms'))]
             (when (= status :ko)
               (throw (ex-info "Cannot type term." {:special 'latte.prop/eq-trans*
-                                                   :term (first eq-terms)
+                                                   :term (first eq-terms')
                                                    :from ty2})))
             (let [[status _ x2 y2] (decompose-equal-type def-env ctx ty2)]
               (when (= status :ko)
                 (throw (ex-info "Cannot infer an `equal`-type." {:special 'latte.prop/eq-trans*
-                                                                 :term (first eq-terms)
+                                                                 :term (first eq-terms')
                                                                  :type ty2})))
-              (recur (rest eq-terms) x2 y2
-                     [[(list #'eq-trans T x1 y2 y2) ret] (first eq-terms)])))
+              (recur (rest eq-terms') x1 y2
+                     [[(list #'eq-trans T x1 y1 y2) ret] (first eq-terms')])))
           ;; we're done
-          ret)))))
+          (do
+            ;; (println "  ==> ret=" ret)
+            ret))))))
+
+(defthm test-eq-trans
+  [[T :type] [a T] [b T] [c T] [d T]]
+  (==> (equal T a b)
+       (equal T b c)
+       (equal T c d)
+       (equal T a d)))
+
+(proof test-eq-trans
+    :script
+  (assume [H1 (equal T a b)
+           H2 (equal T b c)
+           H3 (equal T c d)]
+     (have <a> (equal T a d)
+           :by (eq-trans* H1 H2 H3))
+    ;; (have <a> (equal T a c)
+    ;;       :by (((eq-trans T a b c) H1) H2))
+    ;; (have <b> (equal T a d)
+    ;;       :by (((eq-trans T a c d) <a>) H3))
+    (qed <a>)))
 
 (defthm eq-subst
   "Substitutivity property of equality."

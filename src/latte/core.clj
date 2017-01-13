@@ -277,6 +277,7 @@ Remark: specials are generally used to simplify proofs, but should be used with 
 since they are arbitrary functions. The risk is limited, though, since they cannot 
   introduce inconsistencies, and may at worst generate a looping behavior."
   [def-name def-doc def-params & def-body]
+  ;; (println "[defspecial] name=" def-name "params=" def-params)
   (parse-special-args def-name def-doc def-params def-body)
   (when (defenv/registered-definition? {} def-name)
     (do
