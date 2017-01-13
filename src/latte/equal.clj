@@ -92,6 +92,7 @@ This corresponds to Leibniz's *indiscernibility of identicals*."
           :by ((p/iff-trans (P x) (P y) (P z)) a b))
     (qed c)))
 
+
 (defspecial eq-trans%
   "Transitivity of `equal`, a special version of [[eq-trans]]."
   [def-env ctx eq-term1 eq-term2]
@@ -127,6 +128,56 @@ This corresponds to Leibniz's *indiscernibility of identicals*."
                              :left-rhs-term y1
                              :right-lhs-term x2})))
           [[(list #'eq-trans T1 x1 y1 y2) eq-term1] eq-term2])))))
+
+(defspecial eq-trans*
+  "Transitivity of `equal`, a n-ary version of [[eq-trans%]].
+The parameter `eq-terms` is a vector of at least two equalities.
+
+For example:
+
+```
+(eq-trans* [eq1 eq2])
+==> (eq-trans% eq1 eq2)
+
+(eq-trans* [eq1 eq2 eq3])
+==> (eq-trans% (eq-trans% eq1 eq2) eq3)
+
+(eq-trans* [eq1 eq2 eq3 eq4])
+==> (eq-trans% (eq-trans% (eq-trans% eq1 eq2) eq3) eq4)
+````
+etc.
+`"
+  [def-env ctx eq-terms]
+  (when-not (and (vector? eq-terms) (>= count eq-terms 2))
+    (throw (ex-info "Argument `eq-terms` must be a vector of size at least 2."
+                    {:special 'latte.prop/eq-trans*
+                     :arg eq-terms})))
+  (let [[status ty1] (ty/type-of-term def-env ctx (first eq-terms))]
+    (when (= status :ko)
+      (throw (ex-info "Cannot type term." {:special 'latte.prop/eq-trans*
+                                           :term (first eq-terms)
+                                           :from ty1})))
+    (let [[status T x1 y1] (decompose-equal-type def-env ctx ty1)]
+      (when (= status :ko)
+        (throw (ex-info "Cannot infer an `equal`-type." {:special 'latte.prop/eq-trans*
+                                                         :term (first eq-terms)
+                                                         :type ty1})))
+      (loop [eq-terms (rest eq-terms), x1 x1, y1 y1, ret (first eq-terms)]
+        (if (seq eq-terms)
+          (let [[status ty2] (ty/type-of-term def-env ctx (first eq-terms))]
+            (when (= status :ko)
+              (throw (ex-info "Cannot type term." {:special 'latte.prop/eq-trans*
+                                                   :term (first eq-terms)
+                                                   :from ty2})))
+            (let [[status _ x2 y2] (decompose-equal-type def-env ctx ty2)]
+              (when (= status :ko)
+                (throw (ex-info "Cannot infer an `equal`-type." {:special 'latte.prop/eq-trans*
+                                                                 :term (first eq-terms)
+                                                                 :type ty2})))
+              (recur (rest eq-terms) x2 y2
+                     [[(list #'eq-trans T x1 y2 y2) ret] (first eq-terms)])))
+          ;; we're done
+          ret)))))
 
 (defthm eq-subst
   "Substitutivity property of equality."
