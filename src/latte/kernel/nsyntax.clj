@@ -105,6 +105,7 @@ using a locally-nameless approach."
 (example
  (mk-fresh 'x '#{x x' x'' x'''}) => 'x-4)
 
+(declare mk-bvar)
 (defrecord FVar [name]
   Term
   (free-vars [t] #{(:name t)})
@@ -119,21 +120,6 @@ using a locally-nameless approach."
   (unparse-ln-term [t] (:name t)))
 
 (defn mk-fvar [x] (->FVar x))
-
-(example
- (open-term (mk-fvar 'x) 2 'y)
- => (mk-fvar 'x))
-
-(example
- (close-term (mk-fvar 'x) 2 'x)
- => (mk-bvar 2))
-
-(example
- (close-term (mk-fvar 'x) 2 'y)
- => (mk-fvar 'x))
-
-(example
- (unparse (mk-fvar 'x)) => 'x)
 
 (defrecord BVar [index]
   Term
@@ -156,6 +142,21 @@ using a locally-nameless approach."
 
 (defn mk-bvar [index]
   (->BVar index))
+
+(example
+ (open-term (mk-fvar 'x) 2 'y)
+ => (mk-fvar 'x))
+
+(example
+ (close-term (mk-fvar 'x) 2 'x)
+ => (mk-bvar 2))
+
+(example
+ (close-term (mk-fvar 'x) 2 'y)
+ => (mk-fvar 'x))
+
+(example
+ (unparse (mk-fvar 'x)) => 'x)
 
 (example
  (open-term (mk-bvar 2) 2 'y)
