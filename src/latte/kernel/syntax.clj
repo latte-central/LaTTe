@@ -49,7 +49,7 @@ using a locally-nameless approach."
   ([t x u] (subst-term t {x u}))
   ([t s] (subst-term t s)))
 
-(defn apply-term
+(defn apply-to
   "Apply term `u` to term `t` at level `k` (in beta-reduction)."
   ([t u] (apply-to-term t 0 u))
   ([t k u] (apply-to-term t k u)))
@@ -64,7 +64,7 @@ using a locally-nameless approach."
   [t]
   (unparse-ln-term t))
 
-(extend-type Object
+(extend-type java.lang.Object
   Term
   ;; no free variables by default
   (free-vars [_] #{})
@@ -72,10 +72,15 @@ using a locally-nameless approach."
   (open-term [t _ _] t)
   (close-term [t _ _] t)
   (subst-term [t _] t)
-  (apply-to_term [t _ _] t)
+  (apply-to-term [t a b] t)
   ;; the default unparse is identity
   (unparse-term [t _ _ _] t)
   (unparse-ln-term [t] t))
+
+(example
+ ;; remark: changing a protocol extension
+ ;; often requires a (cider) restart (because of the cache).
+ (apply-to-term 'toto 'a 'b) => 'toto)
 
 (defn mk-fresh
   ([base forbid] (mk-fresh base 0 forbid))
@@ -130,6 +135,7 @@ using a locally-nameless approach."
       t))
   (close-term [t _ _] t)
   (apply-to-term [t k u]
+    (println "[apply-to-term] t=" t "k=" k "u=" t)
     (if (= k (:index t))
       u
       t))

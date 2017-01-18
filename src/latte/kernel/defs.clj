@@ -3,7 +3,8 @@
   "Handling definitions."
 
   (:require [latte.kernel.utils :as u]
-            [latte.kernel.presyntax :as stx]
+            [latte.kernel.presyntax :as parser]
+            [latte.kernel.syntax :as stx]
             [latte.kernel.defenv :refer [->Definition ->Theorem ->Axiom]]
             [latte.kernel.typing :as ty]
             [latte.kernel.norm :as n]))
@@ -14,20 +15,20 @@
 
 (defn handle-term-definition [def-name def-env ctx params body def-type]
   (let [[status params] (reduce (fn [[sts params] [x ty]]
-                                  (let [[status ty] (stx/parse-term def-env ty)]
+                                  (let [[status ty] (parser/parse-term def-env ty)]
                                     (if (= status :ko)
                                       (reduced [:ko ty])
                                       [:ok (conj params [x ty])]))) [:ok []] params)]
     (if (= status :ko)
       [:ko params]
-      (let [[status body] (stx/parse-term def-env body)]
+      (let [[status body] (parser/parse-term def-env body)]
         (if (= status :ko)
           [:ko body]
           (let [[status ty] (ty/type-of-term def-env (u/vconcat params ctx) body)]
             (if (= status :ko)
               [:ko ty]
               (if def-type
-                (let [[status def-ty] (stx/parse-term def-env def-type)]
+                (let [[status def-ty] (parser/parse-term def-env def-type)]
                   (if (= status :ko)
                     [:ko def-ty]
                     (let [def-ty (loop [params params, def-ty def-ty]
@@ -55,8 +56,8 @@
 ;;}
 
 (defn handle-thm-declaration [thm-name def-env params ty]
-  (let [params (mapv (fn [[x ty]] [x (stx/parse def-env ty)]) params)
-        ty (stx/parse def-env ty)]
+  (let [params (mapv (fn [[x ty]] [x (parser/parse def-env ty)]) params)
+        ty (parser/parse def-env ty)]
     ;; (println "[handle-thm-definition] def-env = " def-env " params = " params " body = " body)
     (when (not (ty/proper-type? def-env params ty))
       (throw (ex-info "Theorem is not a proper type" {:theorem thm-name :type ty})))
@@ -67,8 +68,8 @@
 ;;}
 
 (defn handle-axiom-declaration [ax-name def-env params ty]
-  (let [params (mapv (fn [[x ty]] [x (stx/parse def-env ty)]) params)
-        ty (stx/parse def-env ty)]
+  (let [params (mapv (fn [[x ty]] [x (parser/parse def-env ty)]) params)
+        ty (parser/parse def-env ty)]
     ;; (println "[handle-axiom-definition] def-env = " def-env " params = " params " body = " body)
     (when (not (ty/proper-type? def-env params ty))
       (throw (ex-info "Axiom is not a proper type" {:theorem ax-name :type ty})))

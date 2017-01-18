@@ -3,9 +3,9 @@
 
   (:require [clj-by.example :refer [example do-for-example]]
             [latte.kernel.utils :as utils :refer [vconcat]]
+            [latte.kernel.presyntax :as parser]
             [latte.kernel.syntax :as stx]
             [latte.kernel.defenv :as defenv :refer [definition? theorem? axiom? special?]]))
-
 
 ;;{
 ;; # Normalization
@@ -26,19 +26,18 @@
 
 (defn redex? [t]
   (and (stx/app? t)
-       (stx/lambda? (first t))))
+       (stx/lambda? (:left t))))
 
 (example
- (redex? '[(λ [x ✳] x) y]) => true)
+ (redex? (parser/parse '((λ [x ✳] x) y))) => true)
 
 (defn beta-reduction [t]
   (if (redex? t)
-    (let [[[_ [x _] body] rand] t]
-      (stx/subst body x rand))
+    (stx/apply-to (:left t) (:right t))
     (throw (ex-info "Cannot beta-reduce. Not a redex" {:term t}))))
 
 (example
- (beta-reduction '[(λ [x ✳] [x x]) y])
+ (beta-reduction (parser/parse '((λ [x ✳] (x x)) y)))
  => '[y y])
 
 
