@@ -139,6 +139,7 @@ using a locally-nameless approach."
     (if (= k (:index t))
       u
       t))
+  (subst-term [t _] t)
   (unparse-term [t _ bmap _]
     (if-let [bname (get bmap (:index t))]
       bname
