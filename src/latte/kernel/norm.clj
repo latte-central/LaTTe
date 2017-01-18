@@ -33,13 +33,12 @@
 
 (defn beta-reduction [t]
   (if (redex? t)
-    (stx/apply-to (:left t) (:right t))
+    (stx/apply-to (:body (:left t)) (:right t))
     (throw (ex-info "Cannot beta-reduce. Not a redex" {:term t}))))
 
 (example
- (beta-reduction (parser/parse '((λ [x ✳] (x x)) y)))
- => '[y y])
-
+ (stx/unparse-ln (beta-reduction (parser/parse '((λ [x ✳] (x x)) y))))
+ => '(y y))
 
 (declare beta-step)
 
@@ -54,29 +53,26 @@
   (cond
     ;; binder
     (stx/binder? t)
-    (let [[binder [x ty] body] t
-          ;; 1) try reduction in binding type
-          [ty' red-1?] (beta-step ty)
+    (let [;; 1) try reduction in binding type
+          [ty red-1?] (beta-step (:type t))
           ;; 2) also try reduction in body
-          [body' red-2?] (beta-step body)]
-      [(list binder [x ty'] body') (or red-1? red-2?)])
+          [body red-2?] (beta-step (:body t))]
+      [((stx/binder-fn t) (:name t) ty body) (or red-1? red-2?)])
     ;; application
     (stx/app? t)
-    (let [[left right] t
-          ;; 1) try left reduction
-          [left' lred?] (beta-step left)
+    (let [;; 1) try left reduction
+          [left' lred?] (beta-step (:left t))
           ;; 2) also try right reduction
-          [right' rred?] (beta-step right)]
+          [right' rred?] (beta-step (:right t))]
       (if (stx/lambda? left')
         ;; we have a redex
-        [(beta-reduction [left' right']) true]
+        [(beta-reduction (stx/mk-app left' right')) true]
         ;; or we stay with an application
-        [[left' right'] (or lred? rred?)]))
+        [(stx/mk-app left' right') (or lred? rred?)]))
     ;; reference
     (stx/ref? t)
-    (let [[def-name & args] t
-          [args' red?] (beta-step-args args)
-          t' (if red? (list* def-name args') t)]
+    (let [[args' red?] (beta-step-args (:args t))
+          t' (if red? (stx/mk-ref (:name t) args') t)]
       [t' red?])
     ;; other cases
     :else [t false]))
@@ -86,48 +82,73 @@
     t'))
 
 (example
- (beta-red '[(λ [x ✳] x) y]) => 'y)
+ (stx/unparse-ln
+  (beta-red (parser/parse '((λ [x ✳] x) y))))
+ => 'y)
 
 (example
- (beta-red '[[(λ [x ✳] x) y] z]) => '[y z])
+ (stx/unparse-ln
+  (beta-red (parser/parse '(((λ [x ✳] x) y) z))))
+ => '(y z))
 
 (example
- (beta-red '(λ [y [(λ [x □] x) ✳]] y))
- => '(λ [y ✳] y))
+ (stx/unparse-ln
+  (beta-red (parser/parse '(λ [y [(λ [x □] x) ✳]] y))))
+ => '(λ [✳] :0))
 
 (example
- (beta-red '[z [(λ [x ✳] x) y]]) => '[z y])
+ (stx/unparse-ln
+  (beta-red (parser/parse '[z [(λ [x ✳] x) y]])))
+ => '(z y))
 
 (example
- (beta-red '[x y]) => '[x y])
+ (stx/unparse-ln
+  (beta-red (parser/parse '(x y))))
+ => '(x y))
 
 ;;{
 ;; ## Delta-reduction (unfolding of definitions)
 ;;}
 
+
+;;;;===================================================================
+;;;;======================== UPDATED UNTIL HERE =======================
+;;;;===================================================================
+
 (defn instantiate-def [params body args]
-  ;;(println "[instantiate-def] params=" params "body=" body "args=" args)
+  (println "[instantiate-def] params=" params "body=" body "args=" args)
   (loop [args args, params params, sub {}]
     (if (seq args)
       (if (empty? params)
         (throw (ex-info "Not enough parameters (please report)" {:args args}))
         (recur (rest args) (rest params) (assoc sub (ffirst params) (first args))))
+      ;; no more arguments
       (loop [params (reverse params), res body]
         (if (seq params)
-          (recur (rest params) (list 'λ (first params) res))
-          (stx/subst res sub))))))
+          (recur (rest params) (stx/mk-lambda (ffirst params) (second (first params)) res))
+          (do
+            ;; (println "[instantiate-def] sub=" sub)
+            (stx/subst res sub)))))))
 
 (example
- (instantiate-def '[[x ✳] [y ✳] [z ✳]]
-                  '[[x y] [z x]]
-                  '((λ [t ✳] t) t1 [t2 t3]))
- => '[[(λ [t ✳] t) t1] [[t2 t3] (λ [t ✳] t)]])
+ (stx/unparse-ln
+  (instantiate-def '[[x ✳] [y ✳] [z ✳]] 
+                   (parser/parse '((x y) (z x)))
+                   (mapv parser/parse
+                         '[(λ [t ✳] t)
+                           t1
+                           [t2 t3]])))
+ => '((λ [✳] :0) t1 (t2 t3 (λ [✳] :0))))
 
 (example
- (instantiate-def '[[x ✳] [y ✳] [z ✳] [t ✳]]
-                  '[[x y] [z t]]
-                  '((λ [t ✳] t) t1 [t2 t3]))
- => '(λ [t' ✳] [[(λ [t ✳] t) t1] [[t2 t3] t']]))
+ (stx/unparse-ln
+  (instantiate-def '[[x ✳] [y ✳] [z ✳] [t ✳]]
+                   (parser/parse '((x y) (z t)))
+                   (mapv parser/parse
+                         '[(λ [t ✳] t)
+                           t1
+                           [t2 t3]])))
+ => '(λ [✳] ((λ [✳] :0) t1 (t2 t3 t))))
 
 (example
  (instantiate-def '[[x ✳] [y ✳] [z ✳]]

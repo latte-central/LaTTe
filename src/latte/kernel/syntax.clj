@@ -135,7 +135,7 @@ using a locally-nameless approach."
       t))
   (close-term [t _ _] t)
   (apply-to-term [t k u]
-    (println "[apply-to-term] t=" t "k=" k "u=" t)
+    ;; (println "[apply-to-term] t=" t "k=" k "u=" t)
     (if (= k (:index t))
       u
       t))
@@ -277,6 +277,21 @@ using a locally-nameless approach."
 (example
  (unparse (mk-prod 'x '□ (mk-bvar 1)))
  => '(Π [x □] :1))
+
+(defn binder? [v]
+  (or (prod? v)
+      (lambda? v)))
+
+(defn binder-kind [t]
+  (cond
+    (lambda? t) :lambda
+    (prod? t) :prod
+    :else (throw (ex-info "Not a binder (please report)" {:term t}))))
+
+(defn binder-fn [t]
+  (case (binder-kind t)
+    :lambda mk-lambda
+    :prod mk-prod))
 
 (declare app?)
 (defrecord App [left right]
