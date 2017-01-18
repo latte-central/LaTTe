@@ -1,18 +1,11 @@
 
-(ns latte.kernel.syntax
+(ns latte.kernel.nsyntax
+  "This is an alternative representation of terms
+using a locally-nameless approach."
   (:require [clj-by.example :refer [example do-for-example]]
             [clojure.set :as set]))
 
-
-;;{
-;; # The syntax of type theory
-;;}
-
-(def ^:private +examples-enabled+)
-
-;;{
-;; ## Lambda terms
-;;}
+(def +examples-enabled+ true)
 
 (defn kind? [t]
   (= t '□))
@@ -27,113 +20,84 @@
 (defn variable? [t]
   (symbol? t))
 
-(defn binder? [t]
-  (and (list? t)
-       (contains? '#{λ Π} (first t))))
+(defprotocol Term
+  "The generic functions for terms."
+  (free-vars [t]
+    "The free variable symbols of term `t`.")
+  (open-term [t k x]
+    "Open the term `t` at level `k` with variable `x` ")
+  (close-term [t k x]
+    "Close the term `t` at level `k` for free variable named `x`")
+  (subst-term [t s]
+    "Apply substitution `s` to type `t`.")
+  (apply-to-term [t k u]
+    "Apply term `u` to term `t` at level `k` (in beta-reduction)")
+  (unparse-term [t k bmap forbid]
+    "Unparse term `t` at level `k` with `bmap` map of bound variable and `forbid`den names.")
+  (unparse-ln-term [t]
+    "Unparse as locally-nameless term `t`."))
 
-(defn lambda? [t]
-  (and (seq? t)
-       (= (first t) 'λ)))
+(defn open
+  "Open term `t` with variable `x`."
+  [t x]
+  (open-term t 0 x))
 
-(defn prod? [t]
-  (and (seq? t)
-       (= (first t) 'Π)))
+(defn close
+  "Close term `t` for free variable named `x`."
+  [t x]
+  (close-term t 0 x))
 
-(defn app? [t]
-  (and (vector? t)
-       (= (count t) 2)))
+(defn subst
+  "Apply substitution `s` to type `t`."
+  ([t x u] (subst-term t {x u}))
+  ([t s] (subst-term t s)))
 
-(defn ref? [t]
-  (and (seq? t)
-       (not (contains? '#{λ Π} (first t)))))
+(defn apply-term
+  "Apply term `u` to term `t` at level `k` (in beta-reduction)."
+  ([t u] (apply-to-term t 0 u))
+  ([t k u] (apply-to-term t k u)))
 
-;;{
-;; ## Free and bound variables
-;;}
+(defn unparse
+  "Unparse term `t`."
+  [t]
+  (unparse-term t 0 {} (free-vars t)))
 
-(defn free-vars [t]
-  (cond
-    (variable? t) #{t}
-    (binder? t) (let [[_ [x ty] body] t]
-                  (set/union (free-vars ty)
-                             (disj (free-vars body) x)))
-    (app? t) (set/union (free-vars (first t))
-                        (free-vars (second t)))
-    (ref? t) (apply set/union (map free-vars (rest t)))
-    :else #{}))
+(defn unparse-ln
+  "Unparse term `t` in a locally-nameless way."
+  [t]
+  (unparse-ln-term t))
 
-(example
- (free-vars 'x) => #{'x})
-
-(example
- (free-vars '[x y]) => #{'x 'y})
-
-(example
- (free-vars '(λ [x t] [x [y z]])) => #{'t 'y 'z})
-
-(example
- (free-vars '(Π [x t] [x [y z]])) => #{'t 'y 'z})
-
-(example
- (free-vars '(λ [x t] (test x y z))) => '#{t y z})
-
-(defn vars [t]
-  (cond
-    (variable? t) #{t}
-    (binder? t) (let [[_ [x ty] body] t]
-                  (set/union (vars ty) (vars body)))
-    (app? t) (set/union (vars (first t))
-                                (vars (second t)))
-    (ref? t) (apply set/union (map vars (rest t)))
-    :else #{}))
-
-(example
- (vars 'x) => #{'x})
-
-(example
- (vars '[x y]) => #{'x 'y})
-
-(example
- (vars '(λ [x t] (test x [y z]))) => #{'t 'x 'y 'z})
-
-(example
- (vars '(Π [x t] (test x [y z]))) => #{'t 'x 'y 'z})
-
-(defn bound-vars [t]
-  (set/difference (vars t) (free-vars t)))
-
-(example
- (bound-vars 'x) => #{})
-
-(example
- (bound-vars '[x y]) => #{})
-
-(example
- (bound-vars '(λ [x t] (test x [y z]))) => #{'x})
-
-(example
- (bound-vars '(λ [x t] (test t [y z]))) => #{})
-
-(example
- (bound-vars '(Π [x t] (test x [y z]))) => #{'x})
-
-;;{
-;; ## Substitution
-;;}
+(extend-type Object
+  Term
+  ;; no free variables by default
+  (free-vars [_] #{})
+  ;; the default opening and closing are identity
+  (open-term [t _ _] t)
+  (close-term [t _ _] t)
+  (subst-term [t _] t)
+  (apply-to_term [t _ _] t)
+  ;; the default unparse is identity
+  (unparse-term [t _ _ _] t)
+  (unparse-ln-term [t] t))
 
 (defn mk-fresh
   ([base forbid] (mk-fresh base 0 forbid))
   ([base level forbid]
-   (let [suffix (case level
-                  0 ""
-                  1 "'"
-                  2 "''"
-                  3 "'''"
-                  (str "-" level))
-         candidate (symbol (str base suffix))]
-     (if (contains? forbid candidate)
-       (recur base (inc level) forbid)
-       candidate))))
+   (if-not (contains? forbid base)
+     base
+     (let [suffix (case level
+                    0 ""
+                    1 "'"
+                    2 "''"
+                    3 "'''"
+                    (str "-" level))
+           candidate (symbol (str base suffix))]
+       (if (contains? forbid candidate)
+         (recur base (inc level) forbid)
+         candidate)))))
+
+(example
+ (mk-fresh 'x '#{x1 x2}) => 'x)
 
 (example
  (mk-fresh 'x '#{x x' x''}) => 'x''')
@@ -141,140 +105,274 @@
 (example
  (mk-fresh 'x '#{x x' x'' x'''}) => 'x-4)
 
-(defn subst- [t sub forbid rebind]
-  (let [[t' forbid']
-        (cond
-          ;; variables
-          (variable? t) (if-let [x (get rebind t)]
-                          [x (conj forbid t)]
-                          [(get sub t t) (conj forbid t)])
-          ;; binders (λ, Π)
-          (binder? t)
-          (let [[binder [x ty] body] t
-                [x' rebind' forbid']
-                (if (contains? forbid x)
-                  (let [x' (mk-fresh x forbid)]
-                    [x' (assoc rebind x x') (conj forbid x')])
-                  [x rebind (conj forbid x)])
-                [ty' forbid''] (subst- ty sub forbid' rebind)
-                [body' forbid'''] (subst- body sub forbid'' rebind')]
-            ;; (println "term=" (list binder [x' ty'] body') "sub=" sub')
-            [(list binder [x' ty'] body')
-             forbid'''])
-          ;; applications
-          (app? t)
-          (let [[rator forbid'] (subst- (first t) sub forbid rebind)
-                [rand forbid''] (subst- (second t) sub forbid' rebind)]
-            [[rator rand] forbid''])
-          ;; references
-          (ref? t) (let [[args forbid']
-                         (reduce (fn [[ts forbid] t]
-                                   (let [[t' forbid'] (subst- t sub forbid rebind)]
-                                     [(conj ts t') forbid'])) ['() forbid] (rest t))]
-                     [(conj (into '() args) (first t)) forbid'])
-          ;; other cases
-          :else [t forbid])]
-    ;;(println "[subst-] t=" t "sub=" sub "forbid=" forbid "rebind=" rebind)
-    ;;(println "   ==> " t')
-    [t' forbid']))
+(declare mk-bvar)
+(defrecord FVar [name]
+  Term
+  (free-vars [t] #{(:name t)})
+  (open-term [t _ _] t)
+  (close-term [t k x] (if (= (:name t) x)
+                        (mk-bvar k)
+                        t))
+  (subst-term [t s] (if-let [u (get s (:name t))]
+                      u
+                      t))
+  (unparse-term [t _ _ _] (:name t))
+  (unparse-ln-term [t] (:name t)))
 
-(defn subst
-  ([t x u] (subst t {x u}))
-  ([t sub]
-   (let [forbid (set/union
-                 (apply set/union (map vars (vals sub)))
-                 (into #{} (keys sub))
-                 (free-vars t))
-         [t' _] (subst- t sub forbid {})]
-     t')))
+(defn mk-fvar [x] (->FVar x))
+
+(defrecord BVar [index]
+  Term
+  (free-vars [t] #{})
+  (open-term [t k x]
+    (if (= (:index t) k)
+      (mk-fvar x)
+      t))
+  (close-term [t _ _] t)
+  (apply-to-term [t k u]
+    (if (= k (:index t))
+      u
+      t))
+  (unparse-term [t _ bmap _]
+    (if-let [bname (get bmap (:index t))]
+      bname
+      (keyword (str (:index t)))))
+  (unparse-ln-term [t]
+    (keyword (str (:index t)))))
+
+(defn mk-bvar [index]
+  (->BVar index))
 
 (example
- (subst 'x {'x '✳}) => '✳)
+ (open-term (mk-fvar 'x) 2 'y)
+ => (mk-fvar 'x))
 
 (example
- (subst 'y {'x '✳}) => 'y)
+ (close-term (mk-fvar 'x) 2 'x)
+ => (mk-bvar 2))
 
 (example
- (subst '[y x] {'x '✳}) => '[y ✳])
+ (close-term (mk-fvar 'x) 2 'y)
+ => (mk-fvar 'x))
 
 (example
- (subst '[x (λ [x ✳] (test x y z y))] {'x '✳, 'y '□})
- => '[✳ (λ [x' ✳] (test x' □ z □))])
+ (unparse (mk-fvar 'x)) => 'x)
 
 (example
- (subst '[x (Π [x ✳] [y x])] {'x '✳, 'y 'x})
- => '[✳ (Π [x' ✳] [x x'])])
-;; and not: '(:type (Π [x :type] (x x)))
+ (open-term (mk-bvar 2) 2 'y)
+ => (mk-fvar 'y))
 
 (example
- (subst '(λ [x ✳] (test x y (λ [x ✳] (test x y z)) y)) {'x ':replace})
- => '(λ [x' ✳] (test x' y (λ [x'' ✳] (test x'' y z)) y)))
+ (open-term (mk-bvar 1) 2 'y)
+ => (mk-bvar 1))
 
 (example
- (subst '(λ [x ✳] (test x y (λ [x ✳] (test x y x')) y)) {'x :replace-x
-                                                        'x' :replace-x' })
- => '(λ [x'' ✳] (test x'' y (λ [x''' ✳] (test x''' y :replace-x')) y)))
+ (close-term (mk-bvar 1) 1 'x)
+ => (mk-bvar 1))
 
 (example
- (subst '(test x y (λ [x ✳] (test x y x')) y) {'x :replace-x
-                                               'x' :replace-x' })
- => '(test :replace-x y (λ [x'' ✳] (test x'' y :replace-x')) y))
+ (unparse (mk-bvar 1)) => :1)
 
-(example ;; XXX: this comes from a very subtile bug !
- (subst '(Π [⇧ (Π [x' T] (Π [⇧ (Π [x T] (Π [⇧ [X x]] [[R x] x']))] [R z]))]
-            [R z]) 'z 'x)
- => '(Π [⇧ (Π [x' T] (Π [⇧' (Π [x'' T] (Π [⇧'' [X x'']] [[R x''] x']))] [R x]))] [R x]))
+(defrecord Lambda [name type body]
+  Term
+  (free-vars [t] (free-vars (:body t)))
+  (open-term [t k x]
+    (->Lambda (mk-fresh (:name t) #{x}) (open-term (:type t) k x)
+              (open-term (:body t) (inc k) x)))
+  (close-term [t k x]
+    (->Lambda (:name t) (close-term (:type t) k x)
+              (close-term (:body t) (inc k) x)))
+  (subst-term [t s]
+    (->Lambda (:name t) (subst-term (:type t) s)
+              (subst-term (:body t) s)))
+  (apply-to-term [t k u]
+    (->Lambda (:name t) (apply-to-term (:type t) k u)
+              (apply-to-term (:body t) (inc k) u)))
+  (unparse-term [t k bmap forbid]
+    (let [name (mk-fresh (:name t) forbid)])
+    (list 'λ [name (unparse-term (:type t) k bmap forbid)]
+          (unparse-term (:body t)
+                        (inc k)
+                        (assoc bmap k name)
+                        (conj forbid name))))
+  (unparse-ln-term [t]
+    (list 'λ [(unparse-ln-term (:type t))]
+          (unparse-ln-term (:body t)))))
 
-;;{
-;; ## Alpha-equivalence
-;;}
-
-(defn alpha-norm- [t sub level]
-  (cond
-    ;; variables
-    (variable? t) [(get sub t t) level]
-    ;; binders (λ, Π)
-    (binder? t)
-    (let [[binder [x ty] body] t
-          x' (symbol (str "_" level))
-          [ty' level'] (alpha-norm- ty sub (inc level))
-          [body' level''] (alpha-norm- body (assoc sub x x') level')]
-      [(list binder [x' ty'] body')
-       level''])
-    ;; applications
-    (app? t)
-    (let [[left' level'] (alpha-norm- (first t) sub level)
-          [right' level''] (alpha-norm- (second t) sub level')]
-      [[left' right'] level''])
-    ;; references
-    (ref? t) (let [[args level']
-                   (reduce (fn [[args level] arg]
-                             (let [[arg' level'] (alpha-norm- arg sub level)]
-                               [(conj args arg') level'])) ['() level] (rest t))]
-               [(conj (into '() args) (first t)) level'])
-    ;; other cases
-    :else [t level]))
-
-(defn alpha-norm [t]
-  (let [[t' _] (alpha-norm- t {} 1)]
-    t'))
+(defn mk-lambda [name type body]
+  (->Lambda name type body))
 
 (example
- (alpha-norm 'x) => 'x)
+ (open-term (mk-lambda 'x '□ (mk-bvar 3)) 2 'y)
+ => (mk-lambda 'x '□ (mk-fvar 'y)))
 
 (example
- (alpha-norm '(λ [x ✳] x))
- => '(λ [_1 ✳] _1))
+ (close-term (mk-lambda 'x '□ (mk-fvar 'y)) 2 'y)
+ => (mk-lambda 'x '□ (mk-bvar 3)))
 
 (example
- (alpha-norm '[x (λ [x ✳] (test x y [x z]))])
- => '[x (λ [_1 ✳] (test _1 y [_1 z]))])
+ (unparse (mk-lambda 'x '□ (mk-bvar 0)))
+ => '(λ [x □] x))
+
+(example
+ (unparse (mk-lambda 'x '□ (mk-bvar 1)))
+ => '(λ [x □] :1))
+
+(defrecord Prod [name type body]
+  Term
+  (free-vars [t] (free-vars (:body t)))
+  (open-term [t k x]
+    (->Prod (mk-fresh (:name t) #{x}) (open-term (:type t) k x)
+              (open-term (:body t) (inc k) x)))
+  (close-term [t k x]
+    (->Prod (:name t) (close-term (:type t) k x)
+            (close-term (:body t) (inc k) x)))
+  (subst-term [t s]
+    (->Prod (:name t) (subst-term (:type t) s)
+              (subst-term (:body t) s)))
+  (apply-to-term [t k u]
+    (->Prod (:name t) (apply-to-term (:type t) k u)
+              (apply-to-term (:body t) (inc k) u)))
+  (unparse-term [t k bmap forbid]
+    (let [name (mk-fresh (:name t) forbid)])
+    (list 'Π [name (unparse-term (:type t) k bmap forbid)]
+          (unparse-term (:body t)
+                        (inc k)
+                        (assoc bmap k name)
+                        (conj forbid name))))
+  (unparse-ln-term [t]
+    (list 'Π [(unparse-ln-term (:type t))]
+          (unparse-ln-term (:body t)))))
+
+(defn mk-prod [name type body]
+  (->Prod name type body))
+
+(example
+ (open-term (mk-prod 'x '□ (mk-bvar 3)) 2 'y)
+ => (mk-prod 'x '□ (mk-fvar 'y)))
+
+(example
+ (close-term (mk-prod 'x '□ (mk-fvar 'y)) 2 'y)
+ => (mk-prod 'x '□ (mk-bvar 3)))
+
+(example
+ (unparse (mk-prod 'x '□ (mk-bvar 0)))
+ => '(Π [x □] x))
+
+(example
+ (unparse (mk-prod 'x '□ (mk-bvar 1)))
+ => '(Π [x □] :1))
+
+(declare app?)
+(defrecord App [left right]
+  Term
+  (free-vars [t]
+    (clojure.set/union (free-vars (:left t))
+                       (free-vars (:right t))))
+  (open-term [t k x]
+    (->App (open-term (:left t) k x)
+           (open-term (:right t) k x)))
+  (close-term [t k x]
+    (->App (close-term (:left t) k x)
+           (close-term (:right t) k x)))
+  (subst-term [t s]
+    (->App (subst-term (:left t) s)
+           (subst-term (:right t) s)))
+  (apply-to-term [t k u]
+    (->App (apply-to-term (:left t) k u)
+           (apply-to-term (:right t) k u)))
+  (unparse-term [t k bmap forbid]
+    (let [left (unparse-term (:left t) k bmap forbid)
+          right (unparse-term (:right t) k bmap forbid)]
+      (if (app? (:left t))
+        (concat left (list right))
+        (list left right))))
+  (unparse-ln-term [t]
+    (let [left (unparse-ln-term (:left t))
+          right (unparse-ln-term (:right t))]
+      (if (app? (:left t))
+        (concat left (list right))
+        (list left right)))))
+
+(defn mk-app
+  ([right] right)
+  ([left right & others]
+   (let [app (->App left right)]
+     (if (seq others)
+       (apply mk-app app others)
+       app))))
+
+(example (mk-app 'x) => 'x)
+
+(example
+ (mk-app 'a 'b) => '#latte.kernel.nsyntax.App{:left a, :right b})
+
+(example
+ (mk-app 'a 'b 'c)
+ => '#latte.kernel.nsyntax.App{:left #latte.kernel.nsyntax.App{:left a, :right b},
+                               :right c})
+
+(example
+ (mk-app 'a 'b 'c 'd)
+ => '#latte.kernel.nsyntax.App{:left #latte.kernel.nsyntax.App{:left #latte.kernel.nsyntax.App{:left a, :right b},
+                                                               :right c},
+                               :right d})
+
+(defn app? [v]
+  (instance? App v))
+
+(example
+ (app? (mk-app 'x 'y)) => true)
+
+(example
+ (app? (mk-lambda 'x 'ty 'x)) => false)
+
+(example
+ (app? '(1 2)) => false)
+
+(example
+ (free-vars (mk-app (mk-fvar 'x)
+                    (mk-fvar 'y)))
+ => '#{x y})
+
+(example
+ (unparse
+  (open (mk-app (mk-lambda 'x '□ (mk-app (mk-bvar 1)
+                                         (mk-bvar 0)))
+                (mk-bvar 0)) 'z))
+ => '((λ [x □] (z x)) z))
+
+(example
+ (unparse
+  (open (mk-app (mk-lambda 'x '□ (mk-app (mk-bvar 1)
+                                         (mk-bvar 0)))
+                (mk-bvar 0)) 'x))
+ => '((λ [x' □] (x x')) x))
+
+(example
+ (unparse
+  (close (mk-app (mk-lambda 'x '□ (mk-app (mk-fvar 'x)
+                                          (mk-fvar 'x)))
+                 (mk-bvar 0)) 'x))
+ => '((λ [x □] (:1 :1)) :0))
+
+(example
+ (unparse
+  (close (mk-app (mk-lambda 'x '□ (mk-app (mk-fvar 'x)
+                                          (mk-fvar 'z)))
+                 (mk-bvar 0)) 'z))
+ => '((λ [x □] (x :1)) :0))
+
+(example
+ (unparse
+  (mk-app 'x 'y (mk-app 'z 't)))
+ => '(x y (z t)))
+
 
 (defn alpha-eq? [t1 t2]
-  (= (alpha-norm t1)
-     (alpha-norm t2)))
+  (= (unparse-ln-term t1)
+     (unparse-ln-term t2)))
 
 (example
- (alpha-eq? '(λ [x ✳] x)
-            '(λ [y ✳] y)) => true)
-
+ (alpha-eq? (mk-lambda 'x '✳ (mk-bvar 0))
+            (mk-lambda 'y '✳ (mk-bvar 0))) => true)
