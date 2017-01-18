@@ -1,5 +1,5 @@
 
-(ns latte.kernel.nsyntax
+(ns latte.kernel.syntax
   "This is an alternative representation of terms
 using a locally-nameless approach."
   (:require [clj-by.example :refer [example do-for-example]]
@@ -16,9 +16,6 @@ using a locally-nameless approach."
 (defn sort? [t]
   (or (kind? t)
       (type? t)))
-
-(defn variable? [t]
-  (symbol? t))
 
 (defprotocol Term
   "The generic functions for terms."
@@ -121,6 +118,9 @@ using a locally-nameless approach."
 
 (defn mk-fvar [x] (->FVar x))
 
+(defn fvar? [v]
+  (instance? FVar v))
+
 (defrecord BVar [index]
   Term
   (free-vars [t] #{})
@@ -142,6 +142,9 @@ using a locally-nameless approach."
 
 (defn mk-bvar [index]
   (->BVar index))
+
+(defn bvar? [v]
+  (instance? BVar v))
 
 (example
  (open-term (mk-fvar 'x) 2 'y)
@@ -189,18 +192,21 @@ using a locally-nameless approach."
     (->Lambda (:name t) (apply-to-term (:type t) k u)
               (apply-to-term (:body t) (inc k) u)))
   (unparse-term [t k bmap forbid]
-    (let [name (mk-fresh (:name t) forbid)])
-    (list 'λ [name (unparse-term (:type t) k bmap forbid)]
-          (unparse-term (:body t)
-                        (inc k)
-                        (assoc bmap k name)
-                        (conj forbid name))))
+    (let [name (mk-fresh (:name t) forbid)]
+      (list 'λ [name (unparse-term (:type t) k bmap forbid)]
+            (unparse-term (:body t)
+                          (inc k)
+                          (assoc bmap k name)
+                          (conj forbid name)))))
   (unparse-ln-term [t]
     (list 'λ [(unparse-ln-term (:type t))]
           (unparse-ln-term (:body t)))))
 
 (defn mk-lambda [name type body]
   (->Lambda name type body))
+
+(defn lambda? [v]
+  (instance? Lambda v))
 
 (example
  (open-term (mk-lambda 'x '□ (mk-bvar 3)) 2 'y)
@@ -234,18 +240,21 @@ using a locally-nameless approach."
     (->Prod (:name t) (apply-to-term (:type t) k u)
               (apply-to-term (:body t) (inc k) u)))
   (unparse-term [t k bmap forbid]
-    (let [name (mk-fresh (:name t) forbid)])
-    (list 'Π [name (unparse-term (:type t) k bmap forbid)]
-          (unparse-term (:body t)
-                        (inc k)
-                        (assoc bmap k name)
-                        (conj forbid name))))
+    (let [name (mk-fresh (:name t) forbid)]
+      (list 'Π [name (unparse-term (:type t) k bmap forbid)]
+            (unparse-term (:body t)
+                          (inc k)
+                          (assoc bmap k name)
+                          (conj forbid name)))))
   (unparse-ln-term [t]
     (list 'Π [(unparse-ln-term (:type t))]
           (unparse-ln-term (:body t)))))
 
 (defn mk-prod [name type body]
   (->Prod name type body))
+
+(defn prod? [v]
+  (instance? Prod v))
 
 (example
  (open-term (mk-prod 'x '□ (mk-bvar 3)) 2 'y)
@@ -305,16 +314,16 @@ using a locally-nameless approach."
 (example (mk-app 'x) => 'x)
 
 (example
- (mk-app 'a 'b) => '#latte.kernel.nsyntax.App{:left a, :right b})
+ (mk-app 'a 'b) => '#latte.kernel.syntax.App{:left a, :right b})
 
 (example
  (mk-app 'a 'b 'c)
- => '#latte.kernel.nsyntax.App{:left #latte.kernel.nsyntax.App{:left a, :right b},
+ => '#latte.kernel.syntax.App{:left #latte.kernel.syntax.App{:left a, :right b},
                                :right c})
 
 (example
  (mk-app 'a 'b 'c 'd)
- => '#latte.kernel.nsyntax.App{:left #latte.kernel.nsyntax.App{:left #latte.kernel.nsyntax.App{:left a, :right b},
+ => '#latte.kernel.syntax.App{:left #latte.kernel.syntax.App{:left #latte.kernel.syntax.App{:left a, :right b},
                                                                :right c},
                                :right d})
 
@@ -361,12 +370,43 @@ using a locally-nameless approach."
   (close (mk-app (mk-lambda 'x '□ (mk-app (mk-fvar 'x)
                                           (mk-fvar 'z)))
                  (mk-bvar 0)) 'z))
- => '((λ [x □] (x :1)) :0))
+ => '((λ [x' □] (x :1)) :0))
 
 (example
  (unparse
   (mk-app 'x 'y (mk-app 'z 't)))
  => '(x y (z t)))
+
+
+(defrecord Ref [name args]
+  Term
+  (free-vars [t] (apply set/union (map free-vars (:args t))))
+  (open-term [t k x]
+    (->Ref (:name t) (mapv #(open-term % k x) (:args t))))
+  (close-term [t k x]
+    (->Ref (:name t) (mapv #(close-term % k x) (:args t))))
+  (subst-term [t s]
+    (->Ref (:name t) (mapv #(subst-term % s) (:args t))))
+  (apply-to-term [t k u]
+    (->Ref (:name t) (mapv #(apply-to-term % k u) (:args t))))
+  (unparse-term [t k bmap forbid]
+    (list* (:name t) (map #(unparse-term % k bmap forbid) (:args t))))
+  (unparse-ln-term [t]
+    (list* (:name t) (map unparse-ln-term (:args t)))))
+
+(defn mk-ref [name args]
+  (->Ref name args))
+
+(defn ref? [v]
+  (instance? Ref v))
+
+(example
+ (unparse-ln-term (open-term (mk-ref 'ref [(mk-bvar 2) (mk-fvar 'z) (mk-bvar 4)]) 2 'y))
+ => '(ref y z :4))
+
+(example
+ (unparse-ln-term (close-term (mk-ref 'ref [(mk-lambda 'x '□ (mk-fvar 'y)) (mk-fvar 'y)]) 2 'y))
+ => '(ref (λ [□] :3) :2))
 
 
 (defn alpha-eq? [t1 t2]
@@ -376,3 +416,5 @@ using a locally-nameless approach."
 (example
  (alpha-eq? (mk-lambda 'x '✳ (mk-bvar 0))
             (mk-lambda 'y '✳ (mk-bvar 0))) => true)
+
+
