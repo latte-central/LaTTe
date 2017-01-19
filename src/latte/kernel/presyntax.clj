@@ -252,7 +252,7 @@ at the given `level` (number of binders above) with binders `bmap` (mapping a bi
           :term t
           :nb-args (count (rest t))}]
     (let [prod
-          (loop [ts (butlast (rest t)), res (last t)]
+          (loop [ts (reverse (butlast (rest t))), res (last t)]
             (if (seq ts)
               (recur (rest ts) (list 'Π ['⇧ (first ts)] res))
               res))]
@@ -269,7 +269,7 @@ at the given `level` (number of binders above) with binders `bmap` (mapping a bi
 
 (example
  (stx/unparse-ln (second (parse-term {} '(⟶ sigma tau mu))))
- => '(Π [tau] (Π [sigma] mu)))
+ => '(Π [sigma] (Π [tau] mu)))
 
 (defn parse-defined-term [def-env sdef t level bmap]
   (if (defenv/notation? sdef)

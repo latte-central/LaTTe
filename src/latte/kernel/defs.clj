@@ -63,7 +63,7 @@
   (let [params (mapv (fn [[x ty]] [x (parser/parse def-env ty)]) params)
         ty (parser/parse def-env ty)]
     ;; (println "[handle-thm-definition] def-env = " def-env " params = " params " body = " body)
-    (when (not (ty/proper-type? def-env params ty))
+    (when (not (ty/proper-type? def-env (u/to-map params) ty))
       (throw (ex-info "Theorem is not a proper type" {:theorem thm-name :type (stx/unparse ty)})))
     (->Theorem thm-name params (count params) ty false)))
 
@@ -75,7 +75,7 @@
   (let [params (mapv (fn [[x ty]] [x (parser/parse def-env ty)]) params)
         ty (parser/parse def-env ty)]
     ;; (println "[handle-axiom-definition] def-env = " def-env " params = " params " body = " body)
-    (when (not (ty/proper-type? def-env params ty))
+    (when (not (ty/proper-type? def-env (u/to-map params) ty))
       (throw (ex-info "Axiom is not a proper type" {:theorem ax-name :type (stx/unparse ty)})))
     (->Axiom ax-name params (count params) ty)))
 

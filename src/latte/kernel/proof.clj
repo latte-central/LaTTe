@@ -44,25 +44,21 @@
 
 (defn check-proof-term [def-env ctx thm-ty proof-term]
   ;; (println "[check-proof-term] def-env=" def-env "ctx=" ctx "thm-ty=" thm-ty "proof-term=" proof-term)
-  (let [[status proof] (parser/parse-term def-env proof-term)]
+  (let [[status ptype] (timing "- infer proof-term type"
+                               (ty/type-of-term def-env (u/to-map ctx) proof-term))]
+    ;; (println "[check-proof-term] type-of-proof=" ptype)
     (if (= status :ko)
-      [:ko {:msg (str "wrong proof term,  " (:msg proof))
-            :error (dissoc proof :msg)}]
-      (let [[status ptype] (timing "- infer proof type"
-                                   (ty/type-of-term def-env ctx proof))]
-        ;; (println "[check-proof-term] type-of-proof=" ptype)
-        (if (= status :ko)
-          [:ko {:msg (str "type error, " (:msg ptype))
-                :error (dissoc ptype :msg)}]
-          (if (not (timing "- check proof type against theorem type"
-                           (n/beta-eq? def-env ctx thm-ty ptype)))
-            [:ko {:msg "proof checking error (type mismatch)"
-                  :expected-type (stx/unparse thm-ty)
-                  :proof-type (stx/unparse ptype)}]
-            (do
-              (when-timing
-                  (println "=================================================================="))
-              [:ok proof])))))))
+      [:ko {:msg (str "type error, " (:msg ptype))
+            :error (dissoc ptype :msg)}]
+      (if (not (timing "- check proof type against theorem type"
+                       (n/beta-eq? def-env (u/to-map ctx) thm-ty ptype)))
+        [:ko {:msg "proof checking error (type mismatch)"
+              :expected-type (stx/unparse thm-ty)
+              :proof-type (stx/unparse ptype)}]
+        (do
+          (when-timing
+              (println "=================================================================="))
+          [:ok proof-term])))))
 
 (defn check-proof
   [def-env ctx thm-name thm-ty method steps]
@@ -74,7 +70,7 @@
                   (seq (rest steps))
                   [:ko {:msg "too many proof steps, direct method requires a single term" :steps steps}]
                   :else
-                  [:ok (first steps)])
+                  [:ok (parser/parse def-env (first steps))])
           :script (do
                     (when-timing
                         (println "=== Checking proof of theorem" thm-name "(timing enabled) ==="))

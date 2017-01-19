@@ -54,7 +54,7 @@
   form is invoked."
   [& args]
   (let [[def-name doc params body def-type] (parse-definition-args args)]
-    ;; (println "def-name =" def-name " doc =" doc " params =" params " body =" body)
+    ;;(println "def-name =" def-name " doc =" doc " params =" params " body =" body)
     (when (defenv/registered-definition? {} def-name)
       (do
         ;;(throw (ex-info "Cannot redefine term." {:name def-name})))
