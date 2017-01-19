@@ -297,7 +297,7 @@ since they are arbitrary functions. The risk is limited, though, since they cann
   "A special operator such that an occurrence of the
 term `(type-of% term)` is replaced by the *type* of `term`."
   [def-env ctx term]
-  (let [[status ty] (ty/type-of-term def-env ctx term)]
+  (let [[status ty] (ty/type-of-term def-env (u/to-map ctx) term)]
     (if (= status :ko)
       (throw (ex-info "Cannot synthetize type of term" {:special 'latte.core/type-of% :term term :from ty}))
       ty)))
@@ -336,7 +336,7 @@ term `(type-of% term)` is replaced by the *type* of `term`."
       (if (latte.kernel.norm/beta-eq? def-env ctx t :kind)
         '□
         (let [ty (ty/type-of def-env ctx t)]
-          (list 'quote t)))))
+          (list 'quote (latte.kernel.syntax/unparse t))))))
 
 ;;{
 ;; ## Top-level type checking
@@ -347,7 +347,7 @@ term `(type-of% term)` is replaced by the *type* of `term`."
         t (stx/parse def-env (last args))
         ctx (parse-context-args def-env (butlast args))]
     (let [ty (ty/type-of def-env ctx t)]
-      (list 'quote ty))))
+      (list 'quote (latte.kernel.syntax/unparse ty)))))
 
 (defmacro type-check? [& args]
   (let [def-env {}
