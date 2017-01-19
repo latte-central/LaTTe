@@ -1,6 +1,7 @@
 (ns latte.kernel.typing
   (:require [clj-by.example :refer [example do-for-example]]
             [latte.kernel.utils :as u]
+            [latte.kernel.presyntax :as parser]
             [latte.kernel.syntax :as stx]
             [latte.kernel.norm :as norm]
             [latte.kernel.defenv :as defenv]))
@@ -17,61 +18,53 @@
 
 (defn ctx-fetch [ctx x]
   ;; (println "[ctx-fetch] ctx=" ctx "x=" x)
-  (if (seq ctx)
-    (if (= (first (first ctx)) x)
-      (second (first ctx))
-      (recur (rest ctx) x))
-    nil))
+  (get ctx x))
 
 (defn ctx-put [ctx x t]
-  (cons [x t] ctx))
-
-(defn mk-ctx [& args]
-  args)
-
+  (assoc ctx x t))
 
 ;;{
 ;; ## Synthesis rules
 ;;}
 
 (declare type-of-type
-         type-of-var
+         type-of-fvar
+         type-of-bvar
          type-of-prod
-         type-of-abs
+         type-of-lambda
          type-of-app
          type-of-ref)
 
-;;;;===================================================================
-;;;;======================== UPDATED UNTIL HERE =======================
-;;;;===================================================================
-
-(defn type-of-term [def-env ctx t]
-  (let [[status ty]
-        (cond
-          (stx/kind? t) [:ko {:msg "Kind has not type" :term t}]
-          (stx/type? t) (type-of-type)
-          (stx/variable? t) (type-of-var def-env ctx t)
-          ;; binders (lambda, prod)
-          (stx/binder? t)
-          (let [[binder [x ty] body] t]
-            (case binder
-              λ (type-of-abs def-env ctx x ty body)
-              Π (type-of-prod def-env ctx x ty body)
-              (throw (ex-info "No such binder (please report)" {:term t :binder binder}))))
-          ;; references
-          (stx/ref? t) (type-of-ref def-env ctx (first t) (rest t))
-          ;; applications
-          (stx/app? t) (type-of-app def-env ctx (first t) (second t))
-          :else
-          (throw (ex-info "Invalid term (please report)" {:term t})))]
-    ;;(println "--------------------")
-    ;;(println "[type-of-term] t=" t)
-    ;;(clojure.pprint/pprint ty)
-    ;;(println "--------------------")
-    [status ty]))
+(defn type-of-term
+  ([def-env ctx t] (type-of-term def-env ctx [] t))
+  ([def-env ctx benv t]
+   ;;(println "[type-of-term] benv=" benv)
+   (let [[status ty]
+         (cond
+           (stx/kind? t) [:ko {:msg "Kind has not type" :term (stx/unparse t)}]
+           (stx/type? t) (type-of-type)
+           (stx/fvar? t) (type-of-fvar def-env ctx benv (:name t))
+           (stx/bvar? t) (type-of-bvar def-env ctx benv (:index t))
+           ;; binders (lambda, prod)
+           (stx/binder? t)
+           (case (stx/binder-kind t)
+             :lambda (type-of-lambda def-env ctx benv (:name t) (:type t) (:body t))
+             :prod (type-of-prod def-env ctx benv (:name t) (:type t) (:body t))
+             (throw (ex-info "No such binder (please report)" {:term (stx/unparse t) :binder (stx/binder-kind t)})))
+           ;; references
+           (stx/ref? t) (type-of-ref def-env ctx benv (:name t) (:args t))
+           ;; applications
+           (stx/app? t) (type-of-app def-env ctx benv (:left t) (:right t))
+           :else
+           (throw (ex-info "Invalid term (please report)" {:term (stx/unparse t)})))]
+     ;;(println "--------------------")
+     ;;(println "[type-of-term] t=" t)
+     ;;(clojure.pprint/pprint ty)
+     ;;(println "--------------------")
+     [status ty])))
 
 (example
- (type-of-term {} [] '□) => '[:ko {:msg "Kind has not type" :term □}])
+ (type-of-term {} {} '□) => '[:ko {:msg "Kind has not type" :term □}])
 
 (defn type-check? [def-env ctx term type]
   ;;(println "[type-check?] term=" term "type=" type)
@@ -80,7 +73,7 @@
     ;;(println "  ==> " status "type'=" type' "vs. type=" type)
     (if (= status :ok)
       (norm/beta-eq? def-env ctx type type')
-      (throw (ex-info "Cannot check type of term" {:term term :from type'})))))
+      (throw (ex-info "Cannot check type of term" {:term (stx/unparse term) :from type'})))))
 
 ;;{
 ;;
@@ -92,7 +85,7 @@
   [:ok '□])
 
 (example
- (type-of-term {} [] '✳) => '[:ok □])
+ (type-of-term {} {} '✳) => '[:ok □])
 
 ;;{
 ;;        ty::>Type or t::>Kind in E
@@ -100,43 +93,87 @@
 ;;        E,x::ty |- x ::> ty
 ;;}
 
-(defn type-of-var [def-env ctx x]
+(defn type-of-fvar [def-env ctx benv x]
   (if-let [ty (ctx-fetch ctx x)]
     (let [[status sort] (let [ty' (norm/normalize def-env ctx ty)]
                           (if (stx/kind? ty')
                             [:ok ty']
-                            (type-of-term def-env ctx ty)))]
+                            (type-of-term def-env ctx benv ty)))]
       (if (= status :ko)
         [:ko {:msg "Cannot calculate type of variable." :term x :from sort}]
         (if (stx/sort? sort)
           [:ok ty]
-          [:ko {:msg "Not a correct type (super-type is not a sort)" :term x :type ty :sort sort}])))
+          [:ko {:msg "Not a correct type (super-type is not a sort)" :term x
+                :type (stx/unparse ty) :sort (stx/unparse sort)}])))
     [:ko {:msg "No such variable in type context" :term x}]))
 
 (example
- (type-of-term {} '[[bool ✳] [x bool]] 'x) => '[:ok bool])
+ (type-of-term {} {'bool '✳
+                    'x (stx/mk-fvar 'bool)}
+               (stx/mk-fvar 'x))
+ => '[:ok #latte.kernel.syntax.FVar{:name bool}])
 
 (example
- (type-of-term {} '[[x bool]] 'x)
+ (type-of-term {} {'x (stx/mk-fvar 'bool)} (stx/mk-fvar 'x))
  => '[:ko {:msg "Cannot calculate type of variable.",
            :term x,
            :from {:msg "No such variable in type context", :term bool}}])
 
 (example
- (type-of-term {} '[[y x] [x bool]] 'y)
+ (type-of-term {} {'y (stx/mk-fvar 'x)
+                   'x (stx/mk-fvar 'bool)} (stx/mk-fvar 'y))
  => '[:ko {:msg "Cannot calculate type of variable.", :term y, :from {:msg "Cannot calculate type of variable.", :term x, :from {:msg "No such variable in type context", :term bool}}}])
 
 (example
- (type-of-term {} '[[x ✳]] 'x)
+ (type-of-term {} {'x '✳} (stx/mk-fvar 'x))
  => '[:ok ✳])
 
 (example
- (type-of-term {} '[[x □]] 'x)
+ (type-of-term {} {'x '□} (stx/mk-fvar 'x))
  => '[:ok □])
 
 (example
- (type-of-term {} '[[bool ✳] [y bool]] 'x)
+ (type-of-term {} {'bool '✳
+                   'y (stx/mk-fvar 'bool)}
+               (stx/mk-fvar 'x))
  => '[:ko {:msg "No such variable in type context", :term x}])
+
+
+(defn type-of-bvar [def-env ctx benv index]
+  (if-let [ty (nth benv (- (count benv) (inc index)))]
+    (let [[status sort] (let [ty' (norm/normalize def-env ctx ty)]
+                          (if (stx/kind? ty')
+                            [:ok ty']
+                            (type-of-term def-env ctx benv ty)))]
+      (if (= status :ko)
+        [:ko {:msg "Cannot calculate type of bound variable." :index index :from sort}]
+        (if (stx/sort? sort)
+          [:ok ty]
+          [:ko {:msg "Not a correct type (super-type is not a sort)" :term (keyword (str index))
+                :type (stx/unparse ty) :sort (stx/unparse sort)}])))
+    (throw (ex-info "No such bound variable (please report)"
+                    {:index index}))))
+
+(example
+ (type-of-term {} '{bool ✳} [(stx/mk-fvar 'bool)]
+               (stx/mk-bvar 0))
+ => '[:ok #latte.kernel.syntax.FVar{:name bool}])
+
+(example
+ (type-of-term {} '{bool ✳} [(stx/mk-fvar 'bool) '✳]
+               (stx/mk-bvar 0))
+ => '[:ok ✳])
+
+(example
+ (type-of-term {} '{bool ✳} [(stx/mk-fvar 'bool) '✳]
+               (stx/mk-bvar 1))
+ => [:ok #latte.kernel.syntax.FVar{:name bool}])
+
+(example
+ (type-of-term {} {'x (stx/mk-fvar 'bool)} [(stx/mk-fvar 'x)] (stx/mk-bvar 0))
+ => '[:ko {:msg "Cannot calculate type of bound variable.", :index 0,
+           :from {:msg "Cannot calculate type of variable.", :term x,
+                  :from {:msg "No such variable in type context", :term bool}}}])
 
 ;;{
 ;;    E |- A ::> s1     E,x:A |- B ::> s2
@@ -144,38 +181,42 @@
 ;;     E |- prod x:A . B  ::>  s2
 ;;}
 
-(defn type-of-prod [def-env ctx x A B]
-  (let [[status sort1] (type-of-term def-env ctx A)]
+(defn type-of-prod [def-env ctx benv x A B]
+  ;; (println "[type-of-prod] benv=" benv)
+  (let [[status sort1] (type-of-term def-env ctx benv A)]
     (if (= status :ko)
-      [:ko {:msg "Cannot calculate domain type of product." :term A :from sort1}]
+      [:ko {:msg "Cannot calculate domain type of product." :term (stx/unparse A) :from sort1}]
       (let [sort1' (norm/normalize def-env ctx sort1)]
         (if (not (stx/sort? sort1'))
-          [:ko {:msg "Not a valid domain type in product (super-type not a sort)" :term A :type sort1}]
-          (let [ctx' (ctx-put ctx x A)
-                [status sort2] (type-of-term def-env ctx' B)]
+          [:ko {:msg "Not a valid domain type in product (super-type not a sort)"
+                :term (stx/unparse A) :type (stx/unparse sort1)}]
+          (let [[status sort2] (type-of-term def-env ctx (conj benv A) B)]
             (if (= status :ko)
-              [:ko {:msg "Cannot calculate codomain type of product." :term B :from sort2}]
+              [:ko {:msg "Cannot calculate codomain type of product."
+                    :term (stx/unparse B) :from sort2}]
               (let [sort2' (norm/normalize def-env ctx sort2)]
                 ;; (println "sort2' = " sort2' " sort? " (stx/sort? sort2'))
                 (if (not (stx/sort? sort2'))
-                  [:ko {:msg "Not a valid codomain type in product (not a sort)" :term B :type sort2}]
+                  [:ko {:msg "Not a valid codomain type in product (not a sort)"
+                        :term (stx/unparse B) :type (stx/unparse sort2)}]
                   [:ok sort2])))))))))
 
 (example
- (type-of-term {} [] '(Π [x ✳] x)) => '[:ok ✳])
+ (type-of-term {} {} (parser/parse '(Π [x ✳] x))) => '[:ok ✳])
 
 (example
- (type-of-term {} [] '(Π [x ✳] ✳)) => '[:ok □])
+ (type-of-term {} {} (parser/parse '(Π [x ✳] ✳))) => '[:ok □])
 
 (example
- (type-of-term {} [] '(Π [x □] ✳))
+ (type-of-term {} {} (parser/parse '(Π [x □] ✳)))
  => '[:ko {:msg "Cannot calculate domain type of product.", :term □,
            :from {:msg "Kind has not type" :term □}}])
 
 (example
- (type-of-term {} [] '(Π [x ✳] □))
+ (type-of-term {} {} (parser/parse '(Π [x ✳] □)))
  => '[:ko {:msg "Cannot calculate codomain type of product.", :term □,
            :from {:msg "Kind has not type" :term □}}])
+
 
 ;;{
 ;;    E,x:A |- t ::> B  E |- prod x:A. B ::> s
@@ -183,45 +224,54 @@
 ;;    E |- lambda x:A . t  ::>  prod x:A . B
 ;;}
 
-(defn type-of-abs [def-env ctx x A t]
-  (let [ctx' (ctx-put ctx x A)
-        [status B] (type-of-term def-env ctx' t)]
+(defn type-of-lambda [def-env ctx benv x A t]
+  (let [[status B] (type-of-term def-env ctx (conj benv A) t)]
     (if (= status :ko)
       [:ko {:msg "Cannot calculate codomain type of abstraction."
-            :term (list 'λ [x A] t) :from B}]
-      (let [tprod (list 'Π [x A] B)
-            [status sort] (type-of-term def-env ctx tprod)]
+            :term (stx/unparse (stx/mk-lambda x A t)) :from B}]
+      (let [tprod (stx/mk-prod x A B)
+            [status sort] (type-of-term def-env ctx benv tprod)]
         (if (= status :ko)
           [:ko {:msg "Not a valid codomain type in abstraction (cannot calculate super-type)."
-                :term (list 'λ [x A] t)
+                :term (stx/unparse (stx/mk-lambda x A t))
                 :codomain B :from sort}]
           (if (not (stx/sort? (norm/normalize def-env ctx sort)))
             [:ko {:msg "Not a valid codomain type in abstraction (super-type not a sort)."
-                  :term (list 'λ [x A] t)
-                  :codomain B
-                  :type sort}]
+                  :term (stx/unparse (stx/mk-lambda x A t))
+                  :codomain (stx/unparse B)
+                  :type (stx/unparse sort)}]
             [:ok tprod]))))))
 
 (example
- (type-of-term {} '[[bool ✳] [t bool] [y bool]]
-          '(λ [x bool] x))
- => '[:ok (Π [x bool] bool)])
+ (stx/unparse
+  (second
+   (type-of-term {} {'bool '✳
+                     't (stx/mk-fvar 'bool)
+                     'y (stx/mk-fvar 'bool)}
+                 (parser/parse '(λ [x bool] x)))))
+ => '(Π [x bool] bool))
 
 (example
- (type-of-term {} [] '(λ [x ✳] x)) => '[:ok (Π [x ✳] ✳)])
+ (stx/unparse
+  (second
+   (type-of-term {} {} (parser/parse '(λ [x ✳] x)))))
+ => '(Π [x ✳] ✳))
 
 (example
- (type-of-term {} '[[y bool]] '(λ [x bool] x))
+ (type-of-term {} {'y (stx/mk-fvar 'bool)} (parser/parse '(λ [x bool] x)))
  => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (λ [x bool] x),
-           :from {:msg "Cannot calculate type of variable.", :term x,
+           :from {:msg "Cannot calculate type of bound variable.", :index 0,
                   :from {:msg "No such variable in type context", :term bool}}}])
 
 (example
- (type-of-term {} '[[y ✳] [z y]] '(λ [x z] x))
-
- 
+ (type-of-term {} {'y '✳
+                   'z (stx/mk-fvar 'y)} (parser/parse '(λ [x z] x)))
  => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (λ [x z] x),
-           :from {:msg "Not a correct type (super-type is not a sort)", :term x, :type z, :sort y}}])
+           :from {:msg "Not a correct type (super-type is not a sort)", :term :0, :type z, :sort y}}])
+
+;;;;===================================================================
+;;;;======================== UPDATED UNTIL HERE =======================
+;;;;===================================================================
 
 (example
  (type-of-term {} '[[y bool]] '(λ [x ✳] y))
