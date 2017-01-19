@@ -9,8 +9,12 @@
             [latte.kernel.syntax :refer [free-vars]]
             [latte.kernel.typing :as ty :refer [type-of-term]]
             [latte.kernel.norm :as n]
-            [latte.kernel.defs :as d]
-            [latte.kernel.equiv :as equiv]))
+            [latte.kernel.defs :as d]))
+
+;;;;===================================================================
+;;;;======================== UPDATED UNTIL HERE =======================
+;;;;===================================================================
+
 
 (def ^:private +examples-enabled+)
 

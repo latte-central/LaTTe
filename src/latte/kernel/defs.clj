@@ -24,7 +24,7 @@
       (let [[status body] (parser/parse-term def-env body)]
         (if (= status :ko)
           [:ko body]
-          (let [[status ty] (ty/type-of-term def-env (u/vconcat params ctx) body)]
+          (let [[status ty] (ty/type-of-term def-env (merge ctx params) body)]
             (if (= status :ko)
               [:ko ty]
               (if def-type
@@ -33,14 +33,16 @@
                     [:ko def-ty]
                     (let [def-ty (loop [params params, def-ty def-ty]
                                    (if (seq params)
-                                     (recur (rest params) (list 'Π (first params) def-ty))
+                                     (recur (rest params) (stx/mk-prod (ffirst params)
+                                                                       (second (first params))
+                                                                       (stx/close def-ty (ffirst params))))
                                      def-ty))]
                       (if (n/beta-eq? def-env ctx ty def-ty)
                         [:ok (->Definition def-name params (count params) body def-ty)]
                         [:ko {:msg "Definition type mismatch."
                               :def-name def-name
-                              :computed-type ty
-                              :def-type def-ty}]))))
+                              :computed-type (stx/unparse ty)
+                              :def-type (stx/unparse def-ty)}]))))
                 ;; use computed type
                 [:ok (->Definition def-name params (count params) body ty)]))))))))
 
@@ -49,7 +51,9 @@
 
 (defn handle-local-term-discharge [local-def x ty]
   (let [{def-name :name parsed-term :parsed-term type :type} local-def]
-    (->Definition def-name [] 0 (list 'λ [x ty] parsed-term) (list 'Π [x ty] type))))
+    (->Definition def-name [] 0
+                  (stx/mk-lambda x ty (stx/close parsed-term x))
+                  (stx/mk-prod x ty (stx/close type x)))))
 
 ;;{
 ;; ## Theorem definitions
@@ -60,7 +64,7 @@
         ty (parser/parse def-env ty)]
     ;; (println "[handle-thm-definition] def-env = " def-env " params = " params " body = " body)
     (when (not (ty/proper-type? def-env params ty))
-      (throw (ex-info "Theorem is not a proper type" {:theorem thm-name :type ty})))
+      (throw (ex-info "Theorem is not a proper type" {:theorem thm-name :type (stx/unparse ty)})))
     (->Theorem thm-name params (count params) ty false)))
 
 ;;{
@@ -72,6 +76,7 @@
         ty (parser/parse def-env ty)]
     ;; (println "[handle-axiom-definition] def-env = " def-env " params = " params " body = " body)
     (when (not (ty/proper-type? def-env params ty))
-      (throw (ex-info "Axiom is not a proper type" {:theorem ax-name :type ty})))
+      (throw (ex-info "Axiom is not a proper type" {:theorem ax-name :type (stx/unparse ty)})))
     (->Axiom ax-name params (count params) ty)))
+
 
