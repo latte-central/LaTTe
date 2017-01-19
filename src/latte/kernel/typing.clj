@@ -66,14 +66,16 @@
 (example
  (type-of-term {} {} '□) => '[:ko {:msg "Kind has not type" :term □}])
 
-(defn type-check? [def-env ctx term type]
-  ;;(println "[type-check?] term=" term "type=" type)
-  ;;(println "    ctx=" ctx)
-  (let [[status type'] (type-of-term def-env ctx term)]
-    ;;(println "  ==> " status "type'=" type' "vs. type=" type)
-    (if (= status :ok)
-      (norm/beta-eq? def-env ctx type type')
-      (throw (ex-info "Cannot check type of term" {:term (stx/unparse term) :from type'})))))
+(defn type-check?
+  ([def-env ctx term type] (type-check? ctx [] term type))
+  ([def-env ctx benv term type]
+   ;;(println "[type-check?] term=" term "type=" type)
+   ;;(println "    ctx=" ctx)
+   (let [[status type'] (type-of-term def-env ctx benv term)]
+     ;;(println "  ==> " status "type'=" type' "vs. type=" type)
+     (if (= status :ok)
+       (norm/beta-eq? def-env ctx type type')
+       (throw (ex-info "Cannot check type of term" {:term (stx/unparse term) :from type'}))))))
 
 ;;{
 ;;
@@ -269,31 +271,30 @@
  => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (λ [x z] x),
            :from {:msg "Not a correct type (super-type is not a sort)", :term :0, :type z, :sort y}}])
 
-;;;;===================================================================
-;;;;======================== UPDATED UNTIL HERE =======================
-;;;;===================================================================
-
 (example
- (type-of-term {} '[[y bool]] '(λ [x ✳] y))
+ (type-of-term {} {'y (stx/mk-fvar 'bool)} (parser/parse '(λ [x ✳] y)))
  => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (λ [x ✳] y),
            :from {:msg "Cannot calculate type of variable.", :term y,
                   :from {:msg "No such variable in type context", :term bool}}}])
 
 (example
- (type-of-term {} '[[y bool]] '(λ [x ✳] □))
+ (type-of-term {} {} (parser/parse '(λ [x ✳] □)))
  => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (λ [x ✳] □),
            :from {:msg "Kind has not type" :term □}}])
 
 (example
- (type-of-term {} '[[y bool]] '(λ [x ✳] ✳))
+ (type-of-term {} {} (parser/parse '(λ [x ✳] ✳)))
  => '[:ko {:msg "Not a valid codomain type in abstraction (cannot calculate super-type).",
            :term (λ [x ✳] ✳), :codomain □,
            :from {:msg "Cannot calculate codomain type of product.", :term □,
                   :from {:msg "Kind has not type", :term □}}}])
 (example
- (type-of-term {} '[[w ✳] [y w] [z y]] '(λ [x ✳] z))
+ (type-of-term {} {'w '✳, 'y (stx/mk-fvar 'w), 'z (stx/mk-fvar 'y)}
+               (parser/parse '(λ [x ✳] z)))
  => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (λ [x ✳] z),
            :from {:msg "Not a correct type (super-type is not a sort)", :term z, :type y, :sort w}}])
+
+
 
 ;;{
 ;;       E |- rator ::> prod x:A . B    E|- rand :: A
@@ -301,32 +302,32 @@
 ;;          E |- rator rand : B [rand/x]
 ;;}
 
-(defn type-of-app [def-env ctx rator rand]
-  (let [[status trator] (type-of-term def-env ctx rator)]
+(defn type-of-app [def-env ctx benv rator rand]
+  (let [[status trator] (type-of-term def-env ctx benv rator)]
     (if (= status :ko)
       [:ko {:msg "Cannot calculate operator (left-hand) type in application."
-            :term [rator rand] :from trator}]
+            :term (stx/unparse (stx/mk-app rator rand)) :from trator}]
       (let [trator' (norm/normalize def-env ctx trator)]
         (if (not (stx/prod? trator'))
-          [:ko {:msg "Not a product type for operator (left-hand) in application." :term [rator rand] :operator-type trator}]
-          (let [[_ [x A] B] trator']
-            ;; (println "[type-of-app] trator'=" trator')
-            (if (not (type-check? def-env ctx rand A))
-              [:ko {:msg "Cannot apply: type domain mismatch" :term [rator rand] :domain A :operand rand}]
-              (do ;;(println "[type-of-app] subst...")
-                  ;;(println "    B = " B)
-                  ;;(println "    x = " x)
-                  ;;(println "    rand = " rand)
-                  (let [res (stx/subst B x rand)]
-                    ;;(println "   ===> " res)
-                    [:ok res])))))))))
-
+          [:ko {:msg "Not a product type for operator (left-hand) in application." :term (stx/unparse (stx/mk-app rator rand)) :operator-type (stx/unparse trator)}]
+          (if (not (type-check? def-env ctx benv rand (:type trator')))
+            [:ko {:msg "Cannot apply: type domain mismatch" :term (stx/unparse (stx/mk-app rator rand)) :domain (stx/unparse (:type trator')) :operand (stx/unparse rand)}]
+            (do ;;(println "[type-of-app] subst...")
+              ;;(println "    B = " B)
+              ;;(println "    x = " x)
+              ;;(println "    rand = " rand)
+              (let [res (stx/apply-to (:body trator') rand)]
+                ;;(println "   ===> " res)
+                [:ok res]))))))))
 
 (example
- (type-of-term {} '[[bool ✳] [y bool]]
-          '[(λ [x bool] x) y])
- => '[:ok bool])
+ (type-of-term {} {'bool '✳, 'y (stx/mk-fvar 'bool)}
+               (parser/parse '[(λ [x bool] x) y]))
+ => '[:ok #latte.kernel.syntax.FVar{:name bool}])
 
+;;;;===================================================================
+;;;;======================== UPDATED UNTIL HERE =======================
+;;;;===================================================================
 
 ;;{
 ;;    D |- ref :: [x1 t1] [x2 t2] ... [xN tN] -> t

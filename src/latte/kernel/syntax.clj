@@ -118,6 +118,7 @@ using a locally-nameless approach."
   (subst-term [t s] (if-let [u (get s (:name t))]
                       u
                       t))
+  (apply-to-term [t _ _] t)
   (unparse-term [t _ _ _] (:name t))
   (unparse-ln-term [t] (:name t)))
 
