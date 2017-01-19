@@ -5,15 +5,11 @@
             [clj-by.example :refer [example do-for-example]]
             [latte.kernel.utils :as u]
             [latte.kernel.defenv :as defenv]
-            [latte.kernel.presyntax :as stx]
-            [latte.kernel.syntax :refer [free-vars]]
+            [latte.kernel.presyntax :as parser]
+            [latte.kernel.syntax :as stx :refer [free-vars]]
             [latte.kernel.typing :as ty :refer [type-of-term]]
             [latte.kernel.norm :as n]
             [latte.kernel.defs :as d]))
-
-;;;;===================================================================
-;;;;======================== UPDATED UNTIL HERE =======================
-;;;;===================================================================
 
 
 (def ^:private +examples-enabled+)
@@ -48,7 +44,7 @@
 
 (defn check-proof-term [def-env ctx thm-ty proof-term]
   ;; (println "[check-proof-term] def-env=" def-env "ctx=" ctx "thm-ty=" thm-ty "proof-term=" proof-term)
-  (let [[status proof] (stx/parse-term def-env proof-term)]
+  (let [[status proof] (parser/parse-term def-env proof-term)]
     (if (= status :ko)
       [:ko {:msg (str "wrong proof term,  " (:msg proof))
             :error (dissoc proof :msg)}]
@@ -61,8 +57,8 @@
           (if (not (timing "- check proof type against theorem type"
                            (n/beta-eq? def-env ctx thm-ty ptype)))
             [:ko {:msg "proof checking error (type mismatch)"
-                  :expected-type thm-ty
-                  :proof-type ptype}]
+                  :expected-type (stx/unparse thm-ty)
+                  :proof-type (stx/unparse ptype)}]
             (do
               (when-timing
                   (println "=================================================================="))
@@ -117,14 +113,14 @@
   (cond
     (not (symbol? x))
     [:ko {:msg "Assume variable must be a symbol." :var-arg x}]
-    (stx/reserved-symbol? x)
+    (parser/reserved-symbol? x)
     [:ko {:msg "Assume variable name is reserved." :name x}]
     :else
-    (let [[status ty'] (stx/parse-term def-env ty)]
+    (let [[status ty'] (parser/parse-term def-env ty)]
       (if (= status :ko)
-        [:ko {:msg "Cannot parse type in assume step" :type-arg ty :error ty'}]
-        (if-not (ty/proper-type? def-env ctx ty')
-          [:ko {:msg "Not a proper type in assume step" :type-arg ty :parsed-term ty'}]
+        [:ko {:msg "Cannot parse type in assume step" :type-arg (stx/unparse ty) :error ty'}]
+        (if-not (ty/proper-type? def-env (u/to-map ctx) ty')
+          [:ko {:msg "Not a proper type in assume step" :type-arg (stx/unparse ty) :parsed-term (stx/unparse ty')}]
           [:ok [def-env
                 (u/vcons [x ty'] ctx)
                 (u/vcons [x #{}] deps)]])))))  ; XXX: it would be more efficient to use stacks... (lists ?)
@@ -135,14 +131,12 @@
   '[[A ✳]]
   '[[A #{}]]
   'x 'A)
- => '[:ok [{test :nothing}
-           [[x A] [A ✳]]
-           [[x #{}] [A #{}]]]])
+ => '[:ok [{test :nothing} [[x #latte.kernel.syntax.FVar{:name A}] [A ✳]] [[x #{}] [A #{}]]]])
 
 (example
  (do-assume-step
   '{test :nothing}
-  '[[x A] [A ✳]]
+  [['x (stx/mk-fvar 'A)] ['A '✳]]
   '[]
   'y 'x)
  => '[:ko {:msg "Not a proper type in assume step", :type-arg x, :parsed-term x}])
@@ -169,7 +163,7 @@
   (cond
     (not (symbol? have-name))
     [:ko {:msg "Wrong have step: name argument is not a symbol." :name-arg have-name}]
-    (stx/reserved-symbol? have-name)
+    (parser/reserved-symbol? have-name)
     [:ko {:msg "Wrong have step: name is reserved." :name have-name}]
     :else
     [:ok have-name]))
@@ -193,7 +187,7 @@
   (let [[status term]
         (case method
           (:by :term)
-          (stx/parse-term def-env have-arg)
+          (parser/parse-term def-env have-arg)
           (:from :abst :abstr :discharge)
           [:ko  {:msg "Explicit hypothesis discharge is not supported anymore. Use implicit discharge.":have-step name}]
           ;; else
@@ -215,29 +209,29 @@
               [status have-type] (if (and (symbol? have-type)
                                           (= (clojure.core/name have-type) "_"))
                                    [:ok nil]
-                                   (stx/parse-term def-env have-type))]
+                                   (parser/parse-term def-env have-type))]
           ;;(println "   have-term = " term')
           (if (= status :ko)
             [:ko {:msg "Cannot perform have step: erroneous type." :have-name name :from have-type}]
             (let [[status have-type]
                   (if (nil? have-type)
                     (let [[status have-type] (timing "  => infer step type"
-                                                     (ty/type-of-term def-env ctx term'))]
+                                                     (ty/type-of-term def-env (u/to-map ctx) term'))]
                       (if (= status :ko)
                         [:ko (assoc (dissoc have-type :msg)
                                     :msg (str "Cannot perform have step: " (:msg have-type)))]
                         [:ok have-type]))
                     (let [[status computed-type] (timing "  => compute step type"
-                                                         (type-of-term def-env ctx term'))]
+                                                         (type-of-term def-env (u/to-map ctx) term'))]
                       ;;(println "  [computed-type] = " computed-type)
                       (if (= status :ko)
                         [:ko {:msg "Cannot synthetize term type."
-                              :from computed-type}]
+                              :from (stx/unparse computed-type)}]
                         (if (timing "  => compare with specified type"
                                     (not (n/beta-eq? def-env ctx have-type computed-type)))
                           [:ko {:msg "Cannot perform have step: synthetized term type and expected type do not match."
                                 :have-name name
-                                :term term :expected-type have-type :synthetized-type computed-type}]
+                                :term term :expected-type (stx/unparse have-type) :synthetized-type (stx/unparse computed-type)}]
                           [:ok have-type]))))]
               (cond (= status :ko) [:ko have-type]
                     (nil? name) [:ok [def-env ctx]]
@@ -259,14 +253,13 @@
 (example
  (do-have-step
   {}
-  '[[A ✳] [x A]]
+  [['A '✳] ['x (stx/mk-fvar 'A)]]
   '[[x #{}]]
   'step 'A :by 'x)
- => '[:ok [{step #latte.kernel.defenv.Definition{:name step,
-                                                 :params [],
-                                                 :arity 0,
-                                                 :parsed-term x,
-                                                 :type A}} [[A ✳] [x A]] [[x #{step}]]]])
+ => '[:ok [{step #latte.kernel.defenv.Definition{:name step, :params [], :arity 0,
+                                                 :parsed-term #latte.kernel.syntax.FVar{:name x},
+                                                 :type #latte.kernel.syntax.FVar{:name A}}}
+           [[A ✳] [x #latte.kernel.syntax.FVar{:name A}]] [[x #{step}]]]])
 
 
 (defn discharge-all [def-env ctx deps]
@@ -283,7 +276,7 @@
 
 (defn do-qed-step [def-env ctx deps term]
   (let [def-env' (discharge-all def-env ctx deps)]
-    (let [[status term] (stx/parse-term def-env' term)]
+    (let [[status term] (parser/parse-term def-env' term)]
       (if (= status :ko)
         [:ko {:msg "Cannot do QED step: parse error." :error term}]
         [:ok (n/delta-normalize-local def-env' term)]))))
@@ -305,7 +298,7 @@
   ;;(println "def-env:")
   ;;(clojure.pprint/pprint def-env)
   (println "-----------------------------------------")
-  (let [[status term] (stx/parse-term def-env arg)]
+  (let [[status term] (parser/parse-term def-env arg)]
     ;; (println "[showterm] parsed=" term)
     (if (= status :ko)
       (clojure.pprint/pprint term)
@@ -323,7 +316,7 @@
   ;;(println "def-env:")
   ;;(clojure.pprint/pprint def-env)
   (println "-----------------------------------------")
-  (let [[status term] (stx/parse-term def-env arg)]
+  (let [[status term] (parser/parse-term def-env arg)]
     ;; (println "[showterm] parsed=" term)
     (if (= status :ko)
       (clojure.pprint/pprint term)

@@ -56,3 +56,10 @@
   "Fetch the current time (with high precision)"
   (System/nanoTime))
 
+
+(defn to-map [keyvals]
+  (into {} keyvals))
+
+(example
+ (to-map [[:a 1] [:b 2] [:c 3]])
+ => {:a 1, :b 2, :c 3})

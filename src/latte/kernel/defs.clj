@@ -24,7 +24,7 @@
       (let [[status body] (parser/parse-term def-env body)]
         (if (= status :ko)
           [:ko body]
-          (let [[status ty] (ty/type-of-term def-env (merge ctx params) body)]
+          (let [[status ty] (ty/type-of-term def-env (apply assoc (concat params ctx)) body)]
             (if (= status :ko)
               [:ko ty]
               (if def-type
