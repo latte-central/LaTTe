@@ -88,12 +88,13 @@
           (throw (ex-info "Not an `==>`-type." {:special 'latte.prop/impl-trans%
                                                 :term impl-term2
                                                 :type ty2})))
-        
+
         (when-not (norm/beta-eq? def-env ctx B B')
           (throw (ex-info "Type in the middle mismatch" {:special 'latte.prop/impl-trans%
                                                          :left-rhs-type B
                                                          :right-lhs-type B'})))
         [[(list #'latte.prop/impl-trans A B C) impl-term1] impl-term2])))))
+
 
 (definition absurd
   "Absurdity."

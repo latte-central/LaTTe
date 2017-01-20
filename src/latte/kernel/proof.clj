@@ -259,7 +259,7 @@
 
 
 (defn discharge-all [def-env ctx deps]
-  #_(println "[discharge-all] deps=" deps)
+  ;; #_(println "[discharge-all] deps=" deps)
   (loop [deps deps, ctx ctx, def-env' def-env]
     (if (seq deps)
       (let [[x xdeps] (first deps)

@@ -24,7 +24,7 @@
       (let [[status body] (parser/parse-term def-env body)]
         (if (= status :ko)
           [:ko body]
-          (let [[status ty] (ty/type-of-term def-env (apply assoc (concat params ctx)) body)]
+          (let [[status ty] (ty/type-of-term def-env (u/to-map (concat params ctx)) body)]
             (if (= status :ko)
               [:ko ty]
               (if def-type
@@ -52,7 +52,11 @@
 (defn handle-local-term-discharge [local-def x ty]
   (let [{def-name :name parsed-term :parsed-term type :type} local-def]
     (->Definition def-name [] 0
-                  (stx/mk-lambda x ty (stx/close parsed-term x))
+                  (do
+                    (println def-name "->")
+                    (print "  ==> [before] ")(clojure.pprint/pprint (stx/unparse-ln parsed-term))
+                    (print "  ==> [after] ")(clojure.pprint/pprint (stx/unparse-ln (stx/mk-lambda x ty (stx/close parsed-term x))))
+                    (stx/mk-lambda x ty (stx/close parsed-term x)))
                   (stx/mk-prod x ty (stx/close type x)))))
 
 ;;{

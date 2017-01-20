@@ -54,14 +54,15 @@
   form is invoked."
   [& args]
   (let [[def-name doc params body def-type] (parse-definition-args args)]
-    ;;(println "def-name =" def-name " doc =" doc " params =" params " body =" body)
+    ;; (println "def-name =" def-name " doc =" doc " params =" params " body =" body)
     (when (defenv/registered-definition? {} def-name)
       (do
         ;;(throw (ex-info "Cannot redefine term." {:name def-name})))
         ;; TODO: maybe disallow redefining if type is changed ?
         ;;       otherwise only warn ?
         (println "[Warning] redefinition as term: " def-name)))
-    (let [[status definition] (d/handle-term-definition def-name {} [] params body def-type)]
+    (let [[status definition]
+          (d/handle-term-definition def-name {} [] params body def-type)]
       (when (= status :ko)
         (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
       (let [quoted-def# definition]
