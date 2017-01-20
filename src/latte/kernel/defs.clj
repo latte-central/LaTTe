@@ -53,9 +53,9 @@
   (let [{def-name :name parsed-term :parsed-term type :type} local-def]
     (->Definition def-name [] 0
                   (do
-                    (println def-name "->")
-                    (print "  ==> [before] ")(clojure.pprint/pprint (stx/unparse-ln parsed-term))
-                    (print "  ==> [after] ")(clojure.pprint/pprint (stx/unparse-ln (stx/mk-lambda x ty (stx/close parsed-term x))))
+                    (println "discharge" def-name "with" x "->")
+                    (print "  ==> [before] ")(clojure.pprint/pprint (stx/unparse parsed-term))
+                    (print "  ==> [after] ")(clojure.pprint/pprint (stx/unparse (stx/mk-lambda x ty (stx/close parsed-term x))))
                     (stx/mk-lambda x ty (stx/close parsed-term x)))
                   (stx/mk-prod x ty (stx/close type x)))))
 

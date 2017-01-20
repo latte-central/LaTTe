@@ -187,13 +187,13 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
   (==> A B
        (and A B)))
 
-;; (proof land-intro
-;;        :term
-;;        (lambda [x A]
-;;          (lambda [y B]
-;;            (lambda [C :type]
-;;              (lambda [z (==> A B C)]
-;;                z x y)))))
+(proof and-intro
+       :term
+       (lambda [x A]
+         (lambda [y B]
+           (lambda [C :type]
+             (lambda [z (==> A B C)]
+               (z x y))))))
 
 (proof and-intro
     :script

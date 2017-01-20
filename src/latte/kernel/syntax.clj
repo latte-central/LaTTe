@@ -57,7 +57,7 @@ using a locally-nameless approach."
 (defn unparse
   "Unparse term `t`."
   [t]
-  (do #dbg
+  (do ;; #dbg
     (unparse-term t 0 {} (free-vars t))))
 
 (defn unparse-ln
@@ -143,7 +143,7 @@ using a locally-nameless approach."
       t))
   (subst-term [t _] t)
   (unparse-term [t level bmap _]
-    (if-let [bname (get bmap (- level (dec (:index t))))]
+    (if-let [bname (get bmap (- level (inc (:index t))))]
       bname
       (keyword (str (:index t)))))
   (unparse-ln-term [t]
@@ -405,7 +405,7 @@ using a locally-nameless approach."
 (example
  (unparse (mk-lambda 'x '□
                      (mk-lambda 'y '□ (mk-app (mk-bvar 0) (mk-bvar 1) (mk-bvar 2)))))
- => '())
+ => '(λ [x □] (λ [y □] (y x :2))))
 
 (defrecord Ref [name args]
   Term
@@ -439,53 +439,6 @@ using a locally-nameless approach."
 
 ;; some examples involving lambda and application
 
-(unparse-ln (mk-lambda 'z (mk-fvar '✳) (mk-app (mk-bvar 0) (mk-fvar 'x))))
-'(λ [✳] (:0 x))
-
-(unparse-ln (close-term (mk-lambda 'z (mk-fvar '✳) (mk-app (mk-bvar 0) (mk-fvar 'x)))
-                        0 'x))
-(λ [✳] (:0 :1))
-
-
-(unparse-ln (mk-lambda 'z (mk-lambda '⇧ (mk-fvar 'A)
-                                     (mk-lambda '⇧ (mk-fvar 'B)
-                                                (mk-fvar 'C)))
-                       (mk-app (mk-bvar 0) (mk-fvar 'x))))
-(λ [(λ [A] (λ [B] C))] (:0 x))
-
-(unparse-ln (close-term 
-             (mk-lambda 'z (mk-lambda '⇧ (mk-fvar 'A)
-                                      (mk-lambda '⇧ (mk-fvar 'B)
-                                                 (mk-fvar 'C)))
-                        (mk-app (mk-bvar 0) (mk-fvar 'x)))
-             0 'C))
-'(λ [(λ [A] (λ [B] :2))] (:0 x))
-
-(unparse-ln (open-term (close-term 
-                        (mk-lambda 'z (mk-lambda '⇧ (mk-fvar 'A)
-                                                 (mk-lambda '⇧ (mk-fvar 'B)
-                                                            (mk-fvar 'C)))
-                                   (mk-app (mk-bvar 0) (mk-fvar 'x)))
-                        0 'C) 0 'C))
-
-
-(unparse-ln (mk-lambda 'C '✳
-                       (close-term 
-                        (mk-lambda 'z (mk-lambda '⇧ (mk-fvar 'A)
-                                                 (mk-lambda '⇧ (mk-fvar 'B)
-                                                            (mk-fvar 'C)))
-                                   (mk-app (mk-bvar 0) (mk-fvar 'x)))
-                        0 'C)))
-'(λ [✳] (λ [(λ [A] (λ [B] :2))] (:0 x)))
-
-(unparse (mk-lambda 'C '✳
-                    (close-term 
-                     (mk-lambda 'z (mk-lambda '⇧ (mk-fvar 'A)
-                                              (mk-lambda '⇧ (mk-fvar 'B)
-                                                         (mk-fvar 'C)))
-                                (mk-app (mk-bvar 0) (mk-fvar 'x)))
-                     0 'C)))
-
 (example
  (unparse (mk-lambda 'C '✳
                      (close-term (mk-lambda 'z (mk-lambda '⇧ (mk-fvar 'A)
@@ -493,7 +446,7 @@ using a locally-nameless approach."
                                                                      (mk-fvar 'C)))
                                             (mk-app (mk-bvar 0) (mk-fvar 'x)))
                                  0 'C)))
- => '())
+ => '(λ [C ✳] (λ [z (λ [⇧ A] (λ [⇧' B] C))] (z x))))
 
 
 (defn alpha-eq? [t1 t2]

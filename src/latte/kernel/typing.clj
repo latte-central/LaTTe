@@ -142,19 +142,24 @@
 
 
 (defn type-of-bvar [def-env ctx benv index]
-  (if-let [ty (nth benv (- (count benv) (inc index)))]
-    (let [[status sort] (let [ty' (norm/normalize def-env ctx ty)]
-                          (if (stx/kind? ty')
-                            [:ok ty']
-                            (type-of-term def-env ctx benv ty)))]
-      (if (= status :ko)
-        [:ko {:msg "Cannot calculate type of bound variable." :index index :from sort}]
-        (if (stx/sort? sort)
-          [:ok ty]
-          [:ko {:msg "Not a correct type (super-type is not a sort)" :term (keyword (str index))
-                :type (stx/unparse ty) :sort (stx/unparse sort)}])))
-    (throw (ex-info "No such bound variable (please report)"
-                    {:index index}))))
+  (let [bindex (- (count benv) (inc index))]
+    (if-let [ty (nth benv bindex)]
+      (do
+        (println "[type-of-bvar] index=" index "type=" (stx/unparse ty))
+        (let [[status sort] (let [ty' (norm/normalize def-env ctx ty)]
+                              (if (stx/kind? ty')
+                                [:ok ty']
+                                (type-of-term def-env ctx (into [] (take bindex benv)) ty)))]
+          (do
+            (println "  => sort of type=" sort)
+            (if (= status :ko)
+              [:ko {:msg "Cannot calculate type of bound variable." :index index :from sort}]
+              (if (stx/sort? sort)
+                [:ok ty]
+                [:ko {:msg "Not a correct type (super-type is not a sort)" :term (keyword (str index))
+                      :type (stx/unparse ty) :sort (stx/unparse sort)}])))))
+      (throw (ex-info "No such bound variable (please report)"
+                      {:index index})))))
 
 (example
  (type-of-term {} '{bool ✳} [(stx/mk-fvar 'bool)]
@@ -227,22 +232,29 @@
 ;;}
 
 (defn type-of-lambda [def-env ctx benv x A t]
+  (println "[type-of-lambda] x=" x "A=" (stx/unparse A) "t=" (stx/unparse t))
+  (println "  ==> benv=" (map stx/unparse benv))
   (let [[status B] (type-of-term def-env ctx (conj benv A) t)]
     (if (= status :ko)
       [:ko {:msg "Cannot calculate codomain type of abstraction."
             :term (stx/unparse (stx/mk-lambda x A t)) :from B}]
-      (let [tprod (stx/mk-prod x A B)
-            [status sort] (type-of-term def-env ctx benv tprod)]
-        (if (= status :ko)
-          [:ko {:msg "Not a valid codomain type in abstraction (cannot calculate super-type)."
-                :term (stx/unparse (stx/mk-lambda x A t))
-                :codomain B :from sort}]
-          (if (not (stx/sort? (norm/normalize def-env ctx sort)))
-            [:ko {:msg "Not a valid codomain type in abstraction (super-type not a sort)."
-                  :term (stx/unparse (stx/mk-lambda x A t))
-                  :codomain (stx/unparse B)
-                  :type (stx/unparse sort)}]
-            [:ok tprod]))))))
+      (do (println "  ==> B=" (stx/unparse B))
+          (let [tprod (stx/mk-prod x A (stx/close B x))
+                _ (println "  ==> tprod=" (stx/unparse tprod))
+                [status sort] (type-of-term def-env ctx benv tprod)]
+            (do (println "  ==> sort=" (stx/unparse sort))
+                (if (= status :ko)
+                  [:ko {:msg "Not a valid codomain type in abstraction (cannot calculate super-type)."
+                        :term (stx/unparse (stx/mk-lambda x A t))
+                        :codomain B :from sort}]
+                  (if (not (stx/sort? (norm/normalize def-env ctx sort)))
+                    [:ko {:msg "Not a valid codomain type in abstraction (super-type not a sort)."
+                          :term (stx/unparse (stx/mk-lambda x A t))
+                          :codomain (stx/unparse B)
+                          :type (stx/unparse sort)}]
+                    (do
+                      (println "  ==> type-of-lambda=" (stx/unparse tprod))
+                      [:ok tprod])))))))))
 
 (example
  (stx/unparse
@@ -312,12 +324,11 @@
           [:ko {:msg "Not a product type for operator (left-hand) in application." :term (stx/unparse (stx/mk-app rator rand)) :operator-type (stx/unparse trator)}]
           (if (not (type-check? def-env ctx benv rand (:type trator')))
             [:ko {:msg "Cannot apply: type domain mismatch" :term (stx/unparse (stx/mk-app rator rand)) :domain (stx/unparse (:type trator')) :operand (stx/unparse rand)}]
-            (do ;;(println "[type-of-app] subst...")
-              ;;(println "    B = " B)
-              ;;(println "    x = " x)
-              ;;(println "    rand = " rand)
+            (do (println "[type-of-app] subst...")
+                (println "    body trator' = " (stx/unparse (:body trator')))
+                (println "    rand = " (stx/unparse rand))
               (let [res (stx/apply-to (:body trator') rand)]
-                ;;(println "   ===> " res)
+                (println "   ===> " (stx/unparse res))
                 [:ok res]))))))))
 
 (example
