@@ -1,7 +1,8 @@
 
 (ns latte.kernel.syntax
   (:require [clj-by.example :refer [example do-for-example]]
-            [clojure.set :as set]))
+            [clojure.set :as set]
+            [latte.kernel.lnsyntax :as ln]))
 
 
 ;;{
@@ -224,6 +225,40 @@
  (subst '(Π [⇧ (Π [x' T] (Π [⇧ (Π [x T] (Π [⇧ [X x]] [[R x] x']))] [R z]))]
             [R z]) 'z 'x)
  => '(Π [⇧ (Π [x' T] (Π [⇧' (Π [x'' T] (Π [⇧'' [X x'']] [[R x''] x']))] [R x]))] [R x]))
+
+;;{
+;; ## Locally nameless conversion
+;;}
+
+(defn nameless
+  ([t] (nameless t 0 {}))
+  ([t level bmap]
+   (cond
+     (variable? t) (if-let [k (get bmap t)]
+                     (ln/mk-bvar (- level (inc k)))
+                     (ln/mk-fvar t))
+     (binder? t) (let [[b [x ty] body] t
+                       ty' (nameless ty level bmap)
+                       body' (nameless body
+                                       (inc level)
+                                       (assoc bmap x level))]
+                   (case b
+                     λ (ln/mk-lambda ty' body')
+                     Π (ln/mk-prod ty' body')
+                     (throw (ex-info "Wrong binder (please report)" {:binder b}))))
+     (app? t) (let [[left right] t
+                    left' (nameless left level bmap)
+                    right' (nameless right level bmap)]
+                (ln/mk-app left' right'))
+     (ref? t) (let [[name & args] t
+                    args' (map #(nameless % level bmap) args)]
+                (ln/mk-ref name args'))
+     :else t)))
+
+(example
+ (ln/unparse
+  (nameless '(λ [x ✳] (λ [y ✳] [[x y] z]))))
+ => '(λ [_1 ✳] (λ [_2 ✳] [[_1 _2] z])))
 
 ;;{
 ;; ## Alpha-equivalence

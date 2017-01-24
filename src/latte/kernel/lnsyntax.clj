@@ -306,33 +306,13 @@ generalized), especially alpha-convertibility."
   (unparse-term [t k bmap forbid]
     (let [left (unparse-term (:left t) k bmap forbid)
           right (unparse-term (:right t) k bmap forbid)]
-      (if (app? (:left t))
-        (concat left (list right))
-        (list left right)))))
+      [left right])))
 
-(defn mk-app
-  ([right] right)
-  ([left right & others]
-   (let [app (->App left right)]
-     (if (seq others)
-       (apply mk-app app others)
-       app))))
-
-(example (mk-app 'x) => 'x)
+(defn mk-app [left right]
+  (->App left right))
 
 (example
  (mk-app 'a 'b) => '#latte.kernel.lnsyntax.App{:left a, :right b})
-
-(example
- (mk-app 'a 'b 'c)
- => '#latte.kernel.lnsyntax.App{:left #latte.kernel.lnsyntax.App{:left a, :right b},
-                               :right c})
-
-(example
- (mk-app 'a 'b 'c 'd)
- => '#latte.kernel.lnsyntax.App{:left #latte.kernel.lnsyntax.App{:left #latte.kernel.lnsyntax.App{:left a, :right b},
-                                                                 :right c},
-                                :right d})
 
 (defn app? [v]
   (instance? App v))
@@ -381,14 +361,14 @@ generalized), especially alpha-convertibility."
 
 (example
  (unparse
-  (mk-app 'x 'y (mk-app 'z 't)))
- => '(x y (z t)))
+  (mk-app (mk-app 'x 'y) (mk-app 'z 't)))
+ => '[[x y] [z t]])
 
 
 (example
  (unparse (mk-lambda '□
-                     (mk-lambda '□ (mk-app (mk-bvar 0) (mk-bvar 1) (mk-bvar 2)))))
- => '(λ [_1 □] (λ [_2 □] (_2 _1 :2))))
+                     (mk-lambda '□ (mk-app (mk-app (mk-bvar 0) (mk-bvar 1)) (mk-bvar 2)))))
+ => '(λ [_1 □] (λ [_2 □] [[_2 _1] :2])))
 
 (defrecord Ref [name args]
   Term
