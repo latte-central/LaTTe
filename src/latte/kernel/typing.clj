@@ -26,48 +26,60 @@
 (defn ctx-put [ctx x t]
   (cons [x t] ctx))
 
-(defn mk-ctx [& args]
-  args)
-
-
 ;;{
-;; ## Synthesis rules
+;; ## Cache management
 ;;}
 
-(declare type-of-type
-         type-of-var
-         type-of-prod
-         type-of-abs
-         type-of-app
-         type-of-ref)
+;; comment/uncomment for disabling/enabling memoization
+;; (def ^:private +memo-enabled+ true)
 
-(defn type-of-term [def-env ctx t]
-  (let [[status ty]
-        (cond
-          (stx/kind? t) [:ko {:msg "Kind has not type" :term t}]
-          (stx/type? t) (type-of-type)
-          (stx/variable? t) (type-of-var def-env ctx t)
-          ;; binders (lambda, prod)
-          (stx/binder? t)
-          (let [[binder [x ty] body] t]
-            (case binder
-              λ (type-of-abs def-env ctx x ty body)
-              Π (type-of-prod def-env ctx x ty body)
-              (throw (ex-info "No such binder (please report)" {:term t :binder binder}))))
-          ;; references
-          (stx/ref? t) (type-of-ref def-env ctx (first t) (rest t))
-          ;; applications
-          (stx/app? t) (type-of-app def-env ctx (first t) (second t))
-          :else
-          (throw (ex-info "Invalid term (please report)" {:term t})))]
-    ;;(println "--------------------")
-    ;;(println "[type-of-term] t=" t)
-    ;;(clojure.pprint/pprint ty)
-    ;;(println "--------------------")
-    [status ty]))
+(def ^:private +memo-cache+ (atom {}))
 
-(example
- (type-of-term {} [] '□) => '[:ko {:msg "Kind has not type" :term □}])
+(defn memo-clear! []
+  (reset! +memo-cache+ {}))
+
+(defn memo-fetch [t]
+  (get @+memo-cache+ t))
+
+(defn memo-register! [t ty]
+  (swap! +memo-cache+ (fn [cache]
+                        (assoc cache t ty))))
+
+(defmacro memo [t]
+  (if-let [ex-var (find-var (symbol (str *ns*) "+memo-enabled+"))]
+    (if (var-get ex-var)
+      `(memo-fetch ~t)
+      `nil)
+    `nil))
+
+(defmacro memo-put! [t ty]
+  (if-let [ex-var (find-var (symbol (str *ns*) "+memo-enabled+"))]
+    (if (var-get ex-var)
+      `(memo-register! ~t ~ty)
+      `nil)
+    `nil))
+
+;;{
+;; ## Main functions
+;;}
+
+(declare type-of-term)
+(defn type-of
+  ([t] (type-of {} [] t))
+  ([ctx t] (type-of {} ctx t))
+  ([def-env ctx t]
+   (memo-clear!)
+   (type-of-term def-env ctx t)))
+
+(defn proper-type?
+  ([t] (proper-type? {} [] t))
+  ([ctx t] (proper-type? {} ctx t))
+  ([def-env ctx t]
+   (let [[status ty] (type-of def-env ctx t)]
+     (if (= status :ko)
+       (throw (ex-info "Type checking error" ty))
+       (let [sort (norm/normalize def-env ctx ty)]
+         (stx/sort? sort))))))
 
 (defn type-check? [def-env ctx term type]
   ;;(println "[type-check?] term=" term "type=" type)
@@ -79,6 +91,54 @@
       (throw (ex-info "Cannot check type of term" {:term term :from type'})))))
 
 ;;{
+;; ## Type systems
+;;}
+
+(declare type-of-type
+         type-of-var
+         type-of-prod
+         type-of-abs
+         type-of-app
+         type-of-ref)
+
+(defn type-of-term [def-env ctx t]
+  (cond
+    (stx/kind? t) [:ko {:msg "Kind has not type" :term t}]
+    (stx/type? t) (type-of-type)
+    (stx/variable? t) (type-of-var def-env ctx t)
+    :else
+    (if-let [ty (memo (stx/alpha-norm t))]
+      ;; memo found
+      (do
+        (println "Hit!")
+        [:ok ty])
+      (let [[status ty]
+            (cond
+              ;; binders (lambda, prod)
+              (stx/binder? t)
+              (let [[binder [x ty] body] t]
+                (case binder
+                  λ (type-of-abs def-env ctx x ty body)
+                  Π (type-of-prod def-env ctx x ty body)
+                  (throw (ex-info "No such binder (please report)" {:term t :binder binder}))))
+              ;; references
+              (stx/ref? t) (type-of-ref def-env ctx (first t) (rest t))
+              ;; applications
+              (stx/app? t) (type-of-app def-env ctx (first t) (second t))
+              :else
+              (throw (ex-info "Invalid term (please report)" {:term t})))]
+        ;; body
+        (if (= status :ok)
+          (do
+            (memo-put! (stx/alpha-norm t) (stx/alpha-norm ty))
+            [status ty])
+          [status ty])))))
+
+  
+(example
+ (type-of {} [] '□) => '[:ko {:msg "Kind has not type" :term □}])
+
+;;{
 ;;
 ;;     --------------------
 ;;     E |- Type ::> Kind
@@ -88,7 +148,7 @@
   [:ok '□])
 
 (example
- (type-of-term {} [] '✳) => '[:ok □])
+ (type-of {} [] '✳) => '[:ok □])
 
 ;;{
 ;;        ty::>Type or t::>Kind in E
@@ -110,28 +170,28 @@
     [:ko {:msg "No such variable in type context" :term x}]))
 
 (example
- (type-of-term {} '[[bool ✳] [x bool]] 'x) => '[:ok bool])
+ (type-of {} '[[bool ✳] [x bool]] 'x) => '[:ok bool])
 
 (example
- (type-of-term {} '[[x bool]] 'x)
+ (type-of {} '[[x bool]] 'x)
  => '[:ko {:msg "Cannot calculate type of variable.",
            :term x,
            :from {:msg "No such variable in type context", :term bool}}])
 
 (example
- (type-of-term {} '[[y x] [x bool]] 'y)
+ (type-of {} '[[y x] [x bool]] 'y)
  => '[:ko {:msg "Cannot calculate type of variable.", :term y, :from {:msg "Cannot calculate type of variable.", :term x, :from {:msg "No such variable in type context", :term bool}}}])
 
 (example
- (type-of-term {} '[[x ✳]] 'x)
+ (type-of {} '[[x ✳]] 'x)
  => '[:ok ✳])
 
 (example
- (type-of-term {} '[[x □]] 'x)
+ (type-of {} '[[x □]] 'x)
  => '[:ok □])
 
 (example
- (type-of-term {} '[[bool ✳] [y bool]] 'x)
+ (type-of {} '[[bool ✳] [y bool]] 'x)
  => '[:ko {:msg "No such variable in type context", :term x}])
 
 ;;{
@@ -158,10 +218,10 @@
                   [:ok sort2])))))))))
 
 (example
- (type-of-term {} [] '(Π [x ✳] x)) => '[:ok ✳])
+ (type-of {} [] '(Π [x ✳] x)) => '[:ok ✳])
 
 (example
- (type-of-term {} [] '(Π [x ✳] ✳)) => '[:ok □])
+ (type-of {} [] '(Π [x ✳] ✳)) => '[:ok □])
 
 (example
  (type-of-term {} [] '(Π [x □] ✳))
@@ -169,7 +229,7 @@
            :from {:msg "Kind has not type" :term □}}])
 
 (example
- (type-of-term {} [] '(Π [x ✳] □))
+ (type-of {} [] '(Π [x ✳] □))
  => '[:ko {:msg "Cannot calculate codomain type of product.", :term □,
            :from {:msg "Kind has not type" :term □}}])
 
@@ -199,45 +259,45 @@
             [:ok tprod]))))))
 
 (example
- (type-of-term {} '[[bool ✳] [t bool] [y bool]]
+ (type-of {} '[[bool ✳] [t bool] [y bool]]
           '(λ [x bool] x))
  => '[:ok (Π [x bool] bool)])
 
 (example
- (type-of-term {} [] '(λ [x ✳] x)) => '[:ok (Π [x ✳] ✳)])
+ (type-of {} [] '(λ [x ✳] x)) => '[:ok (Π [x ✳] ✳)])
 
 (example
- (type-of-term {} '[[y bool]] '(λ [x bool] x))
+ (type-of {} '[[y bool]] '(λ [x bool] x))
  => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (λ [x bool] x),
            :from {:msg "Cannot calculate type of variable.", :term x,
                   :from {:msg "No such variable in type context", :term bool}}}])
 
 (example
- (type-of-term {} '[[y ✳] [z y]] '(λ [x z] x))
+ (type-of {} '[[y ✳] [z y]] '(λ [x z] x))
 
  
  => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (λ [x z] x),
            :from {:msg "Not a correct type (super-type is not a sort)", :term x, :type z, :sort y}}])
 
 (example
- (type-of-term {} '[[y bool]] '(λ [x ✳] y))
+ (type-of {} '[[y bool]] '(λ [x ✳] y))
  => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (λ [x ✳] y),
            :from {:msg "Cannot calculate type of variable.", :term y,
                   :from {:msg "No such variable in type context", :term bool}}}])
 
 (example
- (type-of-term {} '[[y bool]] '(λ [x ✳] □))
+ (type-of {} '[[y bool]] '(λ [x ✳] □))
  => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (λ [x ✳] □),
            :from {:msg "Kind has not type" :term □}}])
 
 (example
- (type-of-term {} '[[y bool]] '(λ [x ✳] ✳))
+ (type-of {} '[[y bool]] '(λ [x ✳] ✳))
  => '[:ko {:msg "Not a valid codomain type in abstraction (cannot calculate super-type).",
            :term (λ [x ✳] ✳), :codomain □,
            :from {:msg "Cannot calculate codomain type of product.", :term □,
                   :from {:msg "Kind has not type", :term □}}}])
 (example
- (type-of-term {} '[[w ✳] [y w] [z y]] '(λ [x ✳] z))
+ (type-of {} '[[w ✳] [y w] [z y]] '(λ [x ✳] z))
  => '[:ko {:msg "Cannot calculate codomain type of abstraction.", :term (λ [x ✳] z),
            :from {:msg "Not a correct type (super-type is not a sort)", :term z, :type y, :sort w}}])
 
@@ -269,7 +329,7 @@
 
 
 (example
- (type-of-term {} '[[bool ✳] [y bool]]
+ (type-of {} '[[bool ✳] [y bool]]
           '[(λ [x bool] x) y])
  => '[:ok bool])
 
@@ -330,7 +390,7 @@
     [status ty]))
 
 (example
- (type-of-term {'test (defenv/map->Definition
+ (type-of {'test (defenv/map->Definition
                         '{:params [[x ✳] [y ✳]]
                           :type ✳
                           :arity 2})}
@@ -339,25 +399,10 @@
  => '[:ok ✳])
 
 (example
- (type-of-term {'test (defenv/map->Definition
+ (type-of {'test (defenv/map->Definition
                         '{:params [[x ✳] [y ✳]]
                           :type ✳
                           :arity 2})}
           '[[bool ✳] [a ✳] [b bool]]
           '(test a b))
  => '[:ko {:msg "Wrong argument type", :term (test b), :arg b, :expected-type ✳}])
-
-(defn type-of
-  ([t] (type-of {} [] t))
-  ([ctx t] (type-of {} ctx t))
-  ([def-env ctx t] (type-of-term def-env ctx t)))
-
-(defn proper-type?
-  ([t] (proper-type? {} [] t))
-  ([ctx t] (proper-type? {} ctx t))
-  ([def-env ctx t]
-   (let [[status ty] (type-of def-env ctx t)]
-     (if (= status :ko)
-       (throw (ex-info "Type checking error" ty))
-       (let [sort (norm/normalize def-env ctx ty)]
-         (stx/sort? sort))))))
