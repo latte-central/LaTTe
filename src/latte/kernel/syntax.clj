@@ -309,6 +309,11 @@
   (= (alpha-norm t1)
      (alpha-norm t2)))
 
+;; it's longer this way...
+;; (defn alpha-eq? [t1 t2]
+;;   (= (nameless t1)
+;;      (nameless t2)))
+
 (example
  (alpha-eq? '(λ [x ✳] x)
             '(λ [y ✳] y)) => true)
