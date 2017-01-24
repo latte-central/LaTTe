@@ -23,7 +23,7 @@
       (let [[status body] (stx/parse-term def-env body)]
         (if (= status :ko)
           [:ko body]
-          (let [[status ty] (ty/type-of-term def-env (u/vconcat params ctx) body)]
+          (let [[status ty] (ty/type-of def-env (u/vconcat params ctx) body)]
             (if (= status :ko)
               [:ko ty]
               (if def-type

@@ -7,7 +7,7 @@
             [latte.kernel.defenv :as defenv]
             [latte.kernel.presyntax :as stx]
             [latte.kernel.syntax :refer [free-vars]]
-            [latte.kernel.typing :as ty :refer [type-of-term]]
+            [latte.kernel.typing :as ty :refer [type-of]]
             [latte.kernel.norm :as n]
             [latte.kernel.defs :as d]
             [latte.kernel.equiv :as equiv]))
@@ -39,7 +39,6 @@
 ;; # Proof top-level form
 ;;}
 
-
 (declare evaluate-script)
 
 (defn check-proof-term [def-env ctx thm-ty proof-term]
@@ -49,7 +48,7 @@
       [:ko {:msg (str "wrong proof term,  " (:msg proof))
             :error (dissoc proof :msg)}]
       (let [[status ptype] (timing "- infer proof type"
-                                   (ty/type-of-term def-env ctx proof))]
+                                   (ty/type-of def-env ctx proof))]
         ;; (println "[check-proof-term] type-of-proof=" ptype)
         (if (= status :ko)
           [:ko {:msg (str "type error, " (:msg ptype))
@@ -218,13 +217,13 @@
             (let [[status have-type]
                   (if (nil? have-type)
                     (let [[status have-type] (timing "  => infer step type"
-                                                     (ty/type-of-term def-env ctx term'))]
+                                                     (ty/type-of def-env ctx term'))]
                       (if (= status :ko)
                         [:ko (assoc (dissoc have-type :msg)
                                     :msg (str "Cannot perform have step: " (:msg have-type)))]
                         [:ok have-type]))
                     (let [[status computed-type] (timing "  => compute step type"
-                                                         (type-of-term def-env ctx term'))]
+                                                         (type-of def-env ctx term'))]
                       ;;(println "  [computed-type] = " computed-type)
                       (if (= status :ko)
                         [:ko {:msg "Cannot synthetize term type."
@@ -307,7 +306,7 @@
       (clojure.pprint/pprint term)
       (let [term' (n/normalize def-env ctx term)]
         (clojure.pprint/pprint term)
-        (let [[status ty] (ty/type-of-term def-env ctx term')] 
+        (let [[status ty] (ty/type-of def-env ctx term')] 
           (if (= status :ko)
             (clojure.pprint/pprint ty)
             (do (print "::")
@@ -325,7 +324,7 @@
       (clojure.pprint/pprint term)
       (let [term (n/normalize def-env ctx term)]
         (clojure.pprint/pprint term)
-        (let [[status ty] (ty/type-of-term def-env ctx term)] 
+        (let [[status ty] (ty/type-of def-env ctx term)] 
           (if (= status :ko)
             (clojure.pprint/pprint ty)
             (do (print "::")

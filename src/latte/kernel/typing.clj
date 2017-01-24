@@ -350,16 +350,14 @@
 (defn type-of
   ([t] (type-of {} [] t))
   ([ctx t] (type-of {} ctx t))
-  ([def-env ctx t]
-   (let [[status ty] (type-of-term def-env ctx t)]
-     (if (= status :ko)
-       (throw (ex-info "Type checking error" ty))
-       ty))))
+  ([def-env ctx t] (type-of-term def-env ctx t)))
 
 (defn proper-type?
   ([t] (proper-type? {} [] t))
   ([ctx t] (proper-type? {} ctx t))
   ([def-env ctx t]
-   (let [ty (type-of def-env ctx t)]
-     (let [sort (norm/normalize def-env ctx ty)]
-       (stx/sort? sort)))))
+   (let [[status ty] (type-of def-env ctx t)]
+     (if (= status :ko)
+       (throw (ex-info "Type checking error" ty))
+       (let [sort (norm/normalize def-env ctx ty)]
+         (stx/sort? sort))))))
