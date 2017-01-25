@@ -31,7 +31,7 @@
 ;;}
 
 ;; comment/uncomment for disabling/enabling memoization
-;; (def ^:private +memo-enabled+ true)
+(def ^:private +memo-enabled+ true)
 
 (def ^:private +memo-cache+ (atom {}))
 
@@ -110,7 +110,7 @@
     (if-let [ty (memo (stx/alpha-norm t))]
       ;; memo found
       (do
-        (println "Hit!")
+        ;;(println "Hit!")
         [:ok ty])
       (let [[status ty]
             (cond
