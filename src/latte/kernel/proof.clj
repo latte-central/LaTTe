@@ -39,11 +39,11 @@
 ;; # Proof checking control
 ;;}
 
-(def ^:private +proof-checking-enabled+ (atom true))
+;; (def ^:private +proof-checking-enabled+ (atom true))
 
 ;; The following is highly unsafe (and only required to
 ;; speed up heavy libraries at development time)
-;; (def ^:private +proof-checking-enabled+ (atom false))
+(def ^:private +proof-checking-enabled+ (atom false))
 
 (defn disable-proof-checking! []
   (swap! +proof-checking-enabled+
@@ -53,10 +53,10 @@
                (println "[WARNING] Proof-checking will be disabled, this is a highly *unsafe* mode.")
                (println "          This is an outrage to formal logic and mathematics !")
                (println "          (maybe you know what you are doing)")
-               (not enabled))
+               false)
              (do
                (println "[WARNING] Proof-checking already disabled.")
-               enabled)))))
+               false)))))
 
 (defn enable-proof-checking! []
   (swap! +proof-checking-enabled+
@@ -64,10 +64,10 @@
            (if (not enabled)
              (do
                (println "[WARNING] Proof-checking will be enabled, you're now *safe*!")
-               enabled)
+               true)
              (do
                (println "[WARNING] Proof-checking already enabled.")
-               enabled)))))
+               true)))))
 
 ;;{
 ;; # Proof top-level form
