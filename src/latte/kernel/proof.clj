@@ -36,6 +36,40 @@
       `~expr)))
 
 ;;{
+;; # Proof checking control
+;;}
+
+(def ^:private +proof-checking-enabled+ (atom true))
+
+;; The following is highly unsafe (and only required to
+;; speed up heavy libraries at development time)
+;; (def ^:private +proof-checking-enabled+ (atom false))
+
+(defn disable-proof-checking! []
+  (swap! +proof-checking-enabled+
+         (fn [enabled]
+           (if enabled
+             (do
+               (println "[WARNING] Proof-checking will be disabled, this is a highly *unsafe* mode.")
+               (println "          This is an outrage to formal logic and mathematics !")
+               (println "          (maybe you know what you are doing)")
+               (not enabled))
+             (do
+               (println "[WARNING] Proof-checking already disabled.")
+               enabled)))))
+
+(defn enable-proof-checking! []
+  (swap! +proof-checking-enabled+
+         (fn [enabled]
+           (if (not enabled)
+             (do
+               (println "[WARNING] Proof-checking will be enabled, you're now *safe*!")
+               enabled)
+             (do
+               (println "[WARNING] Proof-checking already enabled.")
+               enabled)))))
+
+;;{
 ;; # Proof top-level form
 ;;}
 
@@ -66,23 +100,29 @@
 
 (defn check-proof
   [def-env ctx thm-name thm-ty method steps]
-  (let [[status proof-term]
-        (case method
-          :term (cond
-                  (empty? steps)
-                  [:ko {:msg "missing proof term" :steps steps}]
-                  (seq (rest steps))
-                  [:ko {:msg "too many proof steps, direct method requires a single term" :steps steps}]
-                  :else
-                  [:ok (first steps)])
-          :script (do
-                    (when-timing
-                        (println "=== Checking proof of theorem" thm-name "(timing enabled) ==="))
-                    (evaluate-script steps def-env ctx [] '()))
-          [:ko {:msg "no such proof method" :method method}])]
-    (if (= status :ko)
-      [:ko proof-term]
-      (check-proof-term def-env ctx thm-ty proof-term))))
+  (if (not @+proof-checking-enabled+)
+    ;; proof checking is off
+    (do
+      (println "[WARNING] Accepting unchecked proof for theorem: " thm-name)
+      [:ok true])
+    ;; proof checking is on
+    (let [[status proof-term]
+          (case method
+            :term (cond
+                    (empty? steps)
+                    [:ko {:msg "missing proof term" :steps steps}]
+                    (seq (rest steps))
+                    [:ko {:msg "too many proof steps, direct method requires a single term" :steps steps}]
+                    :else
+                    [:ok (first steps)])
+            :script (do
+                      (when-timing
+                          (println "=== Checking proof of theorem" thm-name "(timing enabled) ==="))
+                      (evaluate-script steps def-env ctx [] '()))
+            [:ko {:msg "no such proof method" :method method}])]
+      (if (= status :ko)
+        [:ko proof-term]
+        (check-proof-term def-env ctx thm-ty proof-term)))))
 
 ;;{
 ;; # Declarative proofs
