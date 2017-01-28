@@ -172,10 +172,10 @@
   [[T :type] [U :type] [f (==> T U)] [b (bijective T U f)]]
   (surjective U T (inverse T U f b)))
 
-(proof inverse-surjective
+(latte/try-proof inverse-surjective
     :script
   (have <a> (injective T U f) :by ((bijective-is-injective T U f) b))
-  (have inv-f (==> U T) :by (inverse T U f b))
+  (pose inv-f :as (inverse T U f b)) ;; TODO TODO !
   (assume [x T]
     (have y U :by (f x))
     (have <b> (equal U (f (inv-f y)) (f x))
