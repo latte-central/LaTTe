@@ -44,11 +44,15 @@
                 [:ok (->Definition def-name params (count params) body ty)]))))))))
 
 (defn handle-local-term-definition [def-name body def-type]
-  [:ok (->Definition def-name [] 0 body def-type)])
+  ;; [:ok (->Definition def-name [] 0 body def-type)]
+  ;; to avoid term blow-up we can save proof steps as
+  ;; theorems and not definitions
+  [:ok (->Theorem def-name [] 0 def-type body)])
 
 (defn handle-local-term-discharge [local-def x ty]
-  (let [{def-name :name parsed-term :parsed-term type :type} local-def]
-    (->Definition def-name [] 0 (list 'λ [x ty] parsed-term) (list 'Π [x ty] type))))
+  (let [{def-name :name term :proof type :type} local-def]
+    ;; (->Definition def-name [] 0 (list 'λ [x ty] parsed-term) (list 'Π [x ty] type))
+    (->Theorem def-name [] 0 (list 'Π [x ty] type) (list 'λ [x ty] term))))
 
 ;;{
 ;; ## Theorem definitions
