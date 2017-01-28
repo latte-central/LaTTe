@@ -246,8 +246,8 @@
               term' (timing "  => unfolding local definitions"
                             ;; XXX: full normalization should
                             ;; not be needed ...
-                            ;; (n/normalize def-env ctx term) ???
-                            term) ;;(n/delta-normalize-local def-env term))
+                            ;; ... (n/normalize def-env ctx term) ???
+                            (n/delta-normalize-local def-env term))
               [status have-type] (if (and (symbol? have-type)
                                           (= (clojure.core/name have-type) "_"))
                                    [:ok nil]
@@ -278,7 +278,7 @@
               (cond (= status :ko) [:ko have-type]
                     (nil? name) [:ok [def-env ctx]]
                     :else
-                    (let [[status tdef] (d/handle-local-term-definition
+                    (let [[status tdef] (d/handle-local-theorem-definition
                                          name
                                          term'
                                          have-type)]
@@ -305,6 +305,62 @@
                                               :proof x}}
            [[A ✳] [x A]] [[x #{step}]]]])
 
+(defn parse-pose-name [pose-name]
+  (cond
+    (not (symbol? pose-name))
+    [:ko {:msg "Wrong pose step: name argument is not a symbol." :name-arg pose-name}]
+    (stx/reserved-symbol? pose-name)
+    [:ko {:msg "Wrong pose step: name is reserved." :name pose-name}]
+    :else
+    [:ok pose-name]))
+
+(defn parse-pose-step [script]
+  (case (count script)
+    4 (let [[step as term] (rest script)
+            [status pose-name] (parse-pose-name step)]
+        (if (= status :ko)
+          [:ko pose-name]
+          [:ok {:pose-name pose-name,
+                :pose-term term}]))
+    [:ko {:msg "Wrong pose step: 3 arguments needed" :nb-args (dec (count script))}]))
+
+(defn do-pose-step [def-env ctx deps name pose-term]
+  ;;(println "[do-pose-step] name=" name "term=" pose-term)
+  (let [[status term] (stx/parse-term def-env pose-term)]
+    (if (= status :ko)
+      [:ko {:msg "Cannot perform pose step: incorrect term." :pose-name name :from term}]
+      (do
+        (when-timing
+            (println "- pose step" name))
+        (let [term' (timing "  => unfolding local definitions"
+                            (n/delta-normalize-local def-env term))
+              [status pose-type] (timing "  => infer step type"
+                                         (ty/type-of-term def-env ctx term'))]
+          (if (= status :ko)
+            [:ko (assoc (dissoc pose-type :msg)
+                        :msg (str "Cannot perform pose step: " (:msg pose-type)))]
+            (let [[status tdef] (d/handle-local-term-definition
+                                 name
+                                 term'
+                                 pose-type)]
+              ;;(println "[pose-step] term=" term)
+              ;;(println "            def=" (:parsed-term tdef))
+              (if (= status :ko)
+                [:ko {:msg "Cannot perform pose step: wrong local definition."
+                      :pose-name name
+                      :from tdef}]
+                (let [deps' (mapv (fn [[x xdeps]]
+                                    [x (conj xdeps name)]) deps)]
+                  [:ok [(assoc def-env name tdef) ctx deps']])))))))))
+
+(example
+ (do-pose-step
+  {}
+  '[[A ✳] [x A]]
+  '[[x #{}]]
+  'def 'x)
+ => '[:ok [{def #latte.kernel.defenv.Definition{:name def, :params [], :arity 0, :parsed-term x, :type A}} [[A ✳] [x A]] [[x #{def}]]]])
+
 (defn discharge-all [def-env ctx deps]
   ;; (println "[discharge-all] deps=" deps)
   (loop [deps deps, ctx ctx, def-env' def-env]
@@ -323,7 +379,7 @@
       (if (= status :ko)
         [:ko {:msg "Cannot do QED step: parse error." :error term}]
         ;;[:ok (n/delta-normalize-local def-env' term)]
-        [:ok term def-env']))))
+        [:ok (n/delta-normalize-local def-env' term) def-env']))))
 
 (defn do-showdef-step [def-env arg]
   (println "[showdef]" arg)
@@ -410,6 +466,15 @@
               [:ko info nil]
               (let [{have-name :have-name have-type :have-type method :method have-arg :have-arg} info]
                 (let [[status res] (do-have-step def-env ctx deps have-name have-type method have-arg)]
+                  (if (= status :ko)
+                    [:ko res nil]
+                    (recur  '() (first res) (second res) (nth res 2) cont-stack))))))
+          pose
+          (let [[status info] (parse-pose-step script)]
+            (if (= status :ko)
+              [:ko info nil]
+              (let [{pose-name :pos-name pose-term :pose-term} info]
+                (let [[status res] (do-pose-step def-env ctx deps pose-name pose-term)]
                   (if (= status :ko)
                     [:ko res nil]
                     (recur  '() (first res) (second res) (nth res 2) cont-stack))))))

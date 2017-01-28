@@ -44,6 +44,9 @@
                 [:ok (->Definition def-name params (count params) body ty)]))))))))
 
 (defn handle-local-term-definition [def-name body def-type]
+  [:ok (->Definition def-name [] 0 body def-type)])
+
+(defn handle-local-theorem-definition [def-name body def-type]
   ;; [:ok (->Definition def-name [] 0 body def-type)]
   ;; to avoid term blow-up we can save proof steps as
   ;; theorems and not definitions

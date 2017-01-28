@@ -487,6 +487,11 @@ Implication is right associative:
   [& args]
   `((quote have) ~@args))
 
+(defmacro pose
+  {:style/indent [1]}
+  [& args]
+  `((quote pose) ~@args))
+
 (defmacro qed
   [& args]
   `((quote qed) ~@args))
