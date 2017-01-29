@@ -81,22 +81,22 @@
   (let [[status proof] (stx/parse-term def-env proof-term)]
     (if (= status :ko)
       [:ko {:msg (str "wrong proof term,  " (:msg proof))
-            :error (dissoc proof :msg)}]
+            :error (dissoc proof :msg)} nil]
       (let [[status ptype] (timing "- infer proof type"
                                    (ty/type-of-term def-env ctx proof))]
         ;; (println "[check-proof-term] type-of-proof=" ptype)
         (if (= status :ko)
           [:ko {:msg (str "type error, " (:msg ptype))
-                :error (dissoc ptype :msg)}]
+                :error (dissoc ptype :msg)} nil]
           (if (not (timing "- check proof type against theorem type"
                            (n/beta-eq? def-env ctx thm-ty ptype)))
             [:ko {:msg "proof checking error (type mismatch)"
                   :expected-type thm-ty
-                  :proof-type ptype}]
+                  :proof-type ptype} nil]
             (do
               (when-timing
                   (println "=================================================================="))
-              [:ok proof])))))))
+              [:ok proof def-env])))))))
 
 (defn check-proof
   [def-env ctx thm-name thm-ty method steps]
@@ -106,15 +106,15 @@
       (println "[WARNING] Accepting unchecked proof for theorem: " thm-name)
       [:ok true])
     ;; proof checking is on
-    (let [[status proof-term]
+    (let [[status proof-term def-env']
           (case method
             :term (cond
                     (empty? steps)
-                    [:ko {:msg "missing proof term" :steps steps}]
+                    [:ko {:msg "missing proof term" :steps steps} nil]
                     (seq (rest steps))
-                    [:ko {:msg "too many proof steps, direct method requires a single term" :steps steps}]
+                    [:ko {:msg "too many proof steps, direct method requires a single term" :steps steps} nil]
                     :else
-                    [:ok (first steps)])
+                    [:ok (first steps) def-env])
             :script (do
                       (when-timing
                           (println "=== Checking proof of theorem" thm-name "(timing enabled) ==="))
@@ -122,7 +122,7 @@
             [:ko {:msg "no such proof method" :method method}])]
       (if (= status :ko)
         [:ko proof-term]
-        (check-proof-term def-env ctx thm-ty proof-term)))))
+        (check-proof-term def-env' ctx thm-ty proof-term)))))
 
 ;;{
 ;; # Declarative proofs
@@ -184,7 +184,7 @@
  => '[:ko {:msg "Not a proper type in assume step", :type-arg x, :parsed-term x}])
 
 (defn do-discharge-step [def-env ctx deps x]
-  #_(println "[discharge] x=" x "deps=" deps)
+  ;; (println "[discharge] x=" x "deps=" deps)
   (cond
     (not= (ffirst ctx) x)
     (throw (ex-info "Discharge failure: variable not in head of context (please report)." {:variable x :context ctx}))
@@ -192,7 +192,7 @@
     (throw (ex-info "Discharge failure: variable not in head of dependencies (please report)." {:variable x :deps deps}))
     :else
     (let [def-env' (reduce (fn [env def-name]
-                             #_(println "[discharge-step] env=" env "def-name=" def-name)
+                             ;; (println "[discharge-step] env=" env "def-name=" def-name)
                              (assoc env
                                     def-name
                                     (d/handle-local-term-discharge
@@ -246,7 +246,7 @@
               term' (timing "  => unfolding local definitions"
                             ;; XXX: full normalization should
                             ;; not be needed ...
-                            ;; (n/normalize def-env ctx term) ???
+                            ;; ... (n/normalize def-env ctx term) ???
                             (n/delta-normalize-local def-env term))
               [status have-type] (if (and (symbol? have-type)
                                           (= (clojure.core/name have-type) "_"))
@@ -278,7 +278,7 @@
               (cond (= status :ko) [:ko have-type]
                     (nil? name) [:ok [def-env ctx]]
                     :else
-                    (let [[status tdef] (d/handle-local-term-definition
+                    (let [[status tdef] (d/handle-local-theorem-definition
                                          name
                                          term'
                                          have-type)]
@@ -298,15 +298,71 @@
   '[[A ✳] [x A]]
   '[[x #{}]]
   'step 'A :by 'x)
- => '[:ok [{step #latte.kernel.defenv.Definition{:name step,
-                                                 :params [],
-                                                 :arity 0,
-                                                 :parsed-term x,
-                                                 :type A}} [[A ✳] [x A]] [[x #{step}]]]])
+ => '[:ok [{step #latte.kernel.defenv.Theorem{:name step,
+                                              :params [],
+                                              :arity 0,
+                                              :type A,
+                                              :proof x}}
+           [[A ✳] [x A]] [[x #{step}]]]])
 
+(defn parse-pose-name [pose-name]
+  (cond
+    (not (symbol? pose-name))
+    [:ko {:msg "Wrong pose step: name argument is not a symbol." :name-arg pose-name}]
+    (stx/reserved-symbol? pose-name)
+    [:ko {:msg "Wrong pose step: name is reserved." :name pose-name}]
+    :else
+    [:ok pose-name]))
+
+(defn parse-pose-step [script]
+  (case (count script)
+    4 (let [[step as term] (rest script)
+            [status pose-name] (parse-pose-name step)]
+        (if (= status :ko)
+          [:ko pose-name]
+          [:ok {:pose-name pose-name,
+                :pose-term term}]))
+    [:ko {:msg "Wrong pose step: 3 arguments needed" :nb-args (dec (count script))}]))
+
+(defn do-pose-step [def-env ctx deps name pose-term]
+  ;; (println "[do-pose-step] name=" name "term=" pose-term)
+  (let [[status term] (stx/parse-term def-env pose-term)]
+    (if (= status :ko)
+      [:ko {:msg "Cannot perform pose step: incorrect term." :pose-name name :from term}]
+      (do
+        (when-timing
+            (println "- pose step" name))
+        (let [term' (timing "  => unfolding local definitions"
+                            (n/delta-normalize-local def-env term))
+              [status pose-type] (timing "  => infer step type"
+                                         (ty/type-of-term def-env ctx term'))]
+          (if (= status :ko)
+            [:ko (assoc (dissoc pose-type :msg)
+                        :msg (str "Cannot perform pose step: " (:msg pose-type)))]
+            (let [[status tdef] (d/handle-local-term-definition
+                                 name
+                                 term'
+                                 pose-type)]
+              ;;(println "[pose-step] term=" term)
+              ;;(println "            def=" (:parsed-term tdef))
+              (if (= status :ko)
+                [:ko {:msg "Cannot perform pose step: wrong local definition."
+                      :pose-name name
+                      :from tdef}]
+                (let [deps' (mapv (fn [[x xdeps]]
+                                    [x (conj xdeps name)]) deps)]
+                  [:ok [(assoc def-env name tdef) ctx deps']])))))))))
+
+(example
+ (do-pose-step
+  {}
+  '[[A ✳] [x A]]
+  '[[x #{}]]
+  'def 'x)
+ => '[:ok [{def #latte.kernel.defenv.Definition{:name def, :params [], :arity 0, :parsed-term x, :type A}} [[A ✳] [x A]] [[x #{def}]]]])
 
 (defn discharge-all [def-env ctx deps]
-  #_(println "[discharge-all] deps=" deps)
+  ;; (println "[discharge-all] deps=" deps)
   (loop [deps deps, ctx ctx, def-env' def-env]
     (if (seq deps)
       (let [[x xdeps] (first deps)
@@ -322,7 +378,8 @@
     (let [[status term] (stx/parse-term def-env' term)]
       (if (= status :ko)
         [:ko {:msg "Cannot do QED step: parse error." :error term}]
-        [:ok (n/delta-normalize-local def-env' term)]))))
+        ;;[:ok (n/delta-normalize-local def-env' term)]
+        [:ok (n/delta-normalize-local def-env' term) def-env']))))
 
 (defn do-showdef-step [def-env arg]
   (println "[showdef]" arg)
@@ -379,10 +436,10 @@
   (println "-----------------------------------------"))
 
 (defn evaluate-script [script def-env ctx deps cont-stack]
-  #_(println "[evaluate-script] ctx=" ctx "deps=" deps)
-  #_(println "---------------------------------------------")
-  #_(clojure.pprint/pprint script)
-  #_(println "---------------------------------------------")
+  ;; (println "[evaluate-script] ctx=" ctx "deps=" deps)
+  ;; (println "---------------------------------------------")
+  ;; (clojure.pprint/pprint script)
+  ;; (println "---------------------------------------------")
   (if (seq script)
     (if (sequential? (first script))
       (recur (first script) def-env ctx deps (conj cont-stack (rest script)))
@@ -393,25 +450,34 @@
           assume
           (let [[status info] (parse-assume-step script)]
             (if (= status :ko)
-              [:ko info]
+              [:ko info nil]
               (let [{[x ty] :binding body :body} info]
                 (let [[status res] (do-assume-step def-env ctx deps x ty)]
                   (if (= status :ko)
-                    [:ko res]
+                    [:ko res nil]
                     (recur body (first res) (second res) (nth res 2)
-                           (conj cont-stack (list 'discharge x))))))))
+                     (conj cont-stack (list 'discharge x))))))))
           discharge
           (let [[def-env' ctx' deps'] (do-discharge-step def-env ctx deps (second script))]
             (recur '() def-env' ctx' deps' cont-stack))
           have
           (let [[status info] (parse-have-step script)]
             (if (= status :ko)
-              [:ko info]
+              [:ko info nil]
               (let [{have-name :have-name have-type :have-type method :method have-arg :have-arg} info]
                 (let [[status res] (do-have-step def-env ctx deps have-name have-type method have-arg)]
                   (if (= status :ko)
-                    [:ko res]
-                    (recur '() (first res) (second res) (nth res 2) cont-stack))))))
+                    [:ko res nil]
+                    (recur  '() (first res) (second res) (nth res 2) cont-stack))))))
+          pose
+          (let [[status info] (parse-pose-step script)]
+            (if (= status :ko)
+              [:ko info nil]
+              (let [{pose-name :pose-name pose-term :pose-term} info]
+                (let [[status res] (do-pose-step def-env ctx deps pose-name pose-term)]
+                  (if (= status :ko)
+                    [:ko res nil]
+                    (recur  '() (first res) (second res) (nth res 2) cont-stack))))))
           qed
           (do-qed-step def-env ctx deps (second script))
           showdef
@@ -431,4 +497,4 @@
     ;; at end of script
     (if (seq cont-stack)
       (recur (first cont-stack) def-env ctx deps (rest cont-stack))
-      [:ko {:msg "Incomplete proof (`qed` step missing)."}])))
+      [:ko {:msg "Incomplete proof (`qed` step missing)."} nil])))

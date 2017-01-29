@@ -9,7 +9,7 @@
 
   (:require [latte.core :as latte :refer [definition defaxiom defthm
                                           forall lambda ==>
-                                          proof assume have]]
+                                          proof assume have pose]]
             [latte.prop :as p :refer [and or not]]
             [latte.equal :as eq :refer [equal]]
             [latte.quant :as q :refer [exists]]))
@@ -175,9 +175,9 @@
 (proof inverse-surjective
     :script
   (have <a> (injective T U f) :by ((bijective-is-injective T U f) b))
-  (have inv-f (==> U T) :by (inverse T U f b))
+  (pose inv-f := (inverse T U f b)) ;; TODO TODO !
   (assume [x T]
-    (have y U :by (f x))
+    (pose y := (f x))
     (have <b> (equal U (f (inv-f y)) (f x))
           :by ((inverse-prop T U f b) (f x)))
     (have <c> (equal T (inv-f y) x) :by (<a> (inv-f y) x <b>))
@@ -194,7 +194,7 @@
 
 (proof inverse-injective
     :script
-  (have inv-f (==> U T) :by (inverse T U f b))
+  (pose inv-f := (inverse T U f b))
   (assume [x U
            y U
            Hxy (equal T (inv-f x) (inv-f y))]
@@ -223,5 +223,4 @@
   (have <a> _ :by (p/and-intro% (inverse-injective T U f b)
                                 (inverse-surjective T U f b)))
   (qed <a>))
-
 

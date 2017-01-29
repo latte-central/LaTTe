@@ -381,7 +381,7 @@ term `(type-of% term)` is replaced by the *type* of `term`."
         [status thm] (defenv/fetch-definition def-env thm-name)]
     (if (= status :ko)
       [:ko {:msg "No such theorem." :name thm-name}]
-      (let [[status proof-term]
+      (let [[status proof-term local-defs]
             (p/check-proof def-env (reverse (:params thm)) thm-name (:type thm) method steps)]
         (if (= status :ko)
           (if (= (get proof-term :info)
@@ -416,13 +416,13 @@ term `(type-of% term)` is replaced by the *type* of `term`."
         [status thm] (defenv/fetch-definition def-env thm-name)]
     (when (= status :ko)
       (throw (ex-info "No such theorem." {:name thm-name})))
-    (let [[status proof-term]
+    (let [[status proof-term local-defs]
           (p/check-proof def-env (reverse (:params thm)) thm-name (:type thm) method steps)]
       (if (= status :ko)
         (throw (ex-info (str "Proof failed: " (:msg proof-term)) {:theorem thm-name
                                                                   :error (dissoc proof-term :msg)}))
         (let [new-thm (assoc thm :proof proof-term)]
-          ;;(println "HERE" "HERE" "HERE")
+          ;; TODO: integrate local-defs ?  or register proof ?
           ;;(println new-thm#)
           (alter-var-root (resolve thm-name) (fn [_] new-thm))
           `(do
@@ -486,6 +486,11 @@ Implication is right associative:
   {:style/indent [1]}
   [& args]
   `((quote have) ~@args))
+
+(defmacro pose
+  {:style/indent [1]}
+  [& args]
+  `((quote pose) ~@args))
 
 (defmacro qed
   [& args]
