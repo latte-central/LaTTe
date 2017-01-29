@@ -224,4 +224,3 @@
                                 (inverse-surjective T U f b)))
   (qed <a>))
 
-

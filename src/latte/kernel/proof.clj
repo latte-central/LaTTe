@@ -325,7 +325,7 @@
     [:ko {:msg "Wrong pose step: 3 arguments needed" :nb-args (dec (count script))}]))
 
 (defn do-pose-step [def-env ctx deps name pose-term]
-  ;;(println "[do-pose-step] name=" name "term=" pose-term)
+  ;; (println "[do-pose-step] name=" name "term=" pose-term)
   (let [[status term] (stx/parse-term def-env pose-term)]
     (if (= status :ko)
       [:ko {:msg "Cannot perform pose step: incorrect term." :pose-name name :from term}]
@@ -473,7 +473,7 @@
           (let [[status info] (parse-pose-step script)]
             (if (= status :ko)
               [:ko info nil]
-              (let [{pose-name :pos-name pose-term :pose-term} info]
+              (let [{pose-name :pose-name pose-term :pose-term} info]
                 (let [[status res] (do-pose-step def-env ctx deps pose-name pose-term)]
                   (if (= status :ko)
                     [:ko res nil]
