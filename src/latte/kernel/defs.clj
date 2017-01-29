@@ -4,7 +4,9 @@
 
   (:require [latte.kernel.utils :as u]
             [latte.kernel.presyntax :as stx]
-            [latte.kernel.defenv :refer [->Definition ->Theorem ->Axiom]]
+            [latte.kernel.defenv
+             :as defenv
+             :refer [->Definition ->Theorem ->Axiom]]
             [latte.kernel.typing :as ty]
             [latte.kernel.norm :as n]))
 
@@ -47,15 +49,20 @@
   [:ok (->Definition def-name [] 0 body def-type)])
 
 (defn handle-local-theorem-definition [def-name body def-type]
-  ;; [:ok (->Definition def-name [] 0 body def-type)]
   ;; to avoid term blow-up we can save proof steps as
   ;; theorems and not definitions
   [:ok (->Theorem def-name [] 0 def-type body)])
 
 (defn handle-local-term-discharge [local-def x ty]
-  (let [{def-name :name term :proof type :type} local-def]
-    ;; (->Definition def-name [] 0 (list 'λ [x ty] parsed-term) (list 'Π [x ty] type))
-    (->Theorem def-name [] 0 (list 'Π [x ty] type) (list 'λ [x ty] term))))
+  (cond
+    (defenv/theorem? local-def)
+    (let [{def-name :name term :proof type :type} local-def]
+      (->Theorem def-name [] 0 (list 'Π [x ty] type) (list 'λ [x ty] term)))
+    (defenv/definition? local-def)
+    (let [{def-name :name term :parsed-term type :type} local-def]
+      (->Definition def-name [] 0 (list 'λ [x ty] term) (list 'Π [x ty] type)))
+    :else
+    (throw (ex-info "Wrong local definition (please report)" {:local-def local-def}))))
 
 ;;{
 ;; ## Theorem definitions
