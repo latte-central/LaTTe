@@ -473,13 +473,13 @@ cf. [[or-not-elim-left]] and [[or-not-elim-right]]."
               (if-not (stx/prod? body)
                 [:ko nil nil]
                 (let [[_ [_ AC] C'] body]
-                  (if-not (and (= C' C) (stx/prod? AC))
+                  (if-not (clojure.core/and (= C' C) (stx/prod? AC))
                     [:ko nil nil]
                     (let [[_ [_ A] C'] AC]
-                      (if-not (and (= C' C) (stx/prod? body))
+                      (if-not (clojure.core/and (= C' C) (stx/prod? body))
                         [:ko nil nil]
                         (let [[_ [_ BC] C'] body]
-                          (if-not (and (= C' C) (stx/prod? AC))
+                          (if-not (clojure.core/and (= C' C) (stx/prod? AC))
                             [:ko nil nil]
                             (let [[_ [_ B] C'] BC]
                               (if-not (= C' C)
