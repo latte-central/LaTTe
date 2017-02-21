@@ -183,25 +183,25 @@ etc.
             ;; (println "  ==> ret=" ret)
             ret))))))
 
-(defthm test-eq-trans
-  [[T :type] [a T] [b T] [c T] [d T]]
-  (==> (equal T a b)
-       (equal T b c)
-       (equal T c d)
-       (equal T a d)))
+;; (defthm test-eq-trans
+;;   [[T :type] [a T] [b T] [c T] [d T]]
+;;   (==> (equal T a b)
+;;        (equal T b c)
+;;        (equal T c d)
+;;        (equal T a d)))
 
-(proof test-eq-trans
-    :script
-  (assume [H1 (equal T a b)
-           H2 (equal T b c)
-           H3 (equal T c d)]
-     (have <a> (equal T a d)
-           :by (eq-trans* H1 H2 H3))
-    ;; (have <a> (equal T a c)
-    ;;       :by (((eq-trans T a b c) H1) H2))
-    ;; (have <b> (equal T a d)
-    ;;       :by (((eq-trans T a c d) <a>) H3))
-    (qed <a>)))
+;; (proof test-eq-trans
+;;     :script
+;;   (assume [H1 (equal T a b)
+;;            H2 (equal T b c)
+;;            H3 (equal T c d)]
+;;      (have <a> (equal T a d)
+;;            :by (eq-trans* H1 H2 H3))
+;;     ;; (have <a> (equal T a c)
+;;     ;;       :by (((eq-trans T a b c) H1) H2))
+;;     ;; (have <b> (equal T a d)
+;;     ;;       :by (((eq-trans T a c d) <a>) H3))
+;;     (qed <a>)))
 
 (defthm eq-subst
   "Substitutivity property of equality."
@@ -275,3 +275,36 @@ etc.
                                                            :term f
                                                            :type f-ty})))
           [(list #'eq-cong T U f x y) eq-term])))))
+
+(defthm eq-impl
+  [[T :type] [P (==> T :type)] [x T] [y T]]
+  (==> (equal T x y)
+       (P x)
+       (P y)))
+
+(proof eq-impl
+    :script
+  (assume [H1 (equal T x y)
+           H2 (P x)]
+    (have <a> (<=> (P x) (P y))
+          :by (H1 P))
+    (have <b> (==> (P x) (P y))
+          :by (p/and-elim-left% <a>))
+    (have <c> (P y) :by (<b> H2))
+    (qed <c>)))
+
+(defthm eq-impl-sym
+  [[T :type] [P (==> T :type)] [x T] [y T]]
+  (==> (equal T x y)
+       (P y)
+       (P x)))
+
+(proof eq-impl-sym
+    :script
+  (assume [H1 (equal T x y)
+           H2 (P y)]
+    (have <a> (equal T y x) :by (eq-sym% H1))
+    (have <b> (P x) :by ((eq-impl T P y x) <a> H2))
+    (qed <b>)))
+
+
