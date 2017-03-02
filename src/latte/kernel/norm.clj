@@ -394,6 +394,8 @@
  => '(λ [y ✳] y))
 
 (defn beta-eq?
+  "TODO arguably it might be better to have around only the three paramter
+  version of normalize: (normalize def-env ctx t)."
   ([t1 t2]
    (let [t1' (normalize t1)
          t2' (normalize t2)]
@@ -405,8 +407,16 @@
   ([def-env ctx t1 t2]
    (let [t1' (normalize def-env ctx t1)
          t2' (normalize def-env ctx t2)]
-     (stx/alpha-eq? t1' t2'))))
+     (stx/alpha-eq? t1' t2')))
+  ([def-env ctx t1 t2 & more]
+   (apply stx/alpha-eq? (map #(normalize def-env ctx %)
+                             (vector t1 t2 more)))))
 
 (example
  (beta-eq? '(λ [z ✳] z)
+           '(λ [y [(λ [x □] x) ✳]] [(λ [x ✳] x) y])) => true)
+
+(example
+ (beta-eq? '(λ [z ✳] z)
+           '(λ [x ✳] x)
            '(λ [y [(λ [x □] x) ✳]] [(λ [x ✳] x) y])) => true)
