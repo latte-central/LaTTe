@@ -23,6 +23,7 @@
 ;;   ((lambda [z :type] (lambda [x :type] (x z))) x)
 ;; = ((lambda [z :type] (lambda [y :type] (y z))) x)
 ;;   ~~> (lambda [y :type] (y x)    is correct
+;;}
 
 (defn redex? [t]
   (and (stx/app? t)
