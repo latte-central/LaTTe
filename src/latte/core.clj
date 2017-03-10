@@ -5,6 +5,8 @@
   Users (as opposed to developpers) of the framework should
   mostly depend on this namespace."
 
+  (:refer-clojure :exclude [apply])
+
   (:require [clojure.pprint :as pp]
             [latte.kernel.utils :as u]
             [latte.kernel.presyntax :as stx]
@@ -328,34 +330,50 @@ term `(type-of% term)` is replaced by the *type* of `term`."
       (do ;; (println "[parse-context-args] ctx=" ctx)
           ctx))))
 
+(defn apply
+  "1. Extract and parse context ctx from args,
+  2. Extract and parse type t from args,
+  3. Apply fn f on type t in context ctx.
+
+  TODO consider (A) using clojure.core/apply or (B) reversing content of args to
+  match clojure.core/apply"
+  [f args]
+  (let [def-env {}
+        ctx (parse-context-args def-env (butlast args))
+        t (stx/parse def-env (last args))
+        res (f def-env ctx t)]
+    (cond
+      (instance? java.lang.Boolean res) res
+      (or (instance? clojure.lang.Symbol res)
+          (instance? clojure.lang.PersistentList res)) (list 'quote res)
+      :else (do
+              (println "TODO test if (list 'quote res) is really needed.")
+              (list 'quote res)))))
+
+;;{
+;; ## Top-level term parsing
+;;}
+
 (defmacro term [& args]
-    (let [def-env {}
-          t (stx/parse def-env (last args))
-          ctx (parse-context-args def-env (butlast args))]
-      ;; (println "[term] t = " t " ctx = " ctx)
-      (if (latte.kernel.norm/beta-eq? def-env ctx t :kind)
-        '□
-        (list 'quote t))))
+  (apply (fn [def-env ctx t]
+           (if (n/beta-eq? def-env ctx t :kind) '□ t))
+         args))
+
+(defmacro type-of [& args]
+  (apply (fn [def-env ctx t]
+           (ty/type-of def-env ctx t))
+         args))
 
 ;;{
 ;; ## Top-level type checking
 ;;}
 
-(defmacro type-of [& args]
-  (let [def-env {}
-        t (stx/parse def-env (last args))
-        ctx (parse-context-args def-env (butlast args))]
-    (let [ty (ty/type-of def-env ctx t)]
-      (list 'quote ty))))
-
 (defmacro type-check? [& args]
-  (let [def-env {}
-        t (stx/parse def-env (last (butlast args)))
-        ty (stx/parse def-env (last args))
-        ctx (parse-context-args def-env (butlast (butlast args)))]
-    ;;(println "[check-type?] ctx=" ctx)
-    (let [tty (ty/type-of def-env ctx t)]
-      (n/beta-eq? def-env ctx ty tty))))
+  (apply (fn [def-env ctx t]
+           (n/beta-eq? def-env ctx
+                       (stx/parse def-env (last args))
+                       (ty/type-of def-env ctx t)))
+         (butlast args)))
 
 ;;{
 ;; ## Top-level term equivalence
