@@ -19,26 +19,35 @@
 (deftest basic-terms
   ;; Examples 2.2.6
   ;; (1) When x has type σ, then the identity function λx . x has type σ → σ
-  (is (beta-eq? (type-of [sigma :type] (lambda [x sigma] x)) ; (Π [x sigma] sigma)
-                (term [sigma :type] (==> sigma sigma))       ; (Π [⇧ sigma] sigma)
-                ))
+  (let [;; (Π [x sigma] sigma)
+        type-of-result (type-of [sigma :type] (lambda [x sigma] x))
+        ;; (Π [⇧ sigma] sigma)
+        term-result    (term [sigma :type] (==> sigma sigma))]
+    (is (and (is (beta-eq? type-of-result term-result))
+             ;; "normal" non-equality from clojure.core
+             (is (not=     type-of-result term-result)))))
 
-  (is (type-check? [sigma :type] (lambda [x sigma] x)
-                   (==> sigma sigma)))
+  (is (true? (type-check? [sigma :type] (lambda [x sigma] x)
+                          (==> sigma sigma))))
 
-  (is (beta-eq? (type-of [sigma :type]
-                         [tau :type]
-                         [y (==> sigma tau)]
-                         [x sigma]
-                         (y x))      ; tau
-                'tau                 ; tau
-                ))
+  (let [type-of-result (type-of [sigma :type]
+                                [tau :type]
+                                [y (==> sigma tau)]
+                                [x sigma]
+                                (y x))
+        term-result 'tau]
+    (is (and (is (beta-eq? type-of-result term-result))
+             ;; "normal" equality from clojure.core
+             (is (=        type-of-result term-result)))))
 
-  (is (beta-eq? (type-of [alpha :type] [beta :type] [gamma :type]
-                         [x (==> alpha alpha)]
-                         [y (==> (==> alpha alpha) beta)]
-                         (lambda [u gamma] (y x)))   ; (Π [u gamma] beta)
-                   (term [beta :type] [gamma :type]
-                         (==> gamma beta))           ; (Π [⇧ gamma] beta)
-                   ))
+  (let [;; (Π [u gamma] beta)
+        type-of-result (type-of [alpha :type] [beta :type] [gamma :type]
+                                [x (==> alpha alpha)]
+                                [y (==> (==> alpha alpha) beta)]
+                                (lambda [u gamma] (y x)))
+        ;; (Π [⇧ gamma] beta)
+        term-result    (term [beta :type] [gamma :type] (==> gamma beta))]
+    (is (and (is (beta-eq? type-of-result term-result))
+             ;; "normal" non-equality from clojure.core
+             (is (not=     type-of-result term-result)))))
   )
