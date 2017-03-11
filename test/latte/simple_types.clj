@@ -7,8 +7,9 @@
 ;;{
 ;;  # Simple types
 ;;
-;; The tests in this file are for simple types,
-;; and mostly taken from the book:
+;; Simply typed lambda calculus is denoted as: λ⟶
+;;
+;; The tests here are for simple types and mostly taken from the book:
 ;;
 ;; > Type Theory and Formal Proofs - an Introduction
 ;; > (Chapter 2: Simply typed lambda calculus)
