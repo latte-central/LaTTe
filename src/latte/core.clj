@@ -335,8 +335,7 @@ term `(type-of% term)` is replaced by the *type* of `term`."
       ;; (println "[term] t = " t " ctx = " ctx)
       (if (latte.kernel.norm/beta-eq? def-env ctx t :kind)
         '□
-        (let [ty (ty/type-of def-env ctx t)]
-          (list 'quote t)))))
+        (list 'quote t))))
 
 ;;{
 ;; ## Top-level type checking
