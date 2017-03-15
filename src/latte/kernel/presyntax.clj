@@ -6,7 +6,14 @@
 (def ^:private +examples-enabled+)
 
 (def +reserved-symbols+
-  '#{□ ✳ λ Π ⟶ ∃ ∀})
+  '#{□ ; Type of all kinds; Page 87
+     ✳ ; Type of all types; Page 70
+     λ ; Abstraction; Page 1
+     Π ; Type binder (pi-binder); Page 72
+     ⟶ ; Arrow type; Page 34
+     ∃ ; Existential quantifier; Page 247
+     ∀ ; Universal quantifier; Page 246
+     })
 
 (defn reserved-symbol? [s]
   (or (contains? +reserved-symbols+ s)
