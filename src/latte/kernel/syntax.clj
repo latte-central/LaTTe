@@ -305,9 +305,12 @@
  (alpha-norm '[x (λ [x ✳] (test x y [x z]))])
  => '[x (λ [_1 ✳] (test _1 y [_1 z]))])
 
-(defn alpha-eq? [t1 t2]
-  (= (alpha-norm t1)
-     (alpha-norm t2)))
+(defn alpha-eq?
+  "Redefine as a multi-arity fn if the variadic implementation is too slow"
+  #_([t1] true)
+  #_([t1 t2] (= (alpha-norm t1) (alpha-norm t2)))
+  #_([t1 t2 & more] (apply = (map alpha-norm (apply list t1 t2 more))))
+  [t1 t2 & more] (apply = (map alpha-norm (apply list t1 t2 more))))
 
 ;; it's longer this way...
 ;; (defn alpha-eq? [t1 t2]
@@ -316,5 +319,6 @@
 
 (example
  (alpha-eq? '(λ [x ✳] x)
+            '(λ [x ✳] x)
             '(λ [y ✳] y)) => true)
 

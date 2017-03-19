@@ -405,7 +405,10 @@
   ([def-env ctx t1 t2]
    (let [t1' (normalize def-env ctx t1)
          t2' (normalize def-env ctx t2)]
-     (stx/alpha-eq? t1' t2'))))
+     (stx/alpha-eq? t1' t2')))
+  ([def-env ctx t1 t2 & more]
+   (apply stx/alpha-eq? (map #(normalize def-env ctx %)
+                             (vector t1 t2 more)))))
 
 (example
  (beta-eq? '(λ [z ✳] z)
