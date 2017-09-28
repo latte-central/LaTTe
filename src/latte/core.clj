@@ -6,13 +6,11 @@
   mostly depend on this namespace."
 
   (:require [clojure.pprint :as pp]
-            [latte.kernel.utils :as u]
-            [latte.kernel.presyntax :as stx]
-            [latte.kernel.typing :as ty]
-            [latte.kernel.norm :as n]
-            [latte.kernel.defenv :as defenv]
-            [latte.kernel.defs :as d]
-            [latte.kernel.proof :as p]))
+            [latte-kernel.presyntax :as stx]
+            [latte-kernel.typing :as ty]
+            [latte-kernel.norm :as n]
+            [latte-kernel.defenv :as defenv]
+            [latte-kernel.proof :as p]))
 
 ;;{
 ;; ## Definitions (defined terms)
