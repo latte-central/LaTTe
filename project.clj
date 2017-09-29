@@ -3,7 +3,7 @@
   :url "https://github.com/fredokun/LaTTe.git"
   :license {:name "MIT Licence"
             :url "http://opensource.org/licenses/MIT"}
-  :dependencies [[org.clojure/clojure "1.8.0"]
+  :dependencies [[org.clojure/clojure "1.9.0-beta1"]
                  [latte-kernel "0.99.2-SNAPSHOT"]]
   :codox {:output-path "docs"
           :metadata {:doc/format :markdown}
