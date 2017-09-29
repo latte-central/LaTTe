@@ -208,7 +208,7 @@ In all cases the introduction of an axiom must be justified with strong
   (let [[def-name definition metadata] (handle-defaxiom :primitive args)]
     `(do
        (def ~def-name ~definition)
-       (alter-meta! (var ~def-name) #(merge % ~metadata)) 
+       (alter-meta! (var ~def-name) #(merge % (quote ~metadata))) 
        [:defined :primitive (quote ~def-name)])))
 
 ;;{

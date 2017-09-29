@@ -4,12 +4,14 @@
 
   (:refer-clojure :exclude [and or not])
 
-  (:require [latte.kernel.syntax :as stx]
-            [latte.kernel.typing :as ty]
-            [latte.kernel.norm :as norm]
-            [latte.core :as latte :refer [definition term type-of defthm defspecial
-                                          lambda forall ==>
-                                          assume have qed proof try-proof]]))
+  (:require [latte-kernel.syntax :as stx]
+            [latte-kernel.typing :as ty]
+            [latte-kernel.norm :as norm]
+            [latte.core :as latte :refer [defthm]
+             ;; [definition term type-of defthm defspecial
+             ;; lambda forall ==>
+             ;;                             assume have qed proof try-proof]
+             ]))
 
 (defthm impl-refl
   "Implication is reflexive."

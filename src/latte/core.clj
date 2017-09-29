@@ -83,10 +83,94 @@
        (with-out-str
          (pp/pprint content))
        "```\n**" kind "**: "
-       explanation))
+       (or explanation "")))
 
 ;; example:
 ;; (definition id [[A :type]] (lambda [x A] x))
+
+
+;;{
+;; ## Theorems and lemmas
+;;
+;; The specs are as follows.
+;;}
+
+(s/def ::theorem (s/cat :name ::def-name
+                        :doc (s/? ::def-doc)
+                        :params ::def-params
+                        :body ::def-body))
+
+(declare handle-defthm)
+(declare handle-thm-declaration)
+
+(defmacro defthm
+  "Declaration of a theorem of the specified `name` (first argument)
+  an optional `docstring` (second argument), a vector of `parameters`
+ and the theorem proposition (last argument).
+ Each parameter is a pair `[x T]` with `x` the parameter name and `T` its
+  type. 
+
+  A theorem declared must later on be demonstrated using the [[proof]] form."
+  [& args]
+  (let [conf-form (s/conform ::theorem args)]
+    (if (= conf-form :clojure.spec.alpha/invalid)
+      (throw (ex-info "Cannot declare theorem: syntax error."
+                      {:explain (s/explain-str ::theorem args)}))
+      (let [{thm-name :name doc :doc params :params body :body} conf-form]
+        (let [[status def-name definition metadata] (handle-defthm :theorem thm-name doc params body)]
+          (if (= status :ko)
+            (throw (ex-info "Cannot declare theorem." {:name thm-name :error def-name}))
+            `(do
+               (def ~def-name ~definition)
+               (alter-meta! (var ~def-name) #(merge % (quote ~metadata))) 
+               [:declared :theorem (quote ~def-name)])))))))
+
+(defmacro deflemma
+  "Declaration of a lemma, i.e. an auxiliary theorem. In LaTTe a lemma
+  is private. To export a theorem the [[defthm]] form must be used instead."
+  [& args]
+  (let [conf-form (s/conform ::theorem args)]
+    (if (= conf-form :clojure.spec.alpha/invalid)
+      (throw (ex-info "Cannot declare lemma: syntax error."
+                      {:explain (s/explain-str ::theorem args)}))
+      (let [{thm-name :name doc :doc params :params body :body} conf-form]
+        (let [[status def-name definition metadata] (handle-defthm :lemma thm-name doc params body)]
+          (if (= status :ko)
+            (throw (ex-info "Cannot declare lemma." {:name thm-name :error def-name}))
+            `(do
+               (def ~def-name ~definition)
+               (alter-meta! (var ~def-name) #(merge % (quote ~metadata))) 
+               [:declared :lemma (quote ~def-name)])))))))
+
+(defn handle-defthm [kind thm-name doc params ty]
+  (when (defenv/registered-definition? thm-name)
+    (println "[Warning] redefinition as" (if (= kind :theorem)
+                                           "theorem"
+                                           "lemma") ":" thm-name))
+  (let [[status definition] (handle-thm-declaration thm-name params ty)]
+    (if (= status :ko)
+      [:ko definition nil nil nil]
+      (let [metadata {:doc (mk-doc (if (= kind :theorem)
+                                     "Theorem"
+                                     "Lemma") ty doc)
+                      :arglists (list params)
+                      :private (= kind :lemma)}]
+        [:ok thm-name definition metadata]))))
+
+(defn handle-thm-declaration [thm-name params ty]
+  (let [[status params] (reduce (fn [[_ params] [x ty]]
+                                  (let [[status ty'] (stx/parse-term defenv/empty-env ty)]
+                                    (if (= status :ko)
+                                      (reduced [:ko ty'])
+                                      [:ok (conj params [x ty'])]))) [:ok []] params)]
+    (if (= status :ko)
+      [:ko params]
+      (let [[status ty'] (stx/parse-term defenv/empty-env ty)]
+        (if (= status :ko)
+          [:ko ty']          
+          (if (not (ty/proper-type? defenv/empty-env params ty'))
+            [:ko {:msg "Theorem body is not a proper type" :theorem thm-name :type ty'}]
+            [:ok (defenv/->Theorem thm-name params (count params) ty' false)]))))))
 
 
 
