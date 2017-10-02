@@ -174,3 +174,88 @@
 
 
 
+;;{
+;; ## Proofs
+;;
+;; The specs are as follows.
+;;}
+
+(s/def ::assume (s/cat :command #(= % :assume)
+                       :params ::def-params
+                       :body any?
+                       :meta (s/? map?)))
+
+(s/def ::have (s/cat :command #(= % :have)
+                     :have-type any?
+                     :by-kw #(= % :by)
+                     :have-term any?
+                     :meta (s/? map?)))
+
+(s/def ::qed (s/cat :command #(= % :qed)
+                    :qed-term any?
+                    :meta (s/? map?)))
+
+
+
+(s/def ::have-args (s/cat :have-name symbol?
+                          :have-type any?
+                          :by-kw #(= % :by)
+                          :have-term any?))
+
+(defmacro have
+  "A have step of the form `(have <x> T :by e)` checks that the
+ term `e` is of type `T`. If it is the case, then the fact is recorded
+ as a local definition named `<x>`. Otherwise an error is signaled.
+The type `T` can be replaced by `_` in which case is is inferred rather than checked.
+The name `<x>` can be replaced by `_` in which case no definition is recorded."
+  [have-name have-type by-kw have-term]
+  (let [infos (meta &form)
+        conf-form (s/conform ::have-args (rest &form))]
+    (if (= conf-form :clojure.spec.alpha/invalid)
+      (throw (ex-info "Have step syntax error."
+                      {:infos infos
+                       :explain (s/explain-str ::have-args (rest &form))}))
+      `[:have (quote ~have-name) (quote ~have-type) (quote ~have-term) ~infos])))
+
+(defmacro qed
+  "A Qed step of the form `(qed e)` checks that the
+ term `e` allows to finish a proof in the current context.
+An error is signaled if the proof cannot be concluded."
+  [qed-term]
+  `[:qed (quote ~qed-term) ~(meta &form)])
+
+
+(defmacro assume
+  "An assume step of the form `(assume [x1 T1 x2 T2 ...] <body>)`.
+"
+  [params & body]
+    `[:assume (quote ~params) ~(meta &form)
+        ~@body])
+  
+
+(defn proof
+  "Provides a proof of theorem named `thm-name` using the given proof `method`
+  and `steps`.
+  There are for now two proof methods available:
+    - the `:term` method with one step: a direct proof/lambda-term
+      inhabiting the theorem/type (based on the proof-as-term, proposition-as-type
+      correspondances). This is a low-level proof method. Note that the term must be
+quoted.
+    - the `:script` method with a declarative proof script. It is a high-level
+  (human-readable) proof method. A low-level proof term is
+  synthetized from the script"
+  {:style/indent [2 :form :form [1]]}
+  [thm-name method & steps]
+  (let [def-env defenv/empty-env
+        [status thm] (defenv/fetch-definition def-env thm-name)]
+    (when (= status :ko)
+      (throw (ex-info "No such theorem." {:name thm-name})))
+    (let [[status infos]
+          (p/check-proof def-env (reverse (:params thm)) thm-name (:type thm) method steps)]
+      (if (= status :ko)
+        (throw (ex-info (str "Proof failed: " (:msg infos)) {:theorem thm-name
+                                                             :error (dissoc infos :msg)}))
+        (let [new-thm (assoc thm :proof [:method steps])]
+          (alter-var-root (resolve thm-name) (fn [_] new-thm))
+          [:qed (quote ~thm-name)])))))
+
