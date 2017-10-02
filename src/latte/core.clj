@@ -229,7 +229,7 @@ An error is signaled if the proof cannot be concluded."
   "An assume step of the form `(assume [x1 T1 x2 T2 ...] <body>)`.
 "
   [params & body]
-    `[:assume (quote ~params) ~(meta &form)
+    `[:assume ~(meta &form) (quote ~params) 
         ~@body])
   
 
@@ -239,8 +239,8 @@ An error is signaled if the proof cannot be concluded."
   There are for now two proof methods available:
     - the `:term` method with one step: a direct proof/lambda-term
       inhabiting the theorem/type (based on the proof-as-term, proposition-as-type
-      correspondances). This is a low-level proof method. Note that the term must be
-quoted.
+      correspondances). This is a low-level proof method. 
+
     - the `:script` method with a declarative proof script. It is a high-level
   (human-readable) proof method. A low-level proof term is
   synthetized from the script"
@@ -257,5 +257,8 @@ quoted.
                                                              :error (dissoc infos :msg)}))
         (let [new-thm (assoc thm :proof [:method steps])]
           (alter-var-root (resolve thm-name) (fn [_] new-thm))
-          [:qed (quote ~thm-name)])))))
+          [:qed thm-name])))))
+
+
+
 

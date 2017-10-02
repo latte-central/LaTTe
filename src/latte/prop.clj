@@ -7,7 +7,7 @@
   (:require [latte-kernel.syntax :as stx]
             [latte-kernel.typing :as ty]
             [latte-kernel.norm :as norm]
-            [latte.core :as latte :refer [defthm]
+            [latte.core :as latte :refer [defthm proof assume have qed]
              ;; [definition term type-of defthm defspecial
              ;; lambda forall ==>
              ;;                             assume have qed proof try-proof]
@@ -22,10 +22,10 @@
 ;;        :term
 ;;        (lambda [x A] x))
 
-(proof impl-refl :script
+(proof 'impl-refl :script
   (assume [x A]
-    (have concl A :by x)
-    (qed concl)))
+    (have <a> A :by x)
+    (qed <a>)))
 
 (defthm impl-ignore
   "A variant of reflexivity."
