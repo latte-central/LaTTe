@@ -173,7 +173,6 @@
             [:ok (defenv/->Theorem thm-name params (count params) ty' false)]))))))
 
 
-
 ;;{
 ;; ## Proofs
 ;;
@@ -247,17 +246,81 @@ An error is signaled if the proof cannot be concluded."
   {:style/indent [2 :form :form [1]]}
   [thm-name method & steps]
   (let [def-env defenv/empty-env
-        [status thm] (defenv/fetch-definition def-env thm-name)]
+        [status thm] (if (symbol? thm-name)
+                       (let [[status', thm] (defenv/fetch-definition def-env thm-name)]
+                         (if (= status' :ko)
+                           [:ko {:msg "No such theorem." :name thm-name}]
+                           (if (not (defenv/theorem? thm))
+                             [:ko {:msg "Not a theorem." :name thm-name, :value thm}]
+                             [:ok thm])))
+                       [:ko {:msg "Not a theorem name."
+                             :thm-name thm-name}])]
     (when (= status :ko)
-      (throw (ex-info "No such theorem." {:name thm-name})))
-    (let [[status infos]
-          (p/check-proof def-env (reverse (:params thm)) thm-name (:type thm) method steps)]
+      (throw (ex-info (:msg thm) (dissoc thm :msg))))
+    (let [[status infos] (p/check-proof def-env (reverse (:params thm)) thm-name (:type thm) method steps)]
       (if (= status :ko)
-        (throw (ex-info (str "Proof failed: " (:msg infos)) {:theorem thm-name
-                                                             :error (dissoc infos :msg)}))
+        (do ;; (println "infos = " infos)
+            (throw (ex-info (str "Proof failed: " (:msg infos)) {:theorem thm-name
+                                                                 :error (dissoc infos :msg)})))
         (let [new-thm (assoc thm :proof [:method steps])]
           (alter-var-root (resolve thm-name) (fn [_] new-thm))
           [:qed thm-name])))))
+
+
+;;{
+;; ## Implicits
+;;}
+
+
+
+(s/def ::implicit-header (s/cat :def-env symbol?
+                            :ctx symbol?
+                            :params (s/+ ::iparam)))
+
+(s/def ::implicit (s/cat :name ::def-name
+                         :doc (s/? ::def-doc)
+                         :header (s/spec ::implicit-header)
+                         :body (s/* any?)))
+
+
+(s/def ::iparam (s/tuple symbol? symbol?))
+
+(defmacro defimplicit
+  [& args]
+  (println args)
+  (let [conf-form (s/conform ::implicit args)]
+    (if (= conf-form :clojure.spec.alpha/invalid)
+      (throw (ex-info "Cannot define implicit: syntax error."
+                      {:explain (s/explain-str ::implicit args)}))
+      (let [{def-name :name doc :doc header :header body :body}  conf-form
+            {def-env :def-env ctx :ctx params :params} header]
+        (when (defenv/registered-definition? def-name)
+          (println "[Warning] redefinition as implicit"))
+        (let [metadata (merge (meta &form) {:doc (or doc "")})]
+          `(do
+             (def ~def-name (defenv/->Implicit '~def-name (fn [~def-env ~ctx ~@params] ~@body)))
+             (alter-meta! (var ~def-name) #(merge % (quote ~metadata)))
+             [:defined :implicit (quote ~def-name)]))))))
+
+
+;; (macroexpand-1 '(defimplicit impl-trans
+;;                   [def-env ctx [impl1 ty1] [impl2 ty2]]
+;;                   (let [[status A B] (decompose-impl-type def-env ctx ty1)]
+;;                     (when (= status :ko)
+;;                       (throw (ex-info "Not an `==>`-type." {:special 'latte.prop/impl-trans%
+;;                                                             :term impl-term1
+;;                                                             :type ty1})))
+;;                     (let [[status B' C] (decompose-impl-type def-env ctx ty2)]
+;;                       (when (= status :ko)
+;;                         (throw (ex-info "Not an `==>`-type." {:special 'latte.prop/impl-trans%
+;;                                                               :term impl-term2
+;;                                                               :type ty2})))
+                      
+;;                       (when-not (norm/beta-eq? def-env ctx B B')
+;;                         (throw (ex-info "Type in the middle mismatch" {:special 'latte.prop/impl-trans%
+;;                                                                        :left-rhs-type B
+;;                                                                        :right-lhs-type B'})))
+;;                       [[(list #'latte.prop/impl-trans- A B C) impl1] impl2]))))
 
 
 

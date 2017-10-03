@@ -7,7 +7,9 @@
   (:require [latte-kernel.syntax :as stx]
             [latte-kernel.typing :as ty]
             [latte-kernel.norm :as norm]
-            [latte.core :as latte :refer [defthm proof assume have qed]
+            [latte.core
+             :as latte
+             :refer [defthm defimplicit definition proof assume have qed]
              ;; [definition term type-of defthm defspecial
              ;; lambda forall ==>
              ;;                             assume have qed proof try-proof]
@@ -36,14 +38,14 @@
     :term '(lambda [x A]
              (lambda [y B] x)))
 
-(defthm impl-trans
+(defthm impl-trans-
   "Implication is transitive."
   [[A :type] [B :type] [C :type]]
   (==> (==> A B)
        (==> B C)
        (==> A C)))
 
-(proof 'impl-trans
+(proof 'impl-trans-
     :script
   (assume [H1 (==> A B)
            H2 (==> B C)
@@ -67,35 +69,24 @@
               ;; TODO: check that the product variable is not in use ?
               [:ok A B])))))))
 
-(defspecial impl-trans%
-  "Transitivity of implication, a special version of [[impl-trans]]."
-  [def-env ctx impl-term1 impl-term2]
-  (let [[status ty1] (ty/type-of-term def-env ctx impl-term1)]
+(defimplicit impl-trans
+  [def-env ctx [impl1 ty1] [impl2 ty2]]
+  (let [[status A B] (decompose-impl-type def-env ctx ty1)]
     (when (= status :ko)
-      (throw (ex-info "Cannot type term." {:special 'latte.prop/impl-trans%
-                                           :term impl-term1
-                                           :from ty1})))    
-    (let [[status ty2] (ty/type-of-term def-env ctx impl-term2)]
+      (throw (ex-info "Not an `==>`-type." {:special 'latte.prop/impl-trans%
+                                            :term impl1
+                                            :type ty1})))
+    (let [[status B' C] (decompose-impl-type def-env ctx ty2)]
       (when (= status :ko)
-        (throw (ex-info "Cannot type term." {:special 'latte.prop/impl-trans%
-                                             :term impl-term2
-                                             :from ty2})))
-      (let [[status A B] (decompose-impl-type def-env ctx ty1)]
-        (when (= status :ko)
-          (throw (ex-info "Not an `==>`-type." {:special 'latte.prop/impl-trans%
-                                                :term impl-term1
-                                                :type ty1})))
-      (let [[status B' C] (decompose-impl-type def-env ctx ty2)]
-        (when (= status :ko)
-          (throw (ex-info "Not an `==>`-type." {:special 'latte.prop/impl-trans%
-                                                :term impl-term2
-                                                :type ty2})))
-        
-        (when-not (norm/beta-eq? def-env ctx B B')
-          (throw (ex-info "Type in the middle mismatch" {:special 'latte.prop/impl-trans%
-                                                         :left-rhs-type B
-                                                         :right-lhs-type B'})))
-        [[(list #'latte.prop/impl-trans A B C) impl-term1] impl-term2])))))
+        (throw (ex-info "Not an `==>`-type." {:special 'latte.prop/impl-trans%
+                                              :term impl2
+                                              :type ty2})))
+      
+      (when-not (norm/beta-eq? def-env ctx B B')
+        (throw (ex-info "Type in the middle mismatch" {:special 'latte.prop/impl-trans%
+                                                       :left-rhs-type B
+                                                       :right-lhs-type B'})))
+      [[(list #'latte.prop/impl-trans- A B C) impl1] impl2])))
 
 (definition absurd
   "Absurdity."
@@ -112,11 +103,11 @@
 ;;        :term
 ;;        (lambda [f absurd] (f A)))
 
-(proof ex-falso
+(proof 'ex-falso
     :script
   (assume [f absurd]
-    (have a A :by (f A))
-    (qed a)))
+    (have a A :by (f A)))
+  (qed a))
 
 (definition not
   "Logical negation."
@@ -135,12 +126,12 @@
 ;;          (lambda [y (neg A)]
 ;;            (y x))))
 
-(proof absurd-intro
+(proof 'absurd-intro
     :script
   (assume [x A
            y (not A)]
-    (have a absurd :by (y x))
-    (qed a)))
+    (have a absurd :by (y x)))
+  (qed a))
 
 (defthm impl-not-not
   "The if half of double negation.
@@ -154,12 +145,12 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
 ;; = (==> (neg A) absurd)
 ;; = (==> (==> A absurd) absurd) 
 
-(proof impl-not-not
+(proof 'impl-not-not
     :script
   (assume [x A
            H (not A)]
-    (have a absurd :by (H x))
-    (qed a)))
+    (have a absurd :by (H x)))
+  (qed a))
 
 (definition truth
   "Logical truth."
@@ -171,7 +162,7 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
   []
   truth)
 
-(proof truth-is-true :script
+(proof 'truth-is-true :script
   (have a truth :by (impl-refl absurd))
   (qed a))
 
@@ -182,7 +173,7 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
     (==> (==> A B C)
          C)))
 
-(defthm and-intro
+(defthm and-intro-
   "Introduction rule for logical conjunction."
   [[A :type] [B :type]]
   (==> A B
@@ -196,62 +187,48 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
 ;;              (lambda [z (==> A B C)]
 ;;                z x y)))))
 
-(proof and-intro
+(proof 'and-intro-
     :script
   (assume [x A
            y B
            C :type
            z (==> A B C)]
     (have a (==> B C) :by (z x))
-    (have b C :by ((a) y))
-    (qed b)))
+    (have b C :by ((a) y)))
+  (qed b))
 
-(defspecial and-intro%
-  "A special introduction rule that takes a proof
+(defimplicit and-intro
+  "A implicit introduction rule that takes a proof
 `a` of type `A`, a proof `b` of type `B` and yields
 a proof of type `(and A B)`.
 
-This is a special version of [[and-intro]]."
-  [def-env ctx a b]
-  (let [[status-a ty-a] (ty/type-of-term def-env ctx a)
-        [status-b ty-b] (ty/type-of-term def-env ctx b)]
-    (cond
-      (= status-a :ko)
-      (throw (ex-info "Cannot type left-hand term."
-                      {:special 'latte.prop/and-intro%
-                       :term a
-                       :from ty-a}))
-      (= status-b :ko)
-      (throw (ex-info "Cannot type right-hand term."
-                      {:special 'latte.prop/and-intro%
-                       :term b
-                       :from ty-b}))
-      :else
-      [[(list #'and-intro ty-a ty-b) a] b])))
+This is an implicit version of [[and-intro-]]."
+  [def-env ctx [a ty-a] [b ty-b]]
+  [[(list #'and-intro- ty-a ty-b) a] b])
 
-(defthm and-elim-left
+(defthm and-elim-left-
   "Elimination rule for logical conjunction.
    This one only keeps the left-side of the conjunction"
   [[A :type] [B :type]]
   (==> (and A B)
        A))
 
-(proof and-elim-left :script
+(proof 'and-elim-left- :script
   (assume [H1 (and A B)]
     (have a (==> (==> A B A) A) :by (H1 A))
     (have b (==> A B A) :by (impl-ignore A B))
-    (have c A :by (a b))
-    (qed c)))
+    (have c A :by (a b)))
+  (qed c))
 
 (defn decompose-and-type [def-env ctx t]
   (if (clojure.core/and (seq? t) 
                         (= (count t) 3)
                         (= (first t) #'latte.prop/and))
     [:ok (second t) (nth t 2)]
-    (let [[t ok?] (latte.kernel.norm/delta-step def-env t)]
+    (let [[t ok?] (latte-kernel.norm/delta-step def-env t)]
       (if ok?
         (recur def-env ctx t)
-        (let [t (latte.kernel.norm/normalize def-env ctx t)]
+        (let [t (latte-kernel.norm/normalize def-env ctx t)]
           (if-not (stx/prod? t)
             [:ko nil nil]
             (let [[_ [z _] body] t]
@@ -268,95 +245,76 @@ This is a special version of [[and-intro]]."
                             [:ko nil nil]
                             [:ok a b]))))))))))))))
 
-(defspecial and-elim-left%
-  "A special elimination rule that takes a proof
+(defimplicit and-elim-left
+  "An implicit elimination rule that takes a proof
 of type `(and A B)` and yields a proof of `A`.
 
-This is a special version of [[and-elim-left]]."
-  [def-env ctx and-term]
-  (let [[status ty] (ty/type-of-term def-env ctx and-term)]
+This is an implicit version of [[and-elim-left-]]."
+  [def-env ctx [and-term ty]]
+  (let [[status A B] (decompose-and-type def-env ctx ty)]
     (if (= status :ko)
-      (throw (ex-info "Cannot type term." {:special 'latte.prop/and-elim-left%
-                                           :term and-term
-                                           :from ty}))
-      (do
-        ;; (println "[and-elim-left%] ty=" ty)
-        (let [[status A B] (decompose-and-type def-env ctx ty)]
-          (if (= status :ko)
-            (throw (ex-info "Not an `and`-type." {:special 'latte.prop/and-elim-left%
-                                                  :term and-term
-                                                  :type ty}))
-            [(list #'and-elim-left A B) and-term]))))))
+      (throw (ex-info "Not an `and`-type." {:implicit 'latte.prop/and-elim-left
+                                            :term and-term
+                                            :type ty}))
+      [(list #'and-elim-left- A B) and-term])))
 
-(defthm and-elim-right
+(defthm and-elim-right-
   "Elimination rule for logical conjunction.
    This one only keeps the right-side of the conjunction"
   [[A :type] [B :type]]
   (==> (and A B)
        B))
 
-(proof and-elim-right
+(proof 'and-elim-right-
     :script
   (assume [H1 (and A B)]
     (have a (==> (==> A B B) B) :by (H1 B))
     (have b (==> A B B) :by (lambda [x A]
                               (lambda [y B]
                                 y)))
-    (have c B :by (a b))
-    (qed c)))
+    (have c B :by (a b)))
+  (qed c))
 
-(defspecial and-elim-right%
-  "A special elimination rule that takes a proof
+(defimplicit and-elim-right
+  "An implicit elimination rule that takes a proof
 of type `(and A B)` and yields a proof of `B`.
 
-This is a special version of [[and-elim-right]]."
-  [def-env ctx and-term]
-  (let [[status ty] (ty/type-of-term def-env ctx and-term)]
+This is an implicit version of [[and-elim-right-]]."
+  [def-env ctx [and-term ty]]
+  (let [[status A B] (decompose-and-type def-env ctx ty)]
+    ;; (println "[and-elim-right%] A=" A "B=" B)
     (if (= status :ko)
-      (throw (ex-info "Cannot type term." {:special 'latte.prop/and-elim-right%
-                                           :term and-term
-                                           :from ty}))
-      (do
-        (let [[status A B] (decompose-and-type def-env ctx ty)]
-          ;; (println "[and-elim-right%] A=" A "B=" B)
-          (if (= status :ko)
-            (throw (ex-info "Not an `and`-type." {:special 'latte.prop/and-elim-right%
-                                                  :term and-term
-                                                  :type ty}))
-            [(list #'and-elim-right A B) and-term]))))))
+      (throw (ex-info "Not an `and`-type." {:implicit 'latte.prop/and-elim-right
+                                            :term and-term
+                                            :type ty}))
+      [(list #'and-elim-right- A B) and-term])))
 
-(defthm and-sym
+(defthm and-sym-
   "Symmetry of conjunction."
   [[A :type] [B :type]]
   (==> (and A B)
        (and B A)))
 
-(proof and-sym :script
+(proof 'and-sym- :script
   (assume [H (and A B)]
     ;; (have a A :by ((and-elim-left A B) H))
-    (have <a> A :by (and-elim-left% H))
+    (have <a> A :by (and-elim-left H))
     ;;(have b B :by ((and-elim-right A B) H))
-    (have <b> B :by (and-elim-right% H))
+    (have <b> B :by (and-elim-right H))
     (have <c> (==> B A
-                 (and B A)) :by (and-intro B A))
-    (have <d> (and B A) :by (<c> <b> <a>))
-    (qed <d>)))
+                 (and B A)) :by (and-intro- B A))
+    (have <d> (and B A) :by (<c> <b> <a>)))
+  (qed <d>))
 
-(defspecial and-sym%
-  "Symmetry of conjunction, a special version of [[and-sym]]."
-  [def-env ctx and-term]
-  (let [[status ty] (ty/type-of-term def-env ctx and-term)]
+(defimplicit and-sym
+  "Symmetry of conjunction, an implicit version of [[and-sym-]]."
+  [def-env ctx [and-term ty]]
+  (let [[status A B] (decompose-and-type def-env ctx ty)]
     (if (= status :ko)
-      (throw (ex-info "Cannot type term." {:special 'latte.prop/and-sym%
-                                           :term and-term
-                                           :from ty}))
-      (do
-        (let [[status A B] (decompose-and-type def-env ctx ty)]
-          (if (= status :ko)
-            (throw (ex-info "Not an `and`-type." {:special 'latte.prop/and-sym%
-                                                  :term and-term
-                                                  :type ty}))
-            [(list #'and-sym A B) and-term]))))))
+      (throw (ex-info "Not an `and`-type." {:implicit 'latte.prop/and-sym
+                                            :term and-term
+                                            :type ty}))
+      [(list #'and-sym- A B) and-term])))
 
 (definition or
   "logical disjunction."
