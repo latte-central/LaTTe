@@ -24,17 +24,17 @@
 
 (proof 'impl-refl :script
   (assume [x A]
-    (have <a> A :by x)
-    (qed <a>)))
+    (have <a> A :by x))
+  (qed <a>))
 
 (defthm impl-ignore
   "A variant of reflexivity."
   [[A :type] [B :type]]
   (==> A B A))
 
-(proof impl-ignore
-    :term (lambda [x A]
-            (lambda [y B] x)))
+(proof 'impl-ignore
+    :term '(lambda [x A]
+             (lambda [y B] x)))
 
 (defthm impl-trans
   "Implication is transitive."
@@ -43,14 +43,14 @@
        (==> B C)
        (==> A C)))
 
-(proof impl-trans
+(proof 'impl-trans
     :script
   (assume [H1 (==> A B)
            H2 (==> B C)
            x A]
     (have <a> B :by (H1 x))
-    (have <b> C :by (H2 <a>))
-    (qed <b>)))
+    (have <b> C :by (H2 <a>)))
+  (qed <b>))
 
 (defn decompose-impl-type
   [def-env ctx t]
@@ -58,10 +58,10 @@
     (let [[_ [_ A] B] t]
       ;; TODO: check that the product variable is not in use ?
       [:ok A B])
-    (let [[t ok?] (latte.kernel.norm/delta-step def-env t)]
+    (let [[t ok?] (latte-kernel.norm/delta-step def-env t)]
       (if ok?
         (recur def-env ctx t)
-        (let [t (latte.kernel.norm/normalize def-env ctx t)]
+        (let [t (latte-kernel.norm/normalize def-env ctx t)]
           (if (stx/prod? t)
             (let [[_ [_ A] B] t]
               ;; TODO: check that the product variable is not in use ?
