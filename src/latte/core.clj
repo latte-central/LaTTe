@@ -323,5 +323,3 @@ An error is signaled if the proof cannot be concluded."
 ;;                       [[(list #'latte.prop/impl-trans- A B C) impl1] impl2]))))
 
 
-
-

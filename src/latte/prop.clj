@@ -4,7 +4,8 @@
 
   (:refer-clojure :exclude [and or not])
 
-  (:require [latte-kernel.syntax :as stx]
+  (:require [clojure.core.match :refer [match]]
+            [latte-kernel.syntax :as stx]
             [latte-kernel.typing :as ty]
             [latte-kernel.norm :as norm]
             [latte.core
@@ -54,21 +55,19 @@
     (have <b> C :by (H2 <a>)))
   (qed <b>))
 
+
 (defn decompose-impl-type
-  [def-env ctx t]
-  (if (stx/prod? t)
-    (let [[_ [_ A] B] t]
-      ;; TODO: check that the product variable is not in use ?
-      [A B])
-    (let [[t ok?] (latte-kernel.norm/delta-step def-env t)]
-      (if ok?
-        (recur def-env ctx t)
-        (let [t (latte-kernel.norm/normalize def-env ctx t)]
-          (if (stx/prod? t)
-            (let [[_ [_ A] B] t]
-              ;; TODO: check that the product variable is not in use ?
-              [:ok A B])
-            (throw (ex-info "Not an implication type" {:type t}))))))))
+  ([def-env ctx t] (decompose-impl-type def-env ctx t true))
+  ([def-env ctx t retry?]
+   (match t
+     (['Π [_ A] B] :seq) [A B]
+     :else (if retry?
+             (let [[t ok?] (latte-kernel.norm/delta-step def-env t)]
+               (if ok?
+                 (recur def-env ctx t true)
+                 (let [t (latte-kernel.norm/normalize def-env ctx t)]
+                   (recur def-env ctx t false))))
+             (throw (ex-info "Not an implication type" {:type t}))))))
 
 (defimplicit impl-trans
   [def-env ctx [impl1 ty1] [impl2 ty2]]
@@ -98,8 +97,8 @@
 (proof 'ex-falso
     :script
   (assume [f absurd]
-    (have a A :by (f A)))
-  (qed a))
+    (have <a> A :by (f A)))
+  (qed <a>))
 
 (definition not
   "Logical negation."
@@ -122,8 +121,8 @@
     :script
   (assume [x A
            y (not A)]
-    (have a absurd :by (y x)))
-  (qed a))
+    (have <a> absurd :by (y x)))
+  (qed <a>))
 
 (defthm impl-not-not
   "The if half of double negation.
@@ -141,8 +140,8 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
     :script
   (assume [x A
            H (not A)]
-    (have a absurd :by (H x)))
-  (qed a))
+    (have <a> absurd :by (H x)))
+  (qed <a>))
 
 (definition truth
   "Logical truth."
@@ -155,8 +154,8 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
   truth)
 
 (proof 'truth-is-true :script
-  (have a truth :by (impl-refl absurd))
-  (qed a))
+  (have <a> truth :by (impl-refl absurd))
+  (qed <a>))
 
 (definition and
   "logical conjunction."
@@ -185,9 +184,9 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
            y B
            C :type
            z (==> A B C)]
-    (have a (==> B C) :by (z x))
-    (have b C :by ((a) y)))
-  (qed b))
+    (have <a> (==> B C) :by (z x))
+    (have <b> C :by (<a> y)))
+  (qed <b>))
 
 (defimplicit and-intro
   "A implicit introduction rule that takes a proof
@@ -207,46 +206,34 @@ This is an implicit version of [[and-intro%]]."
 
 (proof 'and-elim-left% :script
   (assume [H1 (and A B)]
-    (have a (==> (==> A B A) A) :by (H1 A))
-    (have b (==> A B A) :by (impl-ignore A B))
-    (have c A :by (a b)))
-  (qed c))
+    (have <a> (==> (==> A B A) A) :by (H1 A))
+    (have <b> (==> A B A) :by (impl-ignore A B))
+    (have <c> A :by (<a> <b>)))
+  (qed <c>))
 
-(defn decompose-and-type [def-env ctx t]
-  (if (clojure.core/and (seq? t) 
-                        (= (count t) 3)
-                        (= (first t) #'latte.prop/and))
-    [(second t) (nth t 2)]
-    (let [[t ok?] (latte-kernel.norm/delta-step def-env t)]
-      (if ok?
-        (recur def-env ctx t)
-        (let [t (latte-kernel.norm/normalize def-env ctx t)]
-          (if-not (stx/prod? t)
-            (throw (ex-info "Not an and-type: not a product." {:type t}))
-            (let [[_ [z _] body] t]
-              (if-not (stx/prod? body)
-                (throw (ex-info "Not an and-type: body is not a product." {:type t
-                                                                           :body body}))
-                (let [[_ [_ hyp] concl] body]
-                  (if-not (stx/prod? hyp)
-                    (throw (ex-info "Not an and-type: body hypothesis is not a product." {:type t
-                                                                                          :body body
-                                                                                          :hypothesis hyp}))
-                    (let [[_ [_ a] nxt] hyp]
-                      (if-not (stx/prod? nxt)
-                        (throw (ex-info "Not an and-type: body hypothesis codomain is not a product." {:type t
-                                                                                                       :body body
-                                                                                                       :hypothesis hyp
-                                                                                                       :codomain nxt}))
-                        (let [[_ [_ b] end] nxt]
-                          (if-not (= z concl end)
-                            (throw (ex-info "Not an and-type: conclusion and end type inequal." {:type t
-                                                                                                 :body body
-                                                                                                 :hypothesis hyp
-                                                                                                 :codomain nxt
-                                                                                                 :end-type end
-                                                                                                 :conclusion concl}))
-                            [a b]))))))))))))))
+(defn decompose-and-type
+  ([def-env ctx t] (decompose-and-type def-env ctx t true))
+  ([def-env ctx t retry?]
+   (if (clojure.core/and (seq? t) 
+                         (= (count t) 3)
+                         (= (first t) #'latte.prop/and))
+     [(second t) (nth t 2)]
+     (match t
+       ([Π [C ✳]
+         (['Π [_ (['Π [_ A] (['Π [_ B] C'] :seq)] :seq)] C''] :seq)] :seq)
+       (if (= C C' C'')
+         [A B]
+         (throw (ex-info "Not a conjunction type: mismatch variables" {:type t
+                                                                       :vars [C C' C'']})))
+       :else (if retry?
+               (let [[t ok?] (norm/delta-step def-env t)]
+                 (if ok?
+                   (recur def-env ctx t true)
+                   (let [t (norm/normalize def-env ctx t)]
+                     (recur def-env ctx t false))))
+               (throw (ex-info "Not a conjunction type" {:type t})))))))
+
+;; (decompose-and-type latte-kernel.defenv/empty-env [] '(Π [C ✳] (Π [⇧ (Π [⇧ A] (Π [⇧ B] C))] C)))
 
 (defimplicit and-elim-left
   "An implicit elimination rule that takes a proof
@@ -267,12 +254,12 @@ This is an implicit version of [[and-elim-left-]]."
 (proof 'and-elim-right%
     :script
   (assume [H1 (and A B)]
-    (have a (==> (==> A B B) B) :by (H1 B))
-    (have b (==> A B B) :by (lambda [x A]
+    (have <a> (==> (==> A B B) B) :by (H1 B))
+    (have <b> (==> A B B) :by (lambda [x A]
                               (lambda [y B]
                                 y)))
-    (have c B :by (a b)))
-  (qed c))
+    (have <c> B :by (<a> <b>)))
+  (qed <c>))
 
 (defimplicit and-elim-right
   "An implicit elimination rule that takes a proof
@@ -292,7 +279,7 @@ This is an implicit version of [[and-elim-right-]]."
 
 (proof 'and-sym% :script
   (assume [H (and A B)]
-    ;; (have a A :by ((and-elim-left A B) H))
+    ;; (have <a> A :by ((and-elim-left A B) H))
     (have <a> A :by (and-elim-left H))
     ;;(have b B :by ((and-elim-right A B) H))
     (have <b> B :by (and-elim-right H))
@@ -322,59 +309,42 @@ This is the introduction by the left operand."
   (==> A
        (or A B)))
 
-;;;; XXXXXXXXXXXXXXXXXX:   ""unused" hypothesis here ... but must be discharged...
 (proof 'or-intro-left%
     :script
   (assume [x A
            C :type
            H1 (==> A C)
            H2 (==> B C)]
-    (have a C :by (H1 x)))
-  (qed a))
+    (have <a> C :by (H1 x)))
+  (qed <a>))
 
-(defspecial or-intro-left%
-  "Left introduction for disjunction, a special version of [[or-intro-left]]."
-  [def-env ctx left-term right-type]
-  (when-not (ty/proper-type? def-env ctx right-type)
-    (throw (ex-info "Not a type." {:special 'latte.prop/or-intro-left%
-                                   :term right-type})))
-  (let [[status left-type] (ty/type-of-term def-env ctx left-term)]
-    (when (= status :ko)
-      (throw (ex-info "Cannot type term." {:special 'latte.prop/or-intro-left%
-                                           :term left-term
-                                           :from left-type})))
-    [(list #'or-intro-left left-type right-type) left-term]))
+(defimplicit or-intro-left
+  "Left introduction for disjunction, an implicit version of [[or-intro-left%]]."
+  [def-env ctx [left-term left-type] [right-type right-kind]]
+  [(list #'or-intro-left% left-type right-type) left-term])
 
-(defthm or-intro-right
+(defthm or-intro-right%
   "Introduction rule for logical disjunction.
 This is the introduction by the right operand."
   [[A :type] [B :type]]
   (==> B
        (or A B)))
 
-(proof or-intro-right
+(proof 'or-intro-right%
     :script
   (assume [y B
            C :type
            H1 (==> A C)
            H2 (==> B C)]
-    (have a C :by (H2 y))
-    (qed a)))
+    (have <a> C :by (H2 y)))
+  (qed <a>))
 
-(defspecial or-intro-right%
-  "Right introduction for disjunction, a special version of [[or-intro-right]]."
-  [def-env ctx left-type right-term]
-  (when-not (ty/proper-type? def-env ctx left-type)
-    (throw (ex-info "Not a type." {:special 'latte.prop/or-intro-right%
-                                   :term left-type})))
-  (let [[status right-type] (ty/type-of-term def-env ctx right-term)]
-    (when (= status :ko)
-      (throw (ex-info "Cannot type term." {:special 'latte.prop/or-intro-right%
-                                           :term right-term
-                                           :from right-type})))
-    [(list #'or-intro-right left-type right-type) right-term]))
+(defimplicit or-intro-right
+  "Right introduction for disjunction, an implicit version of [[or-intro-right%]]."
+  [def-env ctx [left-type left-kind] [right-term right-type]]
+  [(list #'or-intro-right% left-type right-type) right-term])
 
-(defthm or-elim
+(defthm or-elim%
   "Elimination rule for logical disjunction.
 
 Remark: this rule,
@@ -390,7 +360,7 @@ cf. [[or-not-elim-left]] and [[or-not-elim-right]]."
               (==> B C)
               C))))
 
-(proof or-elim
+(proof 'or-elim%
     :script
   (assume [H1 (forall [D :type] (==> (==> A D)
                                      (==> B D)
@@ -398,68 +368,54 @@ cf. [[or-not-elim-left]] and [[or-not-elim-right]]."
            C :type
            H2 (==> A C)
            H3 (==> B C)]
-    (have a (==> (==> A C) (==> B C) C) :by (H1 C))
-    (have b (==> (==> B C) C) :by (a H2))
-    (have c C :by (b H3))
-    (qed c)))
-
+    (have <a> (==> (==> A C) (==> B C) C) :by (H1 C))
+    (have <b> (==> (==> B C) C) :by (<a> H2))
+    (have <c> C :by (<b> H3)))
+  (qed <c>))
 
 ;; (or A B)
 ;; = (forall [C :type]
 ;;       (forall [_ (forall [_ A] C)]
-;;          (forall [_ (forall [_ B C])]
+;;          (forall [_ (forall [_ B] C)]
 ;;               C)))
 
-(defn decompose-or-type [def-env ctx t]
-  (if (clojure.core/and (seq? t) 
-                        (= (count t) 3)
-                        (= (first t) #'latte.prop/or))
-    [:ok (second t) (nth t 2)]
-    (let [[t ok?] (latte.kernel.norm/delta-step def-env t)]
-      (if ok?
-        (recur def-env ctx t)
-        (let [t (latte.kernel.norm/normalize def-env ctx t)]
-          (if-not (stx/prod? t)
-            [:ko nil nil]
-            (let [[_ [C _] body] t]
-              (if-not (stx/prod? body)
-                [:ko nil nil]
-                (let [[_ [_ AC] C'] body]
-                  (if-not (clojure.core/and (= C' C) (stx/prod? AC))
-                    [:ko nil nil]
-                    (let [[_ [_ A] C'] AC]
-                      (if-not (clojure.core/and (= C' C) (stx/prod? body))
-                        [:ko nil nil]
-                        (let [[_ [_ BC] C'] body]
-                          (if-not (clojure.core/and (= C' C) (stx/prod? AC))
-                            [:ko nil nil]
-                            (let [[_ [_ B] C'] BC]
-                              (if-not (= C' C)
-                                [:ko nil nil]
-                                [:ok A B]))))))))))))))))
 
-(defspecial or-elim%
-  "A special elimination rule that takes a proof
+
+(defn decompose-or-type
+  ([def-env ctx t] (decompose-or-type def-env ctx t true))
+  ([def-env ctx t retry?]
+   (if (clojure.core/and (seq? t) 
+                         (= (count t) 3)
+                         (= (first t) #'latte.prop/or))
+     [:ok (second t) (nth t 2)]
+     (match t
+       (['Π [C ✳] (['Π [_ (['Π [_ A] C1] :seq)] (['Π [_ (['Π [_ B] C2] :seq)] C3] :seq)] :seq)] :seq)
+       (if (= C C1 C2 C3)
+         [A B]
+         (throw (ex-info "Not a disjunction type: mismatch variables" {:type t
+                                                                       :vars [C C1 C2 C3]})))
+       :else (if retry?
+               (let [[t ok?] (norm/delta-step def-env t)]
+                 (if ok?
+                   (recur def-env ctx t true)
+                   (let [t (norm/normalize def-env ctx t)]
+                     (recur def-env ctx t false))))
+               (throw (ex-info "Not a disjunction type" {:type t})))))))
+    
+;; (decompose-or-type latte-kernel.defenv/empty-env [] '(Π [C ✳] (Π [⇧ (Π [⇧ A] C)] (Π [⇧ (Π [⇧ B] C)] C))))
+
+(defimplicit or-elim
+  "An elimination rule that takes a proof
  `or-term` of type `(or A B)`, a proposition `prop`,
 a proof `left-proof` of type `(==> A prop)`, 
 a proof `right-proof` of type `(==> B prop)`, and thus
-concludes that `prop` holds by `[[or-elim]]`.
+concludes that `prop` holds by `[[or-elim%]]`.
 
 This is (for now) the easiest rule to use for proof-by-cases."
-  [def-env ctx or-term prop left-proof right-proof]
-  (let [[status ty] (ty/type-of-term def-env ctx or-term)]
-    (if (= status :ko)
-      (throw (ex-info "Cannot type term." {:special 'latte.prop/or-elim%
-                                           :term or-term
-                                           :from ty}))
-      (do
-        ;; (println "[and-elim-left%] ty=" ty)
-        (let [[status A B] (decompose-or-type def-env ctx ty)]
-          (if (= status :ko)
-            (throw (ex-info "Not an `or`-type." {:special 'latte.prop/or-elim%
-                                                 :term or-term
-                                                 :type ty}))
-            [[[[(list #'or-elim A B) or-term] prop] left-proof] right-proof]))))))
+  [def-env ctx [or-term or-type] [prop prop-type] [left-proof left-type] [right-proof right-type]]
+  ;; (let [[A B] (decompose-or-type def-env ctx ty)]
+  ;; [[[[(list #'or-elim A B) or-term] prop] left-proof] right-proof])))
+  [[[[(list #'or-elim% left-type right-type) or-term] prop] left-proof] right-proof])
 
 (defthm or-not-elim-left
   "An elimination rule for disjunction, simpler than [[or-elim]].
@@ -468,7 +424,7 @@ This eliminates to the left operand."
   (==> (or A B) (not B)
        A))
 
-(proof or-not-elim-left
+(proof 'or-not-elim-left
     :script
   (assume [H1 (or A B)
            H2 (not B)]
@@ -477,8 +433,8 @@ This eliminates to the left operand."
     (assume [x B]
       (have <c> absurd :by (H2 x))
       (have <d> A :by (<c> A)))
-    (have <e> A :by (<a> <b> <d>))
-    (qed <e>)))
+    (have <e> A :by (<a> <b> <d>)))
+  (qed <e>))
 
 (defthm or-not-elim-right
   "An elimination rule for disjunction, simpler than [[or-elim]].
@@ -487,7 +443,7 @@ This eliminates to the right operand."
   (==> (or A B) (not A)
        B))
 
-(proof or-not-elim-right
+(proof 'or-not-elim-right
     :script
   (assume [H1 (or A B)
            H2 (not A)]
@@ -496,39 +452,29 @@ This eliminates to the right operand."
     (assume [x A]
       (have <c> absurd :by (H2 x))
       (have <d> B :by (<c> B)))
-    (have <e> B :by (<a> <d> <b>))
-    (qed <e>)))
+    (have <e> B :by (<a> <d> <b>)))
+  (qed <e>))
 
-(defthm or-sym
+(defthm or-sym%
   "Symmetry of disjunction."
   [[A :type] [B :type]]
   (==> (or A B)
        (or B A)))
 
-(proof or-sym :script
+(proof 'or-sym% :script
   (assume [H1 (or A B)
            D :type
            H2 (==> B D)
            H3 (==> A D)]
-    (have a _ :by (H1 D))
-    (have b D :by (a H3 H2))
-    (qed b)))
+    (have <a> _ :by (H1 D))
+    (have <b> D :by (<a> H3 H2)))
+  (qed <b>))
 
-(defspecial or-sym%
-  "Symmetry of disjunction, a special version of [[or-sym]]."
-  [def-env ctx or-term]
-  (let [[status ty] (ty/type-of-term def-env ctx or-term)]
-    (if (= status :ko)
-      (throw (ex-info "Cannot type term." {:special 'latte.prop/or-sym%
-                                           :term or-term
-                                           :from ty}))
-      (do
-        (let [[status A B] (decompose-or-type def-env ctx ty)]
-          (if (= status :ko)
-            (throw (ex-info "Not an `or`-type." {:special 'latte.prop/or-sym%
-                                                 :term or-term
-                                                 :type ty}))
-            [(list #'or-sym A B) or-term]))))))
+(defimplicit or-sym
+  "Symmetry of disjunction, an implicit version of [[or-sym%]]."
+  [def-env ctx [or-term or-type]]
+  (let [[A B] (decompose-or-type def-env ctx or-type)]
+    [(list #'or-sym% A B) or-term]))
 
 (defthm or-not-impl-elim
   "An alternative elimination rule for disjunction."
@@ -536,49 +482,52 @@ This eliminates to the right operand."
   (==> (or A B)
        (==> (not A) B)))
 
-(proof or-not-impl-elim :script
+(proof 'or-not-impl-elim :script
   (assume [H (or A B)
            Hn (not A)]
     (assume [x A]
-      (have a absurd :by (Hn x))
-      "Thanks to absurdity we can get anything we want."
-      (have b B :by (a B)))
-    (have c (==> B B) :by (impl-refl B))
-    (have d (==> (==> A B)
-                 (==> B B)
-                 B) :by (H B))
-    (have e B :by (d b c))
-    (qed e)))
+            (have <a> absurd :by (Hn x))
+            "Thanks to absurdity we can get anything we want."
+            (have <b> B :by (<a> B)))
+    (have <c> (==> B B) :by (impl-refl B))
+    (have <d> (==> (==> A B)
+                   (==> B B)
+                   B) :by (H B))
+    (have <e> B :by (<d> <b> <c>)))
+  (qed <e>))
 
 (defthm or-assoc
   [[A :type] [B :type] [C :type]]
   (==> (or (or A B) C)
        (or A (or B C))))
 
-(proof or-assoc
+(proof 'or-assoc
     :script
   (assume [H1 (or (or A B)
                  C)]
     (assume [H2 (or A B)]
       (assume [H3 A]
         (have <a> (or A (or B C))
-              :by (or-intro-left% H3 (or B C))))
+              :by (or-intro-left H3 (or B C)))
+        [:print-type '<a>])
       (assume [H4 B]
         (have <b1> (or B C)
-              :by (or-intro-left% H4 C))
+              :by (or-intro-left H4 C))
         (have <b> (or A (or B C))
-              :by (or-intro-right% A <b1>)))
+              :by (or-intro-right A <b1>)))
       (have <c> _
-            :by (or-elim% H2 (or A (or B C))
-                          <a> <b>)))
+            :by (or-elim H2 (or A (or B C))
+                         <a> <b>)))
     (assume [H5 C]
       (have <d1> (or B C)
-            :by (or-intro-right% B H5))
+            :by (or-intro-right B H5))
       (have <d> (or A (or B C))
-            :by (or-intro-right% A <d1>)))
-    (have <e> _ :by (or-elim% H1 (or A (or B C))
-                              <c> <d>)))
-  (qed <e>))
+            :by (or-intro-right A <d1>)))
+    (have <e> _ :by (or-elim H1 (or A (or B C))
+                             <c> <d>)))
+
+  )
+  ;;(qed <e>))
 
 (defthm or-assoc-conv
   [[A :type] [B :type] [C :type]]
@@ -648,7 +597,7 @@ This eliminates to the right operand."
 
 (proof iff-refl
     :script
-  (have a (==> A A) :by (impl-refl A))
+  (have <a> (==> A A) :by (impl-refl A))
   (have b (==> (==> A A)
                (==> A A)
                (<=> A A))
@@ -667,7 +616,7 @@ This eliminates to the right operand."
     :script
   (assume [H1 (==> A B)
            H2 (==> B A)]
-    (have a (==> (==> A B)
+    (have <a> (==> (==> A B)
                  (==> B A)
                  (<=> A B)) :by (and-intro (==> A B) (==> B A)))
     (have b (<=> A B) :by (a H1 H2))
@@ -683,7 +632,7 @@ This eliminates to the right operand."
 (proof iff-elim-if
     :script
   (assume [H (<=> A B)]
-    (have a (==> (<=> A B)
+    (have <a> (==> (<=> A B)
                  (==> A B))
           :by (and-elim-left (==> A B) (==> B A)))
     (have b (==> A B) :by (a H)))
@@ -725,7 +674,7 @@ This eliminates to the right operand."
 (proof iff-elim-only-if
     :script
   (assume [H (<=> A B)]
-    (have a (==> (<=> A B)
+    (have <a> (==> (<=> A B)
                  (==> B A))
           :by (and-elim-right (==> A B) (==> B A)))
     (have b (==> B A) :by (a H))
@@ -756,7 +705,7 @@ This eliminates to the right operand."
 (proof iff-sym
     :script
   (assume [H (<=> A B)]
-    (have a (==> B A) :by (iff-elim-only-if% H))
+    (have <a> (==> B A) :by (iff-elim-only-if% H))
     (have b (==> A B) :by (iff-elim-if% H))
     (have c (==> (==> B A)
                  (==> A B)
@@ -790,7 +739,7 @@ This eliminates to the right operand."
     :script
   (assume [H1 (<=> A B)
            H2 (<=> B C)]
-    (have a (==> A B) :by (iff-elim-if% H1))
+    (have <a> (==> A B) :by (iff-elim-if% H1))
     (have b (==> B C) :by (iff-elim-if% H2))
     (have c _ :by (impl-trans A B C))
     (have d (==> A C) :by (c a b))
