@@ -6,10 +6,14 @@
             [clojure.pprint :as pp]
             [latte-kernel.utils :as u]
             [latte-kernel.presyntax :as stx]
+            [latte-kernel.unparser :as unparser]
             [latte-kernel.typing :as ty]
             [latte-kernel.norm :as n]
             [latte-kernel.defenv :as defenv]
             [latte-kernel.proof :as p]))
+
+;; Initialisation of unparser
+(unparser/install-fundamental-unparsers!)
 
 ;;{
 ;; ## Definitions
