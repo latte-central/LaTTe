@@ -422,7 +422,7 @@ cf. [[or-not-elim-left]] and [[or-not-elim-right]]."
    (if (clojure.core/and (seq? t) 
                          (= (count t) 3)
                          (= (first t) #'latte.prop/or))
-     [:ok (second t) (nth t 2)]
+     [(second t) (nth t 2)]
      (match t
        (['Π [C ✳] (['Π [_ (['Π [_ A] C1] :seq)] (['Π [_ (['Π [_ B] C2] :seq)] C3] :seq)] :seq)] :seq)
        (if (= C C1 C2 C3)
@@ -448,9 +448,8 @@ concludes that `prop` holds by `[[or-elim%]]`.
 
 This is (for now) the easiest rule to use for proof-by-cases."
   [def-env ctx [or-term or-type] [prop prop-type] [left-proof left-type] [right-proof right-type]]
-  ;; (let [[A B] (decompose-or-type def-env ctx ty)]
-  ;; [[[[(list #'or-elim A B) or-term] prop] left-proof] right-proof])))
-  [[[[(list #'or-elim% left-type right-type) or-term] prop] left-proof] right-proof])
+  (let [[A B] (decompose-or-type def-env ctx or-type)]
+    [[[[(list #'or-elim% A B) or-term] prop] left-proof] right-proof]))
 
 (defthm or-not-elim-left
   "An elimination rule for disjunction, simpler than [[or-elim]].
@@ -544,13 +543,11 @@ This eliminates to the right operand."
       (assume [H3 A]
         (have <a> (or A (or B C))
               :by (or-intro-left H3 (or B C))))
-      [:print-type '<a>]
       (assume [H4 B]
         (have <b1> (or B C)
               :by (or-intro-left H4 C))
         (have <b> (or A (or B C))
               :by (or-intro-right A <b1>)))
-      [:print-type '<b>]
       (have <c> _
             :by (or-elim H2 (or A (or B C))
                          <a> <b>)))
@@ -561,9 +558,7 @@ This eliminates to the right operand."
             :by (or-intro-right A <d1>)))
     (have <e> _ :by (or-elim H1 (or A (or B C))
                              <c> <d>)))
-
-  )
-  ;;(qed <e>))
+  (qed <e>))
 
 (defthm or-assoc-conv
   [[A :type] [B :type] [C :type]]
