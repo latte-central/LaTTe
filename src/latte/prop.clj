@@ -8,6 +8,7 @@
             [latte-kernel.syntax :as stx]
             [latte-kernel.typing :as ty]
             [latte-kernel.norm :as norm]
+            [latte-kernel.unparser :as unparser]
             [latte.core
              :as latte
              :refer [defthm defimplicit definition proof assume have qed]
@@ -164,6 +165,26 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
     (==> (==> A B C)
          C)))
 
+(defn and-unparser [term]
+  (match
+   term
+   (['Π [C '✳]
+     (['==> (['==> A B C1] :seq)
+       C2] :seq)] :seq) (if (= C C1 C2)
+                          [(list 'and A B) true]
+                          [term false])
+   (['Π [C '✳]
+     (['==> (['==> A (['==> B C1] :seq)] :seq)
+       C2] :seq)] :seq) (if (= C C1 C2)
+                          [(list 'and A B) true]
+                          [term false])
+   :else [term false]))
+
+;; (and-unparser '(Π [X ✳] (==> (==> A B X) X)))
+;; (and-unparser '(Π [X ✳] (==> (==> A (==> B X)) X)))
+
+(unparser/register-unparser! :and and-unparser)
+
 (defthm and-intro%
   "Introduction rule for logical conjunction."
   [[A :type] [B :type]]
@@ -301,6 +322,20 @@ This is an implicit version of [[and-elim-right-]]."
     (==> (==> A C)
          (==> B C)
          C)))
+
+(defn or-unparser [term]
+  (match
+   term
+   (['Π [C ✳]
+     (['==>
+       (['==> A C1] :seq)
+       (['==> B C2] :seq)
+       C3] :seq)] :seq) (if (= C1 C2 C3)
+                          [(list 'or A B) true]
+                          [term false])
+   :else [term false]))
+
+(unparser/register-unparser! :or or-unparser)
 
 (defthm or-intro-left%
   "Introduction rule for logical disjunction.
@@ -508,13 +543,14 @@ This eliminates to the right operand."
     (assume [H2 (or A B)]
       (assume [H3 A]
         (have <a> (or A (or B C))
-              :by (or-intro-left H3 (or B C)))
-        [:print-type '<a>])
+              :by (or-intro-left H3 (or B C))))
+      [:print-type '<a>]
       (assume [H4 B]
         (have <b1> (or B C)
               :by (or-intro-left H4 C))
         (have <b> (or A (or B C))
               :by (or-intro-right A <b1>)))
+      [:print-type '<b>]
       (have <c> _
             :by (or-elim H2 (or A (or B C))
                          <a> <b>)))
