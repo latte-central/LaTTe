@@ -307,23 +307,9 @@ An error is signaled if the proof cannot be concluded."
              [:defined :implicit (quote ~def-name)]))))))
 
 
-;; (macroexpand-1 '(defimplicit impl-trans
-;;                   [def-env ctx [impl1 ty1] [impl2 ty2]]
-;;                   (let [[status A B] (decompose-impl-type def-env ctx ty1)]
-;;                     (when (= status :ko)
-;;                       (throw (ex-info "Not an `==>`-type." {:special 'latte.prop/impl-trans%
-;;                                                             :term impl-term1
-;;                                                             :type ty1})))
-;;                     (let [[status B' C] (decompose-impl-type def-env ctx ty2)]
-;;                       (when (= status :ko)
-;;                         (throw (ex-info "Not an `==>`-type." {:special 'latte.prop/impl-trans%
-;;                                                               :term impl-term2
-;;                                                               :type ty2})))
-                      
-;;                       (when-not (norm/beta-eq? def-env ctx B B')
-;;                         (throw (ex-info "Type in the middle mismatch" {:special 'latte.prop/impl-trans%
-;;                                                                        :left-rhs-type B
-;;                                                                        :right-lhs-type B'})))
-;;                       [[(list #'latte.prop/impl-trans- A B C) impl1] impl2]))))
+
+;;{
+;; ## Basic forms
+;;}
 
 

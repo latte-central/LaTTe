@@ -752,3 +752,4 @@ This eliminates to the right operand."
     [[(list #'iff-trans% A B D) iff-term1] iff-term2]))
 
 
+

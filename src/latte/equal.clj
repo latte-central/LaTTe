@@ -4,26 +4,32 @@
   (:refer-clojure :exclude [and or not])
 
   (:require
-   [latte.kernel.syntax :as stx]
-   [latte.kernel.norm :as norm]
-   [latte.kernel.typing :as ty]
-   [latte.core :as latte :refer [definition defthm defspecial
-                                          forall lambda ==>
-                                          assume have proof]]
+   [latte-kernel.syntax :as stx]
+   [latte-kernel.norm :as norm]
+   [latte-kernel.typing :as ty]
+   [latte.core :as latte :refer [definition defthm defimplicit
+                                          assume have qed proof]]
    [latte.prop :as p :refer [<=> and or not]]))
 
-(definition equal
+(definition equal%
   "The intuitionistic, second-order definition of equality.
 This corresponds to Leibniz's *indiscernibility of identicals*."
   [[T :type] [x T] [y T]]
   (forall [P (==> T :type)]
     (<=> (P x) (P y))))
 
+
+(defimplicit equal
+  "Equality of `x` and `y` (which must be of the same type `T`).
+This is an implicit version of [[equal%]]."
+  [def-env ctx [x x-ty] [y y-ty]]
+  (list #'equal% x-ty x y))
+
 (defn decompose-equal-type [def-env ctx t]
   (if (clojure.core/and (seq t)
                         (= (count t) 4)
-                        (= (first t) #'latte.equal/equal))
-    [:ok (second t) (nth t 2) (nth t 3)]
+                        (= (first t) #'latte.equal/equal%))
+    [(second t) (nth t 2) (nth t 3)]
     (let [[t ok?] (norm/delta-step def-env t)]
       ;; (println "[decompose-equal-type] delta-term=" t " (reduced ? " ok? ")")
       (if ok?
@@ -33,31 +39,36 @@ This corresponds to Leibniz's *indiscernibility of identicals*."
             (recur def-env ctx t)
             ;; XXX: cannot decompose further because
             ;; we cannot retrieve the x and y of the
-            ;; definition ... needs a form of unification.
-            [:ko nil nil nil]))))))
+            ;; definition ... add dummy witnesses ?
+            (throw (ex-info "Cannot infer an equal-type" {:type t}))))))))
 
-(defthm eq-refl
+(defthm eq-refl%
   "The reflexivity property of equality."
   [[T :type] [x T]]
-  (equal T x x))
+  (equal% T x x))
 
-(proof eq-refl :script
+(proof 'eq-refl% :script
   (assume [P (==> T :type)]
-    (have a (<=> (P x) (P x)) :by (p/iff-refl (P x)))
-    (qed a)))
+    (have <a> (<=> (P x) (P x)) :by (p/iff-refl (P x))))
+  (qed <a>))
 
-(defthm eq-sym
+(defimplicit eq-refl
+  "Equality is reflexive."
+  [def-env ctx [x x-ty] [y y-ty]]
+  (list #'eq-refl% x-ty x y))
+
+(defthm eq-sym%
   "The symmetry property of equality."
   [[T :type] [x T] [y T]]
-  (==> (equal T x y)
-       (equal T y x)))
+  (==> (equal% T x y)
+       (equal% T y x)))
 
-(proof eq-sym :script
-  (assume [Heq (equal T x y)
+(proof 'eq-sym% :script
+  (assume [Heq (equal x y)
            P (==> T :type)]
-    (have a (<=> (P x) (P y)) :by (Heq P))
-    (have b (<=> (P y) (P x)) :by ((p/iff-sym (P x) (P y)) a))
-    (qed b)))
+    (have <a> (<=> (P x) (P y)) :by (Heq P))
+    (have <b> (<=> (P y) (P x)) :by (p/iff-sym <a>)))
+  (qed <b>))
 
 (defspecial eq-sym%
   "Symmetry of equality, a special version of [[eq-sym]]."
