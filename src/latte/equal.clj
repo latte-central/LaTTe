@@ -163,7 +163,7 @@ etc.
 ;;     ;;       :by (((eq-trans T a c d) <a>) H3))
 ;;     (qed <a>)))
 
-(defthm eq-subst
+(defthm eq-subst%
   "Substitutivity property of equality."
   [[T :type] [P (==> T :type)] [x T] [y T]]
   (==> (equal T x y)
