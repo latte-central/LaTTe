@@ -9,6 +9,7 @@
             [latte-kernel.typing :as ty]
             [latte-kernel.norm :as norm]
             [latte-kernel.unparser :as unparser]
+            [latte.utils :refer [decomposer]]
             [latte.core
              :as latte
              :refer [defthm defimplicit definition proof assume have qed]
@@ -57,18 +58,13 @@
   (qed <b>))
 
 
-(defn decompose-impl-type
-  ([def-env ctx t] (decompose-impl-type def-env ctx t true))
-  ([def-env ctx t retry?]
-   (match t
-     (['Π [_ A] B] :seq) [A B]
-     :else (if retry?
-             (let [[t ok?] (latte-kernel.norm/delta-step def-env t)]
-               (if ok?
-                 (recur def-env ctx t true)
-                 (let [t (latte-kernel.norm/normalize def-env ctx t)]
-                   (recur def-env ctx t false))))
-             (throw (ex-info "Not an implication type" {:type t}))))))
+(defn decompose-impl-type [def-env ctx t]
+  (decomposer (fn [t] (match
+                       t
+                       (['Π [_ A] B] :seq) [A B]
+                       :else 
+                       (throw (ex-info "Not an implication type" {:type t}))))
+              def-env ctx t))
 
 (defimplicit impl-trans
   [def-env ctx [impl1 ty1] [impl2 ty2]]
@@ -232,27 +228,23 @@ This is an implicit version of [[and-intro%]]."
     (have <c> A :by (<a> <b>)))
   (qed <c>))
 
-(defn decompose-and-type
-  ([def-env ctx t] (decompose-and-type def-env ctx t true))
-  ([def-env ctx t retry?]
-   (if (clojure.core/and (seq? t) 
-                         (= (count t) 3)
-                         (= (first t) #'latte.prop/and))
-     [(second t) (nth t 2)]
-     (match t
-       ([Π [C ✳]
-         (['Π [_ (['Π [_ A] (['Π [_ B] C'] :seq)] :seq)] C''] :seq)] :seq)
-       (if (= C C' C'')
-         [A B]
-         (throw (ex-info "Not a conjunction type: mismatch variables" {:type t
-                                                                       :vars [C C' C'']})))
-       :else (if retry?
-               (let [[t ok?] (norm/delta-step def-env t)]
-                 (if ok?
-                   (recur def-env ctx t true)
-                   (let [t (norm/normalize def-env ctx t)]
-                     (recur def-env ctx t false))))
-               (throw (ex-info "Not a conjunction type" {:type t})))))))
+(defn decompose-and-type [def-env ctx t]
+  (decomposer
+   (fn [t]
+     (if (clojure.core/and (seq? t) 
+                           (= (count t) 3)
+                           (= (first t) #'latte.prop/and))
+       [(second t) (nth t 2)]
+       (match t
+              ([Π [C ✳]
+                (['Π [_ (['Π [_ A] (['Π [_ B] C'] :seq)] :seq)] C''] :seq)] :seq)
+              (if (= C C' C'')
+                [A B]
+                (throw (ex-info "Not a conjunction type: mismatch variables" {:type t
+                                                                              :vars [C C' C'']})))
+              :else 
+              (throw (ex-info "Not a conjunction type" {:type t})))))
+   def-env ctx t))
 
 ;; (decompose-and-type latte-kernel.defenv/empty-env [] '(Π [C ✳] (Π [⇧ (Π [⇧ A] (Π [⇧ B] C))] C)))
 
@@ -416,26 +408,22 @@ cf. [[or-not-elim-left]] and [[or-not-elim-right]]."
 
 
 
-(defn decompose-or-type
-  ([def-env ctx t] (decompose-or-type def-env ctx t true))
-  ([def-env ctx t retry?]
-   (if (clojure.core/and (seq? t) 
-                         (= (count t) 3)
-                         (= (first t) #'latte.prop/or))
-     [(second t) (nth t 2)]
-     (match t
-       (['Π [C ✳] (['Π [_ (['Π [_ A] C1] :seq)] (['Π [_ (['Π [_ B] C2] :seq)] C3] :seq)] :seq)] :seq)
-       (if (= C C1 C2 C3)
-         [A B]
-         (throw (ex-info "Not a disjunction type: mismatch variables" {:type t
-                                                                       :vars [C C1 C2 C3]})))
-       :else (if retry?
-               (let [[t ok?] (norm/delta-step def-env t)]
-                 (if ok?
-                   (recur def-env ctx t true)
-                   (let [t (norm/normalize def-env ctx t)]
-                     (recur def-env ctx t false))))
-               (throw (ex-info "Not a disjunction type" {:type t})))))))
+(defn decompose-or-type [def-env ctx t]
+  (decomposer
+   (fn [t]
+     (if (clojure.core/and (seq? t) 
+                           (= (count t) 3)
+                           (= (first t) #'latte.prop/or))
+       [(second t) (nth t 2)]
+       (match t
+              (['Π [C ✳] (['Π [_ (['Π [_ A] C1] :seq)] (['Π [_ (['Π [_ B] C2] :seq)] C3] :seq)] :seq)] :seq)
+              (if (= C C1 C2 C3)
+                [A B]
+                (throw (ex-info "Not a disjunction type: mismatch variables" {:type t
+                                                                              :vars [C C1 C2 C3]})))
+              :else
+              (throw (ex-info "Not a disjunction type" {:type t})))))
+   def-env ctx t))
     
 ;; (decompose-or-type latte-kernel.defenv/empty-env [] '(Π [C ✳] (Π [⇧ (Π [⇧ A] C)] (Π [⇧ (Π [⇧ B] C)] C))))
 

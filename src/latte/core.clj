@@ -291,7 +291,6 @@ An error is signaled if the proof cannot be concluded."
 
 (defmacro defimplicit
   [& args]
-  (println args)
   (let [conf-form (s/conform ::implicit args)]
     (if (= conf-form :clojure.spec.alpha/invalid)
       (throw (ex-info "Cannot define implicit: syntax error."
