@@ -166,50 +166,43 @@ etc.
 (defthm eq-subst%
   "Substitutivity property of equality."
   [[T :type] [P (==> T :type)] [x T] [y T]]
-  (==> (equal T x y)
+  (==> (equal% T x y)
        (P x)
        (P y)))
 
-(proof eq-subst :script
-  (assume [H1 (equal T x y)
+(proof 'eq-subst% :script
+  (assume [H1 (equal x y)
            H2 (P x)]
-    (have a (<=> (P x) (P y)) :by (H1 P))
-    (have b (P y) :by ((p/iff-elim-if (P x) (P y)) a H2))
-    (qed b)))
+    (have <a> (<=> (P x) (P y)) :by (H1 P))
+    (have <b> (P y) :by ((p/iff-elim-if <a>) H2)))
+  (qed <b>))
 
-(defspecial eq-subst%
-  "Substitutivity of `equal`, a special version of [[eq-subst]]."
-  [def-env ctx P eq-term Px]
-  (let [[status eq-ty] (ty/type-of-term def-env ctx eq-term)]
-    (when (= status :ko)
-      (throw (ex-info "Cannot type term." {:special 'latte.prop/eq-subst%
-                                           :term eq-term
-                                           :from eq-ty})))
-    (let [[status T x y] (decompose-equal-type def-env ctx eq-ty)]
-      (when (= status :ko)
-        (throw (ex-info "Cannot infer an `equal`-type." {:special 'latte.prop/eq-subst%
-                                                         :term eq-term
-                                                         :type eq-ty})))
-      [[(list #'eq-subst T P x y) eq-term] Px])))
+(defimplicit eq-subst
+  "Substitutivity of `equal`, an implicit version of [[eq-subst]]."
+  [def-env ctx [P P-type] [eq-term eq-type] [Px Px-type]]
+  (let [[T x y] (decompose-equal-type def-env ctx eq-type)]
+    [[(list #'eq-subst% T P x y) eq-term] Px]))
 
-(defthm eq-cong
+(defthm eq-cong%
   "Congruence property of equality."
   [[T :type] [U :type] [f (==> T U)] [x T] [y T]]
-  (==> (equal T x y)
-       (equal U (f x) (f y))))
+  (==> (equal% T x y)
+       (equal% U (f x) (f y))))
 
-(proof eq-cong :script
-  (assume [H1 (equal T x y)
+(proof 'eq-cong% :script
+  (assume [H1 (equal x y)
            Q (==> U :type)]
     (assume [H2 (Q (f x))]
-      (have a1 _ :by (eq-subst T (lambda [z T] (Q (f z))) x y))
-      (have a (Q (f y)) :by (a1 H1 H2)))
-    (have b (equal T y x) :by ((eq-sym T x y) H1))
+            (have <a1> _ :by (eq-subst% T (lambda [z T] (Q (f z))) x y))
+            (have <a> (Q (f y)) :by (<a1> H1 H2))
+            [:print-type '<a>])
+    (have <b> (equal y x) :by (eq-sym H1))
+    [:print-type '<b>]
     (assume [H3 (Q (f y))]
-      (have c1 _ :by (eq-subst T (lambda [z T] (Q (f z))) y x))
-      (have c (Q (f x)) :by (c1 b H3)))
-    (have d (<=> (Q (f x)) (Q (f y))) :by ((p/iff-intro (Q (f x)) (Q (f y))) a c))
-    (qed d)))
+      (have <c1> _ :by (eq-subst% T (lambda [z T] (Q (f z))) y x))
+      (have <c> (Q (f x)) :by (<c1> <b> H3)))
+    (have <d> (<=> (Q (f x)) (Q (f y))) :by ((p/iff-intro <a>) <c>)))
+  (qed <d>))
 
 (defspecial eq-cong%
   "Congruence of `equal`, a special version of [[eq-cong]]."

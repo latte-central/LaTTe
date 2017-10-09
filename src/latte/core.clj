@@ -23,9 +23,7 @@
 
 (s/def ::def-name symbol?)
 (s/def ::def-doc string?)
-(s/def ::type-decl #(or (symbol? %)
-                        (keyword? %)))
-(s/def ::param (s/tuple symbol? ::type-decl))
+(s/def ::param (s/tuple symbol? any?))
 (s/def ::def-params (s/coll-of ::param :kind vector?))
 (s/def ::def-body any?)
 
