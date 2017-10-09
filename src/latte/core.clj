@@ -305,7 +305,32 @@ An error is signaled if the proof cannot be concluded."
              (alter-meta! (var ~def-name) #(merge % (quote ~metadata)))
              [:defined :implicit (quote ~def-name)]))))))
 
+(s/def ::implicit*-header (s/cat :def-env symbol?
+                                 :ctx symbol?
+                                 :ampersand #(= % '&)
+                                 :rest-arg symbol?))
 
+(s/def ::implicit* (s/cat :name ::def-name
+                          :doc (s/? ::def-doc)
+                          :header (s/spec ::implicit*-header)
+                          :body (s/* any?)))
+
+
+(defmacro defimplicit*
+  [& args]
+  (let [conf-form (s/conform ::implicit* args)]
+    (if (= conf-form :clojure.spec.alpha/invalid)
+      (throw (ex-info "Cannot define implicit: syntax error."
+                      {:explain (s/explain-str ::implicit* args)}))
+      (let [{def-name :name doc :doc header :header body :body}  conf-form
+            {def-env :def-env ctx :ctx rest-arg :rest-arg} header]
+        (when (defenv/registered-definition? def-name)
+          (println "[Warning] redefinition as (n-ary) implicit"))
+        (let [metadata (merge (meta &form) {:doc (or doc "")})]
+          `(do
+             (def ~def-name (defenv/->Implicit '~def-name (fn [~def-env ~ctx & ~rest-arg] ~@body)))
+             (alter-meta! (var ~def-name) #(merge % (quote ~metadata)))
+             [:defined :implicit* (quote ~def-name)]))))))
 
 ;;{
 ;; ## Basic forms

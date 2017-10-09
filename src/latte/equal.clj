@@ -8,7 +8,7 @@
    [latte-kernel.norm :as norm]
    [latte-kernel.typing :as ty]
    [latte.utils :refer [decomposer]]
-   [latte.core :as latte :refer [definition defthm defimplicit
+   [latte.core :as latte :refer [definition defthm defimplicit defimplicit*
                                           assume have qed proof]]
    [latte.prop :as p :refer [<=> and or not]]))
 
@@ -107,7 +107,7 @@ This is an implicit version of [[equal%]]."
                            :right-lhs-term x2})))
       [[(list #'eq-trans% T1 x1 y1 y2) eq-term1] eq-term2]))
 
-(defimplicit eq-trans*
+(defimplicit* eq-trans*
   "Transitivity of `equal`, a n-ary version of [[eq-trans]].
 The parameter `eq-terms` is a vector of at least two equalities.
 
