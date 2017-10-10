@@ -11,8 +11,7 @@
   (:refer-clojure :exclude [and or not])
 
   (:require [latte.core :as latte :refer [definition defthm defaxiom defnotation proof
-                                          forall ==>
-                                          assume have]]
+                                         qed assume have]]
 
             [latte.prop :as p :refer [and]]
             [latte.equal :as eq :refer [equal]]))

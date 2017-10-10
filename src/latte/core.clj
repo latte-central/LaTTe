@@ -176,6 +176,75 @@
 
 
 ;;{
+;; ## Axioms
+;;}
+
+(s/def ::axiom (s/cat :name ::def-name
+                      :doc (s/? ::def-doc)
+                      :params ::def-params
+                      :body ::def-body))
+
+(declare handle-defaxiom)
+(declare handle-ax-declaration)
+
+(defmacro defaxiom
+  "Declaration of an axiom with the specified `name` (first argument)
+  an optional `docstring` (second argument), a vector of `parameters`
+ and the axiom statement (last argument).
+ Each parameter is a pair `[x T]` with `x` the parameter name and `T` its
+  type. 
+
+  An axiom is accepted without a proof, and should thus be used with
+extra care. The LaTTe rule of thumb is that theorems should be
+favored, but axioms are sometimes required (e.g. the law of the excluded
+ middle) or more \"reasonable\" because of the proof length or complexity.
+In all cases the introduction of an axiom must be justified with strong
+ (albeit informal) arguments."
+  [& args]
+  (let [conf-form (s/conform ::axiom args)]
+    (if (= conf-form :clojure.spec.alpha/invalid)
+      (throw (ex-info "Cannot declare axiom: syntax error."
+                      {:explain (s/explain-str ::axiom args)}))
+      (let [{ax-name :name doc :doc params :params body :body} conf-form]
+        (let [[status def-name definition metadata] (handle-defaxiom :axiom ax-name doc params body)]
+          (if (= status :ko)
+            (throw (ex-info "Cannot declare axiom." {:name ax-name :error def-name}))
+            `(do
+               (def ~def-name ~definition)
+               (alter-meta! (var ~def-name) #(merge % (quote ~metadata))) 
+               [:declared :axiom (quote ~def-name)])))))))
+
+(defn handle-defaxiom [kind ax-name doc params ty]
+  (when (defenv/registered-definition? ax-name)
+    (println "[Warning] redefinition as" (if (= kind :axiom)
+                                           "axiom"
+                                           "primitive") ":" ax-name))
+  (let [[status definition] (handle-ax-declaration ax-name params ty)]
+    (if (= status :ko)
+      [:ko definition nil nil nil]
+      (let [metadata {:doc (mk-doc (if (= kind :axiom)
+                                     "Axiom"
+                                     "Lemma") ty doc)
+                      :arglists (list params)}]
+        [:ok ax-name definition metadata]))))
+
+(defn handle-ax-declaration [ax-name params ty]
+  (let [[status params] (reduce (fn [[_ params] [x ty]]
+                                  (let [[status ty'] (stx/parse-term defenv/empty-env ty)]
+                                    (if (= status :ko)
+                                      (reduced [:ko ty'])
+                                      [:ok (conj params [x ty'])]))) [:ok []] params)]
+    (if (= status :ko)
+      [:ko params]
+      (let [[status ty'] (stx/parse-term defenv/empty-env ty)]
+        (if (= status :ko)
+          [:ko ty']          
+          (if (not (ty/proper-type? defenv/empty-env params ty'))
+            [:ko {:msg "Axiom body is not a proper type" :axiom ax-name :type ty'}]
+            [:ok (defenv/->Axiom ax-name params (count params) ty')]))))))
+
+
+;;{
 ;; ## Proofs
 ;;
 ;; The specs are as follows.
