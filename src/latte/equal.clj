@@ -201,63 +201,16 @@ etc.
     (assume [H3 (Q (f y))]
       (have <c1> _ :by (eq-subst% T (lambda [z T] (Q (f z))) y x))
       (have <c> (Q (f x)) :by (<c1> <b> H3)))
-    (have <d> (<=> (Q (f x)) (Q (f y))) :by ((p/iff-intro <a>) <c>)))
+    (have <d> (<=> (Q (f x)) (Q (f y))) :by (p/iff-intro <a> <c>)))
   (qed <d>))
 
-(defspecial eq-cong%
-  "Congruence of `equal`, a special version of [[eq-cong]]."
-  [def-env ctx f eq-term]
-  (let [[status eq-ty] (ty/type-of-term def-env ctx eq-term)]
-    (when (= status :ko)
-      (throw (ex-info "Cannot type term." {:special 'latte.prop/eq-cong%
-                                           :term eq-term
-                                           :from eq-ty})))
-    (let [[status T x y] (decompose-equal-type def-env ctx eq-ty)]
-      (when (= status :ko)
-        (throw (ex-info "Cannot infer an `equal`-type." {:special 'latte.prop/eq-cong%
-                                                         :term eq-term
-                                                         :type eq-ty})))
-      (let [[status f-ty] (ty/type-of-term def-env ctx f)]
-        (when (= status :ko)
-          (throw (ex-info "Cannot type term." {:special 'latte.prop/eq-cong%
-                                               :term f
-                                               :from f-ty})))
-        (let [[status T' U] (p/decompose-impl-type def-env ctx f-ty)]
-          (when (= status :ko)
-            (throw (ex-info "Cannot infer an `==>`-type." {:special 'latte.prop/eq-cong%
-                                                           :term f
-                                                           :type f-ty})))
-          [(list #'eq-cong T U f x y) eq-term])))))
+(defimplicit eq-cong
+  "Congruence of `equal`, an implicit version of [[eq-cong]]."
+  [def-env ctx [f f-ty] [eq-term eq-ty]]
+  (let [[T x y] (decompose-equal-type def-env ctx eq-ty)
+        [T' U] (p/decompose-impl-type def-env ctx f-ty)]
+    [(list #'eq-cong% T U f x y) eq-term]))
 
-(defthm eq-impl
-  [[T :type] [P (==> T :type)] [x T] [y T]]
-  (==> (equal T x y)
-       (P x)
-       (P y)))
 
-(proof eq-impl
-    :script
-  (assume [H1 (equal T x y)
-           H2 (P x)]
-    (have <a> (<=> (P x) (P y))
-          :by (H1 P))
-    (have <b> (==> (P x) (P y))
-          :by (p/and-elim-left% <a>))
-    (have <c> (P y) :by (<b> H2))
-    (qed <c>)))
-
-(defthm eq-impl-sym
-  [[T :type] [P (==> T :type)] [x T] [y T]]
-  (==> (equal T x y)
-       (P y)
-       (P x)))
-
-(proof eq-impl-sym
-    :script
-  (assume [H1 (equal T x y)
-           H2 (P y)]
-    (have <a> (equal T y x) :by (eq-sym% H1))
-    (have <b> (P x) :by ((eq-impl T P y x) <a> H2))
-    (qed <b>)))
 
 
