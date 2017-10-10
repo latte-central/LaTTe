@@ -63,13 +63,16 @@
                                                              :arglists (list (quote ~params)))))
                [:defined :term (quote ~def-name)])))))))
 
+(defn parse-parameters [def-env params]
+  (reduce (fn [[sts params] [x ty]]
+            (let [[status ty] (stx/parse-term def-env ty)]
+              (if (= status :ko)
+                (reduced [:ko ty])
+                [:ok (conj params [x ty])]))) [:ok []] params))
+
 (defn handle-term-definition [def-name params body]
   ;; parse parameters
-  (let [[status params] (reduce (fn [[sts params] [x ty]]
-                                  (let [[status ty] (stx/parse-term defenv/empty-env ty)]
-                                    (if (= status :ko)
-                                      (reduced [:ko ty])
-                                      [:ok (conj params [x ty])]))) [:ok []] params)]
+  (let [[status params] (parse-parameters defenv/empty-env params)]
     (if (= status :ko)
       [:ko params]
       (let [[status body-term] (stx/parse-term defenv/empty-env body)]
@@ -160,11 +163,7 @@
         [:ok thm-name definition metadata]))))
 
 (defn handle-thm-declaration [thm-name params ty]
-  (let [[status params] (reduce (fn [[_ params] [x ty]]
-                                  (let [[status ty'] (stx/parse-term defenv/empty-env ty)]
-                                    (if (= status :ko)
-                                      (reduced [:ko ty'])
-                                      [:ok (conj params [x ty'])]))) [:ok []] params)]
+  (let [[status params] (parse-parameters defenv/empty-env params)]
     (if (= status :ko)
       [:ko params]
       (let [[status ty'] (stx/parse-term defenv/empty-env ty)]
@@ -229,11 +228,7 @@ In all cases the introduction of an axiom must be justified with strong
         [:ok ax-name definition metadata]))))
 
 (defn handle-ax-declaration [ax-name params ty]
-  (let [[status params] (reduce (fn [[_ params] [x ty]]
-                                  (let [[status ty'] (stx/parse-term defenv/empty-env ty)]
-                                    (if (= status :ko)
-                                      (reduced [:ko ty'])
-                                      [:ok (conj params [x ty'])]))) [:ok []] params)]
+  (let [[status params] (parse-parameters defenv/empty-env params)]
     (if (= status :ko)
       [:ko params]
       (let [[status ty'] (stx/parse-term defenv/empty-env ty)]
@@ -242,7 +237,6 @@ In all cases the introduction of an axiom must be justified with strong
           (if (not (ty/proper-type? defenv/empty-env params ty'))
             [:ko {:msg "Axiom body is not a proper type" :axiom ax-name :type ty'}]
             [:ok (defenv/->Axiom ax-name params (count params) ty')]))))))
-
 
 ;;{
 ;; ## Proofs
@@ -337,6 +331,50 @@ An error is signaled if the proof cannot be concluded."
           (alter-var-root (resolve thm-name) (fn [_] new-thm))
           [:qed thm-name])))))
 
+
+;;{
+;; ## Examples
+;;
+;; Examples allow to check propositions at the top-level. They are like unrecorded theorems with proofs.
+;;
+;;}
+
+(s/def ::example (s/cat :params ::def-params
+                        :body ::def-body
+                        :method #{:script :term}
+                        :steps (s/+ any?)))
+
+(declare handle-example-thm)
+
+(defmacro example
+  "An example of the form `(example T <method> <steps>)` is the statement of a proposition, as a type `T`, 
+as well as a proof. The proof method is either `:script` (declarative proof script) or `:term` (proof term)."
+  [& args]
+  (let [conf-form (s/conform ::example args)]
+    (if (= conf-form :clojure.spec.alpha/invalid)
+      (throw (ex-info "Syntax error in example."
+                      {:explain (s/explain-str ::example args)}))
+      (let [{params :params body :body method :method steps :steps} conf-form
+            [status thm] (handle-example-thm params body)]
+        (if (= status :ko)
+          (throw (ex-info "Cannot check example." thm))
+          (let [[status infos] (p/check-proof defenv/empty-env (reverse (:params thm)) (:name thm) (:type thm) method steps)]
+            (if (= status :ko)
+              (do ;; (println "infos = " infos)
+                (throw (ex-info (str "Proof failed: " (:msg infos)) (dissoc infos :msg))))
+              `(do
+                 [:checked :example]))))))))
+
+(defn handle-example-thm [params ty]
+  (let [[status params] (parse-parameters defenv/empty-env params)]
+    (if (= status :ko)
+      [:ko params]
+      (let [[status ty'] (stx/parse-term defenv/empty-env ty)]
+        (if (= status :ko)
+          [:ko ty']          
+          (if (not (ty/proper-type? defenv/empty-env params ty'))
+            [:ko {:msg "Example body is not a proper type" :type ty'}]
+            [:ok (defenv/->Theorem (gensym "example") params (count params) ty' false)]))))))
 
 ;;{
 ;; ## Implicits
