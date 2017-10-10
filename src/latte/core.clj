@@ -349,6 +349,7 @@ An error is signaled if the proof cannot be concluded."
 (defmacro example
   "An example of the form `(example T <method> <steps>)` is the statement of a proposition, as a type `T`, 
 as well as a proof. The proof method is either `:script` (declarative proof script) or `:term` (proof term)."
+  {:style/indent [2 :form :form [1]]}
   [& args]
   (let [conf-form (s/conform ::example args)]
     (if (= conf-form :clojure.spec.alpha/invalid)
@@ -358,11 +359,11 @@ as well as a proof. The proof method is either `:script` (declarative proof scri
             [status thm] (handle-example-thm params body)]
         (if (= status :ko)
           (throw (ex-info "Cannot check example." thm))
-          (let [[status infos] (p/check-proof defenv/empty-env (reverse (:params thm)) (:name thm) (:type thm) method steps)]
-            (if (= status :ko)
-              (do ;; (println "infos = " infos)
-                (throw (ex-info (str "Proof failed: " (:msg infos)) (dissoc infos :msg))))
-              `(do
+          `(let [[status# infos#] (p/check-proof defenv/empty-env '~(reverse (:params thm)) '~(:name thm) '~(:type thm) '~method '~steps)]
+             (if (= status# :ko)
+               (do ;; (println "infos = " infos)
+                 (throw (ex-info (str "Proof failed: " (:msg infos#)) (dissoc infos# :msg))))
+               (do
                  [:checked :example]))))))))
 
 (defn handle-example-thm [params ty]

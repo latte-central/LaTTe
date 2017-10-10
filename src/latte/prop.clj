@@ -12,7 +12,8 @@
             [latte.utils :refer [decomposer]]
             [latte.core
              :as latte
-             :refer [defthm defimplicit definition proof assume have qed]
+             :refer [defthm defimplicit definition example
+                     proof assume have qed]
              ;; [definition term type-of defthm defspecial
              ;; lambda forall ==>
              ;;                             assume have qed proof try-proof]
@@ -129,10 +130,6 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
   [[A :type]]
   (==> A (not (not A))))
 
-;; (neg (neg A))
-;; = (==> (neg A) absurd)
-;; = (==> (==> A absurd) absurd) 
-
 (proof 'impl-not-not
     :script
   (assume [x A
@@ -213,6 +210,10 @@ a proof of type `(and A B)`.
 This is an implicit version of [[and-intro%]]."
   [def-env ctx [a ty-a] [b ty-b]]
   [[(list #'and-intro% ty-a ty-b) a] b])
+
+(example [[A :type] [B :type] [x A] [y B]]
+    (and A B)
+  :term (and-intro x y))
 
 (defthm and-elim-left%
   "Elimination rule for logical conjunction.
