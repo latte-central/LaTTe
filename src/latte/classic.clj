@@ -73,11 +73,11 @@ classical logic."
   (assume [H (==> (not A) B)]
     (assume [Hnot (not (or A B))]
       (assume [x A]
-        (have <a1> _ :by (p/or-intro-left% A B))
+        (have <a1> _ :by (p/or-intro-left-thm A B))
         (have <a2> (or A B) :by (<a1> x))
         (have <a> p/absurd :by (Hnot <a2>)))
       (assume [y B]
-        (have <b1> _ :by (p/or-intro-right% A B))
+        (have <b1> _ :by (p/or-intro-right-thm A B))
         (have <b2> (or A B) :by (<b1> y))
         (have <b> p/absurd :by (Hnot <b2>)))
       (have <c> B :by (H <a>))

@@ -67,19 +67,19 @@ This is an implicit version of [[equality]]."
   (qed <b>))
 
 (defimplicit eq-sym
-  "Symmetry of equality, an implicit version of [[eq-sym%]]."
+  "Symmetry of equality, an implicit version of [[eq-sym-thm]]."
   [def-env ctx [eq-term eq-ty]]
   (let [[T x y] (decompose-equal-type def-env ctx eq-ty)]
-    [(list #'eq-sym% T x y) eq-term]))
+    [(list #'eq-sym-thm T x y) eq-term]))
 
-(defthm eq-trans%
+(defthm eq-trans-thm
   "The transitivity property of equality."
   [[T :type] [x T] [y T] [z T]]
-  (==> (equal% T x y)
-       (equal% T y z)
-       (equal% T x z)))
+  (==> (equal x y)
+       (equal y z)
+       (equal x z)))
 
-(proof 'eq-trans% :script
+(proof 'eq-trans-thm :script
   (assume [H1 (equal x y)
            H2 (equal y z)
            P (==> T :type)]
@@ -90,7 +90,7 @@ This is an implicit version of [[equality]]."
   (qed <c>))
 
 (defimplicit eq-trans
-  "Transitivity of `equal`, an implicit version of [[eq-trans%]]."
+  "Transitivity of `equal`, an implicit version of [[eq-trans-thm]]."
   [def-env ctx [eq-term1 ty1] [eq-term2 ty2]]
   (let [[T1 x1 y1] (decompose-equal-type def-env ctx ty1)
         [T2 x2 y2] (decompose-equal-type def-env ctx ty2)]
@@ -105,7 +105,7 @@ This is an implicit version of [[equality]]."
                           {:special 'latte.prop/eq-trans%
                            :left-rhs-term y1
                            :right-lhs-term x2})))
-      [[(list #'eq-trans% T1 x1 y1 y2) eq-term1] eq-term2]))
+      [[(list #'eq-trans-thm T1 x1 y1 y2) eq-term1] eq-term2]))
 
 (defimplicit* eq-trans*
   "Transitivity of `equal`, a n-ary version of [[eq-trans]].
@@ -137,7 +137,7 @@ etc.
       (if (seq eq-terms')
         (let [[_ x2 y2] (decompose-equal-type def-env ctx (second (first eq-terms')))]
           (recur (rest eq-terms') x1 y2
-                 [[(list #'eq-trans% T x1 y1 y2) ret] (ffirst eq-terms')]))
+                 [[(list #'eq-trans-thm T x1 y1 y2) ret] (ffirst eq-terms')]))
         ;; we're done
         (do
           ;; (println "  ==> ret=" ret)
@@ -163,14 +163,14 @@ etc.
 ;;     ;;       :by (((eq-trans T a c d) <a>) H3))
 ;;     (qed <a>)))
 
-(defthm eq-subst%
+(defthm eq-subst-thm
   "Substitutivity property of equality."
   [[T :type] [P (==> T :type)] [x T] [y T]]
-  (==> (equal% T x y)
+  (==> (equal x y)
        (P x)
        (P y)))
 
-(proof 'eq-subst% :script
+(proof 'eq-subst-thm :script
   (assume [H1 (equal x y)
            H2 (P x)]
     (have <a> (<=> (P x) (P y)) :by (H1 P))
@@ -178,38 +178,36 @@ etc.
   (qed <b>))
 
 (defimplicit eq-subst
-  "Substitutivity of `equal`, an implicit version of [[eq-subst]]."
+  "Substitutivity of `equal`, an implicit version of [[eq-subst-thm]]."
   [def-env ctx [P P-type] [eq-term eq-type] [Px Px-type]]
   (let [[T x y] (decompose-equal-type def-env ctx eq-type)]
-    [[(list #'eq-subst% T P x y) eq-term] Px]))
+    [[(list #'eq-subst-thm T P x y) eq-term] Px]))
 
-(defthm eq-cong%
+(defthm eq-cong-thm
   "Congruence property of equality."
   [[T :type] [U :type] [f (==> T U)] [x T] [y T]]
-  (==> (equal% T x y)
-       (equal% U (f x) (f y))))
+  (==> (equal x y)
+       (equal (f x) (f y))))
 
-(proof 'eq-cong% :script
+(proof 'eq-cong-thm :script
   (assume [H1 (equal x y)
            Q (==> U :type)]
     (assume [H2 (Q (f x))]
-            (have <a1> _ :by (eq-subst% T (lambda [z T] (Q (f z))) x y))
-            (have <a> (Q (f y)) :by (<a1> H1 H2))
-            [:print-type '<a>])
+            (have <a1> _ :by (eq-subst-thm T (lambda [z T] (Q (f z))) x y))
+            (have <a> (Q (f y)) :by (<a1> H1 H2)))
     (have <b> (equal y x) :by (eq-sym H1))
-    [:print-type '<b>]
     (assume [H3 (Q (f y))]
-      (have <c1> _ :by (eq-subst% T (lambda [z T] (Q (f z))) y x))
+      (have <c1> _ :by (eq-subst-thm T (lambda [z T] (Q (f z))) y x))
       (have <c> (Q (f x)) :by (<c1> <b> H3)))
     (have <d> (<=> (Q (f x)) (Q (f y))) :by (p/iff-intro <a> <c>)))
   (qed <d>))
 
 (defimplicit eq-cong
-  "Congruence of `equal`, an implicit version of [[eq-cong]]."
+  "Congruence of `equal`, an implicit version of [[eq-cong-thm]]."
   [def-env ctx [f f-ty] [eq-term eq-ty]]
   (let [[T x y] (decompose-equal-type def-env ctx eq-ty)
         [T' U] (p/decompose-impl-type def-env ctx f-ty)]
-    [(list #'eq-cong% T U f x y) eq-term]))
+    [(list #'eq-cong-thm T U f x y) eq-term]))
 
 
 

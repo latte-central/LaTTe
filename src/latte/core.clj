@@ -78,7 +78,7 @@
       (let [[status body-term] (stx/parse-term defenv/empty-env body)]
         (if (= status :ko)
           [:ko body-term]
-          (let [[status ty] (ty/type-of-term defenv/empty-env params body-term)]
+          (let [[status ty _] (ty/type-of-term defenv/empty-env params body-term)]
             (if (= status :ko)
               [:ko ty]
               [:ok (defenv/->Definition def-name params (count params) body-term ty)])))))))
@@ -327,7 +327,7 @@ An error is signaled if the proof cannot be concluded."
         (do ;; (println "infos = " infos)
             (throw (ex-info (str "Proof failed: " (:msg infos)) {:theorem thm-name
                                                                  :error (dissoc infos :msg)})))
-        (let [new-thm (assoc thm :proof [:method steps])]
+        (let [new-thm (assoc thm :proof [method steps])]
           (alter-var-root (resolve thm-name) (fn [_] new-thm))
           [:qed thm-name])))))
 
