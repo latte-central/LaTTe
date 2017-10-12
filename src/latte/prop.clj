@@ -42,14 +42,14 @@
     :term '(lambda [x A]
              (lambda [y B] x)))
 
-(defthm impl-trans%
+(defthm impl-trans-thm
   "Implication is transitive."
   [[A :type] [B :type] [C :type]]
   (==> (==> A B)
        (==> B C)
        (==> A C)))
 
-(proof 'impl-trans%
+(proof 'impl-trans-thm
     :script
   (assume [H1 (==> A B)
            H2 (==> B C)
@@ -75,7 +75,7 @@
       (throw (ex-info "Type in the middle mismatch" {:implicit 'latte.prop/impl-trans
                                                      :left-rhs-type B
                                                      :right-lhs-type B'})))
-    [[(list #'latte.prop/impl-trans% A B C) impl1] impl2]))
+    [[(list #'latte.prop/impl-trans-thm A B C) impl1] impl2]))
 
 (definition absurd
   "Absurdity."
@@ -178,7 +178,7 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
 
 (unparser/register-unparser! :and and-unparser)
 
-(defthm and-intro%
+(defthm and-intro-thm
   "Introduction rule for logical conjunction."
   [[A :type] [B :type]]
   (==> A B
@@ -192,7 +192,7 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
 ;;              (lambda [z (==> A B C)]
 ;;                z x y)))))
 
-(proof 'and-intro%
+(proof 'and-intro-thm
     :script
   (assume [x A
            y B
@@ -207,22 +207,22 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
 `a` of type `A`, a proof `b` of type `B` and yields
 a proof of type `(and A B)`.
 
-This is an implicit version of [[and-intro%]]."
+This is an implicit version of [[and-intro-thm]]."
   [def-env ctx [a ty-a] [b ty-b]]
-  [[(list #'and-intro% ty-a ty-b) a] b])
+  [[(list #'and-intro-thm ty-a ty-b) a] b])
 
 (example [[A :type] [B :type] [x A] [y B]]
     (and A B)
   :term (and-intro x y))
 
-(defthm and-elim-left%
+(defthm and-elim-left-thm
   "Elimination rule for logical conjunction.
    This one only keeps the left-side of the conjunction"
   [[A :type] [B :type]]
   (==> (and A B)
        A))
 
-(proof 'and-elim-left% :script
+(proof 'and-elim-left-thm :script
   (assume [H1 (and A B)]
     (have <a> (==> (==> A B A) A) :by (H1 A))
     (have <b> (==> A B A) :by (impl-ignore A B))
@@ -253,19 +253,19 @@ This is an implicit version of [[and-intro%]]."
   "An implicit elimination rule that takes a proof
 of type `(and A B)` and yields a proof of `A`.
 
-This is an implicit version of [[and-elim-left-]]."
+This is an implicit version of [[and-elim-left-thm]]."
   [def-env ctx [and-term ty]]
   (let [[A B] (decompose-and-type def-env ctx ty)]
-    [(list #'and-elim-left% A B) and-term]))
+    [(list #'and-elim-left-thm A B) and-term]))
 
-(defthm and-elim-right%
+(defthm and-elim-right-thm
   "Elimination rule for logical conjunction.
    This one only keeps the right-side of the conjunction"
   [[A :type] [B :type]]
   (==> (and A B)
        B))
 
-(proof 'and-elim-right%
+(proof 'and-elim-right-thm
     :script
   (assume [H1 (and A B)]
     (have <a> (==> (==> A B B) B) :by (H1 B))
@@ -277,28 +277,27 @@ This is an implicit version of [[and-elim-left-]]."
 
 (defimplicit and-elim-right
   "An implicit elimination rule that takes a proof
-of type `(and A B)` and yields a proof of `B`.
+`and-term` of type `(and A B)` and yields a proof of `B`.
 
-This is an implicit version of [[and-elim-right-]]."
+This is an implicit version of [[and-elim-right-thm]]."
   [def-env ctx [and-term ty]]
   (let [[A B] (decompose-and-type def-env ctx ty)]
-    ;; (println "[and-elim-right%] A=" A "B=" B)
-    [(list #'and-elim-right% A B) and-term]))
+    [(list #'and-elim-right-thm A B) and-term]))
 
-(defthm and-sym%
+(defthm and-sym-thm
   "Symmetry of conjunction."
   [[A :type] [B :type]]
   (==> (and A B)
        (and B A)))
 
-(proof 'and-sym% :script
+(proof 'and-sym-thm :script
   (assume [H (and A B)]
     ;; (have <a> A :by ((and-elim-left A B) H))
     (have <a> A :by (and-elim-left H))
     ;;(have b B :by ((and-elim-right A B) H))
     (have <b> B :by (and-elim-right H))
     (have <c> (==> B A
-                 (and B A)) :by (and-intro% B A))
+                 (and B A)) :by (and-intro-thm B A))
     (have <d> (and B A) :by (<c> <b> <a>)))
   (qed <d>))
 
@@ -306,7 +305,7 @@ This is an implicit version of [[and-elim-right-]]."
   "Symmetry of conjunction, an implicit version of [[and-sym-]]."
   [def-env ctx [and-term ty]]
   (let [[A B] (decompose-and-type def-env ctx ty)]
-    [(list #'and-sym% A B) and-term]))
+    [(list #'and-sym-thm A B) and-term]))
 
 (definition or
   "logical disjunction."
@@ -330,14 +329,14 @@ This is an implicit version of [[and-elim-right-]]."
 
 (unparser/register-unparser! :or or-unparser)
 
-(defthm or-intro-left%
+(defthm or-intro-left-thm
   "Introduction rule for logical disjunction.
 This is the introduction by the left operand."
   [[A :type] [B :type]]
   (==> A
        (or A B)))
 
-(proof 'or-intro-left%
+(proof 'or-intro-left-thm
     :script
   (assume [x A
            C :type
@@ -347,18 +346,18 @@ This is the introduction by the left operand."
   (qed <a>))
 
 (defimplicit or-intro-left
-  "Left introduction for disjunction, an implicit version of [[or-intro-left%]]."
+  "Left introduction for disjunction, an implicit version of [[or-intro-left-thm]]."
   [def-env ctx [left-term left-type] [right-type right-kind]]
-  [(list #'or-intro-left% left-type right-type) left-term])
+  [(list #'or-intro-left-thm left-type right-type) left-term])
 
-(defthm or-intro-right%
+(defthm or-intro-right-thm
   "Introduction rule for logical disjunction.
 This is the introduction by the right operand."
   [[A :type] [B :type]]
   (==> B
        (or A B)))
 
-(proof 'or-intro-right%
+(proof 'or-intro-right-thm
     :script
   (assume [y B
            C :type
@@ -368,11 +367,11 @@ This is the introduction by the right operand."
   (qed <a>))
 
 (defimplicit or-intro-right
-  "Right introduction for disjunction, an implicit version of [[or-intro-right%]]."
+  "Right introduction for disjunction, an implicit version of [[or-intro-right-thm]]."
   [def-env ctx [left-type left-kind] [right-term right-type]]
-  [(list #'or-intro-right% left-type right-type) right-term])
+  [(list #'or-intro-right-thm left-type right-type) right-term])
 
-(defthm or-elim%
+(defthm or-elim-thm
   "Elimination rule for logical disjunction.
 
 Remark: this rule,
@@ -388,7 +387,7 @@ cf. [[or-not-elim-left]] and [[or-not-elim-right]]."
               (==> B C)
               C))))
 
-(proof 'or-elim%
+(proof 'or-elim-thm
     :script
   (assume [H1 (forall [D :type] (==> (==> A D)
                                      (==> B D)
@@ -433,12 +432,12 @@ cf. [[or-not-elim-left]] and [[or-not-elim-right]]."
  `or-term` of type `(or A B)`, a proposition `prop`,
 a proof `left-proof` of type `(==> A prop)`, 
 a proof `right-proof` of type `(==> B prop)`, and thus
-concludes that `prop` holds by `[[or-elim%]]`.
+concludes that `prop` holds by `[[or-elim-thm]]`.
 
 This is (for now) the easiest rule to use for proof-by-cases."
   [def-env ctx [or-term or-type] [prop prop-type] [left-proof left-type] [right-proof right-type]]
   (let [[A B] (decompose-or-type def-env ctx or-type)]
-    [[[[(list #'or-elim% A B) or-term] prop] left-proof] right-proof]))
+    [[[[(list #'or-elim-thm A B) or-term] prop] left-proof] right-proof]))
 
 (defthm or-not-elim-left
   "An elimination rule for disjunction, simpler than [[or-elim]].
@@ -478,13 +477,13 @@ This eliminates to the right operand."
     (have <e> B :by (<a> <d> <b>)))
   (qed <e>))
 
-(defthm or-sym%
+(defthm or-sym-thm
   "Symmetry of disjunction."
   [[A :type] [B :type]]
   (==> (or A B)
        (or B A)))
 
-(proof 'or-sym% :script
+(proof 'or-sym-thm :script
   (assume [H1 (or A B)
            D :type
            H2 (==> B D)
@@ -494,10 +493,10 @@ This eliminates to the right operand."
   (qed <b>))
 
 (defimplicit or-sym
-  "Symmetry of disjunction, an implicit version of [[or-sym%]]."
+  "Symmetry of disjunction, an implicit version of [[or-sym-thm]]."
   [def-env ctx [or-term or-type]]
   (let [[A B] (decompose-or-type def-env ctx or-type)]
-    [(list #'or-sym% A B) or-term]))
+    [(list #'or-sym-thm A B) or-term]))
 
 (defthm or-not-impl-elim
   "An alternative elimination rule for disjunction."
@@ -519,12 +518,12 @@ This eliminates to the right operand."
     (have <e> B :by (<d> <b> <c>)))
   (qed <e>))
 
-(defthm or-assoc%
+(defthm or-assoc-thm
   [[A :type] [B :type] [C :type]]
   (==> (or (or A B) C)
        (or A (or B C))))
 
-(proof 'or-assoc%
+(proof 'or-assoc-thm
     :script
   (assume [H1 (or (or A B)
                  C)]
@@ -549,12 +548,12 @@ This eliminates to the right operand."
                              <c> <d>)))
   (qed <e>))
 
-(defthm or-assoc-conv%
+(defthm or-assoc-conv-thm
   [[A :type] [B :type] [C :type]]
   (==> (or A (or B C))
        (or (or A B) C)))
 
-(proof 'or-assoc-conv%
+(proof 'or-assoc-conv-thm
     :script
   (assume [H1 (or A (or B C))]
     (assume [H2 A]
@@ -581,14 +580,14 @@ This eliminates to the right operand."
 
 (defimplicit or-assoc
   "Associativity of disjunction, an implicit that subsumes both
-[[or-assoc]] and [[or-assoc-conv]]."
+[[or-assoc-thm]] and [[or-assoc-conv-thm]]."
   [def-env ctx [or-term or-type]]
   (let [[A B] (decompose-or-type def-env ctx or-type)]
     (try (let [[A1 A2] (decompose-or-type def-env ctx A)]
-           [(list #'or-assoc% A1 A2 B) or-term])
+           [(list #'or-assoc-thm A1 A2 B) or-term])
          (catch Exception e
            (let [[B1 B2] (decompose-or-type def-env ctx B)]
-             [(list #'or-assoc-conv% A B1 B2) or-term])))))
+             [(list #'or-assoc-conv-thm A B1 B2) or-term])))))
 
 (definition <=>
   "Logical equivalence or 'if and only if'."
@@ -607,48 +606,48 @@ This eliminates to the right operand."
   (have <b> (==> (==> A A)
                  (==> A A)
                  (<=> A A))
-        :by (and-intro% (==> A A) (==> A A)))
+        :by (and-intro-thm (==> A A) (==> A A)))
   (have <c> (<=> A A) :by (<b> <a> <a>))
   (qed <c>))
 
-(defthm iff-intro%
+(defthm iff-intro-thm
   "Introduction rule for logical equivalence."
   [[A :type] [B :type]]
   (==> (==> A B)
        (==> B A)
        (<=> A B)))
 
-(proof 'iff-intro%
+(proof 'iff-intro-thm
     :script
   (assume [H1 (==> A B)
            H2 (==> B A)]
     (have <a> (==> (==> A B)
                  (==> B A)
-                 (<=> A B)) :by (and-intro% (==> A B) (==> B A)))
+                 (<=> A B)) :by (and-intro-thm (==> A B) (==> B A)))
     (have <b> (<=> A B) :by (<a> H1 H2)))
   (qed <b>))
 
 (defimplicit iff-intro
-  "Introduction rule for logical equivalence, an implicit version of [[iff-intro%]]."
+  "Introduction rule for logical equivalence, an implicit version of [[iff-intro-thm]]."
   [def-env ctx [ab ab-type] [ba ba-type]]
   (let [[A B] (decompose-impl-type def-env ctx ab-type)
         [B A'] (decompose-impl-type def-env ctx ba-type)]
     ;; XXX: check somethings on A' vs. A ?
-    [[(list #'iff-intro% A B) ab] ba]))
+    [[(list #'iff-intro-thm A B) ab] ba]))
 
-(defthm iff-elim-if%
+(defthm iff-elim-if-thm
   "Elimination rule for logical equivalence.
    This one only keeps the if part of the equivalence."
   [[A :type] [B :type]]
   (==> (<=> A B)
        (==> A B)))
 
-(proof 'iff-elim-if%
+(proof 'iff-elim-if-thm
     :script
   (assume [H (<=> A B)]
     (have <a> (==> (<=> A B)
                  (==> A B))
-          :by (and-elim-left% (==> A B) (==> B A)))
+          :by (and-elim-left-thm (==> A B) (==> B A)))
     (have <b> (==> A B) :by (<a> H)))
   (qed <b>))
 
@@ -659,86 +658,86 @@ This eliminates to the right operand."
     [A B]))
 
 (defimplicit iff-elim-if
-  "Left (if) elimination for `<=>`, an implicit version of [[iff-elim-if%]]."
+  "Left (if) elimination for `<=>`, an implicit version of [[iff-elim-if-thm]]."
   [def-env ctx [iff-term iff-type]]
   (let [[A B] (decompose-iff-type def-env ctx iff-type)]
-    [(list #'iff-elim-if% A B) iff-term]))
+    [(list #'iff-elim-if-thm A B) iff-term]))
 
-(defthm iff-elim-only-if%
+(defthm iff-elim-only-if-thm
   "Elimination rule for logical equivalence.
    This one only keeps the only-if part of the equivalence."
   [[A :type] [B :type]]
   (==> (<=> A B)
        (==> B A)))
 
-(proof 'iff-elim-only-if%
+(proof 'iff-elim-only-if-thm
     :script
   (assume [H (<=> A B)]
     (have <a> (==> (<=> A B)
                  (==> B A))
-          :by (and-elim-right% (==> A B) (==> B A)))
+          :by (and-elim-right-thm (==> A B) (==> B A)))
     (have <b> (==> B A) :by (<a> H)))
   (qed <b>))
 
 (defimplicit iff-elim-only-if
-  "Right (only if) elimination for `<=>`, an implicit version of [[iff-elim-only-if%]]."
+  "Right (only if) elimination for `<=>`, an implicit version of [[iff-elim-only-if-thm]]."
   [def-env ctx [iff-term iff-type]]
   (let [[A B] (decompose-iff-type def-env ctx iff-type)]
-    [(list #'iff-elim-only-if% A B) iff-term]))
+    [(list #'iff-elim-only-if-thm A B) iff-term]))
 
-(defthm iff-sym%
+(defthm iff-sym-thm
   "Symmetry of logical equivalence."
   [[A :type] [B :type]]
   (==> (<=> A B)
        (<=> B A)))
 
-(proof 'iff-sym%
+(proof 'iff-sym-thm
     :script
   (assume [H (<=> A B)]
     (have <a> (==> B A) :by (iff-elim-only-if H))
     (have <b> (==> A B) :by (iff-elim-if H))
     (have <c> (==> (==> B A)
                    (==> A B)
-                   (<=> B A)) :by (iff-intro% B A))
+                   (<=> B A)) :by (iff-intro-thm B A))
     (have <d> (<=> B A) :by (<c> <a> <b>)))
     (qed <d>))
 
 (defimplicit iff-sym
-  "Symmetry of `<=>`, an implicit version of [[iff-sym]]."
+  "Symmetry of `<=>`, an implicit version of [[iff-sym-thm]]."
   [def-env ctx [iff-term iff-type]]
   (let [[A B] (decompose-iff-type def-env ctx iff-type)]
-    [(list #'iff-sym% A B) iff-term]))
+    [(list #'iff-sym-thm A B) iff-term]))
 
-(defthm iff-trans%
+(defthm iff-trans-thm
   "Transitivity of logical equivalence."
   [[A :type] [B :type] [C :type]]
   (==> (<=> A B)
        (<=> B C)
        (<=> A C)))
 
-(proof 'iff-trans%
+(proof 'iff-trans-thm
     :script
   (assume [H1 (<=> A B)
            H2 (<=> B C)]
     (have <a> (==> A B) :by (iff-elim-if H1))
     (have <b> (==> B C) :by (iff-elim-if H2))
-    (have <c> _ :by (impl-trans% A B C))
+    (have <c> _ :by (impl-trans-thm A B C))
     (have <d> (==> A C) :by (<c> <a> <b>))
     (have <e> (==> C B) :by (iff-elim-only-if H2))
     (have <f> (==> B A) :by (iff-elim-only-if H1))
-    (have <g> _ :by (impl-trans% C B A))
+    (have <g> _ :by (impl-trans-thm C B A))
     (have <h> (==> C A) :by (<g> <e> <f>))
-    (have <i> _ :by (iff-intro% A C))
+    (have <i> _ :by (iff-intro-thm A C))
     (have <k> (<=> A C) :by (<i> <d> <h>)))
   (qed <k>))
 
 (defimplicit iff-trans
-  "Transitivity of `<=>`, an implicit version of [[iff-trans%]]."
+  "Transitivity of `<=>`, an implicit version of [[iff-trans-thm]]."
   [def-env ctx [iff-term1 iff-type1] [iff-term2 iff-type2]]
   (let [[A B] (decompose-iff-type def-env ctx iff-type1)
         [C D] (decompose-iff-type def-env ctx iff-type2)]
     ;; XXX: check that B and C are equal ?
-    [[(list #'iff-trans% A B D) iff-term1] iff-term2]))
+    [[(list #'iff-trans-thm A B D) iff-term1] iff-term2]))
 
 
 

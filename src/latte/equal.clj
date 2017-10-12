@@ -12,7 +12,7 @@
                                           assume have qed proof]]
    [latte.prop :as p :refer [<=> and or not]]))
 
-(definition equal%
+(definition equality
   "The intuitionistic, second-order definition of equality.
 This corresponds to Leibniz's *indiscernibility of identicals*."
   [[T :type] [x T] [y T]]
@@ -21,16 +21,16 @@ This corresponds to Leibniz's *indiscernibility of identicals*."
 
 (defimplicit equal
   "Equality of `x` and `y` (which must be of the same type `T`).
-This is an implicit version of [[equal%]]."
+This is an implicit version of [[equality]]."
   [def-env ctx [x x-ty] [y y-ty]]
-  (list #'equal% x-ty x y))
+  (list #'equality x-ty x y))
 
 (defn decompose-equal-type [def-env ctx t]
   (decomposer
    (fn [t]
      (if (clojure.core/and (seq t)
                            (= (count t) 4)
-                           (= (first t) #'latte.equal/equal%))
+                           (= (first t) #'latte.equal/equality))
        [(second t) (nth t 2) (nth t 3)]
        ;; XXX: cannot decompose further because
        ;; we cannot retrieve the x and y of the
@@ -38,12 +38,12 @@ This is an implicit version of [[equal%]]."
        (throw (ex-info "Cannot infer an equal-type" {:type t}))))
    def-env ctx t))
 
-(defthm eq-refl%
+(defthm eq-refl-thm
   "The reflexivity property of equality."
   [[T :type] [x T]]
-  (equal% T x x))
+  (equality T x x))
 
-(proof 'eq-refl% :script
+(proof 'eq-refl-thm :script
   (assume [P (==> T :type)]
     (have <a> (<=> (P x) (P x)) :by (p/iff-refl (P x))))
   (qed <a>))
@@ -51,15 +51,15 @@ This is an implicit version of [[equal%]]."
 (defimplicit eq-refl
   "Equality is reflexive."
   [def-env ctx [x x-ty]]
-  (list #'eq-refl% x-ty x x))
+  (list #'eq-refl-thm x-ty x x))
 
-(defthm eq-sym%
+(defthm eq-sym-thm
   "The symmetry property of equality."
   [[T :type] [x T] [y T]]
-  (==> (equal% T x y)
-       (equal% T y x)))
+  (==> (equal x y)
+       (equal y x)))
 
-(proof 'eq-sym% :script
+(proof 'eq-sym-thm :script
   (assume [Heq (equal x y)
            P (==> T :type)]
     (have <a> (<=> (P x) (P y)) :by (Heq P))
