@@ -41,7 +41,7 @@
   "A bijective function."
   [[T :type] [U :type] [f (==> T U)]]
   (and (injective f)
-       (surjective U f)))
+       (surjective f)))
 
 (defthm bijective-is-surjective
   "A bijection is a surjection."
