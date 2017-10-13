@@ -41,7 +41,7 @@ This is an implicit version of [[equality]]."
 (defthm eq-refl-thm
   "The reflexivity property of equality."
   [[T :type] [x T]]
-  (equality T x x))
+  (equal x x))
 
 (proof 'eq-refl-thm :script
   (assume [P (==> T :type)]

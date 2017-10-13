@@ -52,7 +52,7 @@ Remark: this is a second-order, intuitionistic definition that
 (defthm ex-elim-thm
   "The (intuitionistic) elimination rule for the existential quantifier."
   [[T :type] [P (==> T :type)] [A :type]]
-  (==> (ex-def T P)
+  (==> (ex P)
        (forall [x T] (==> (P x) A))
        A))
 
@@ -74,7 +74,7 @@ Remark: this is a second-order, intuitionistic definition that
   "The introduction rule for the existential quantifier."
   [[T :type] [P (==> T :type)] [x T]]
   (==> (P x)
-       (ex-def T P)))
+       (ex P)))
 
 (proof 'ex-intro-thm :script
   (assume [H (P x)
@@ -96,7 +96,7 @@ Remark: this is a second-order, intuitionistic definition that
   (forall [x y T]
     (==> (P x)
          (P y)
-         (equality T x y))))
+         (equal x y))))
 
 (defimplicit single
   "The constraint that \"there exists at most\"... (an implicit version of [[single-prop]])."
@@ -108,7 +108,7 @@ Remark: this is a second-order, intuitionistic definition that
 (definition unique-prop
   "The constraint that \"there exists a unique\" ..."
   [[T :type] [P (==> T :type)]]
-  (and (ex-def T P)
+  (and (ex P)
        (single-prop T P)))
 
 (defimplicit unique
@@ -124,7 +124,7 @@ Remark: this is a second-order, intuitionistic definition that
  `T` satisfying the predicate `P`. This is provided
  thanks to the uniqueness proof `u` (of type `(unique T P)`.
 "
-  [[T :type] [P (==> T :type)] [u (unique-prop T P)]]
+  [[T :type] [P (==> T :type)] [u (unique P)]]
   T)
 
 (defimplicit the
@@ -138,25 +138,31 @@ This is the implicit version of the axiom [[the-ax]]."
   (let [[T _] (p/decompose-impl-type def-env ctx P-type)]
     (list #'the-ax T P u)))
 
-(defaxiom the-prop
+(defaxiom the-prop-ax
   "The property of the unique element descriptor."
-  [[T :type] [P (==> T :type)] [u (unique-prop T P)]]
-  (P (the-ax T P u)))
+  [[T :type] [P (==> T :type)] [u (unique P)]]
+  (P (the P u)))
+
+(defimplicit the-prop
+  "The property of `the`, from [[the-prop-ax]]."
+  [def-env ctx [P P-type] [u u-type]]
+  (let [[T _] (p/decompose-impl-type def-env ctx P-type)]
+    (list #'the-prop-ax T P u)))
 
 (defthm the-lemma-thm
   "The unique element is ... unique."
-  [[T :type] [P (==> T :type)] [u (unique-prop T P)]]
+  [[T :type] [P (==> T :type)] [u (unique P)]]
   (forall [y T]
     (==> (P y)
-         (equality T y (the-ax T P u)))))
+         (equal y (the P u)))))
 
 (proof 'the-lemma-thm :script
   (have <a> (single-prop T P) :by (p/and-elim-right u))
-  (have <b> (P (the-ax T P u)) :by (the-prop T P u))
+  (have <b> (P (the-ax T P u)) :by (the-prop P u))
   (assume [y T
            Hy (P y)]
     (have <c> (==> (P y)
-                   (P (the-ax T P u))
+                   (P (the P u))
                    (equal y (the P u))) :by (<a> y (the P u)))
     (have <d> (equal y (the P u)) :by (<c> Hy <b>)))
   (qed <d>))

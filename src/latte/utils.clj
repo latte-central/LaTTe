@@ -17,7 +17,7 @@
        res
        (if retry?
          (let [[term' ok?] (if *decomposer-performs-delta-steps*
-                             (norm/delta-step def-env term)
+                             (norm/delta-step def-env ctx term)
                              [term false])]
            (if ok?
              (recur decompose-fn def-env ctx term' true)
