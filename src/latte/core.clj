@@ -281,6 +281,13 @@ The name `<x>` can be replaced by `_` in which case no definition is recorded."
                        :explain (s/explain-str ::have-args (rest &form))}))
       `[:have (quote ~have-name) (quote ~have-type) (quote ~have-term) ~infos])))
 
+(defmacro pose
+  "A local definition `(pose P := e)` allows a proof to refer to term `e` under
+the name `P` in a proof. This is equivalent to `(have P _ :by e)` (with the type of
+`e` inferred)."
+  [pose-name pose-kw pose-term]
+  `(have '~pose-name :by '~pose-term))
+
 (defmacro qed
   "A Qed step of the form `(qed e)` checks that the
  term `e` allows to finish a proof in the current context.
@@ -469,9 +476,8 @@ Be careful that the parser will be called recursively on the generated term, hen
             ;;       otherwise only warn ?
             (println "[Warning] redefinition as notation: " def-name)))
         `(do
-           (defn ~def-name
+           (def ~def-name
              ~doc
-             ~params
              (defenv/->Notation (quote ~def-name)
                (fn ~params (do ~@body))))
            [:defined :notation (quote ~def-name)])))))

@@ -45,7 +45,7 @@ Remark: this is a second-order, intuitionistic definition that
 
 > there exists an `x` of type `T` such that `(P x)` is true."
   [bindings body]
-  [:ok (list '∃ bindings body)])
+  [:ok (list #'ex (list 'lambda bindings body))])
 
 (alter-meta! #'exists update-in [:style/indent] (fn [_] [1 :form :form]))
 

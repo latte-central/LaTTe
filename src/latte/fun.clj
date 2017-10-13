@@ -7,30 +7,41 @@
 
   (:refer-clojure :exclude [and or not])
 
-  (:require [latte.core :as latte :refer [definition defaxiom defthm
-                                          forall lambda ==>
+  (:require [latte.core :as latte :refer [definition defaxiom defthm defimplicit
                                           proof assume have pose]]
             [latte.prop :as p :refer [and or not]]
             [latte.equal :as eq :refer [equal]]
             [latte.quant :as q :refer [exists]]))
 
-(definition injective
+(definition injective-def
   "An injective function."
   [[T :type] [U :type] [f (==> T U)]]
   (forall [x y T]
-    (==> (equal U (f x) (f y))
-         (equal T x y))))
+    (==> (equal (f x) (f y))
+         (equal x y))))
 
-(definition surjective
+(defimplicit injective
+  "The function `f` is injective, cf. [[injective-def]]."
+  [def-env ctx [f f-type]]
+  (let [[T U] (p/decompose-impl-type def-env ctx f-type)]
+    (list #'injective-def T U f)))
+
+(definition surjective-def
   "A surjective function."
   [[T :type] [U :type] [f (==> T U)]]
-  (forall [y U] (exists [x T] (equal U (f x) y))))
+  (forall [y U] (exists [x T] (equal (f x) y))))
 
-(definition bijective
+(defimplicit surjective
+  "The function `f` is surjective, cf. [[surjective-def]]."
+  [def-env ctx [f f-type]]
+  (let [[T U] (p/decompose-impl-type def-env ctx f-type)]
+    (list #'surjective-def T U f)))
+
+(definition bijective-def
   "A bijective function."
   [[T :type] [U :type] [f (==> T U)]]
-  (and (injective T U f)
-       (surjective T U f)))
+  (and (injective f)
+       (surjective U f)))
 
 (defthm bijective-is-surjective
   "A bijection is a surjection."
