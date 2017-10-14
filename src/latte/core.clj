@@ -279,14 +279,14 @@ The name `<x>` can be replaced by `_` in which case no definition is recorded."
       (throw (ex-info "Have step syntax error."
                       {:infos infos
                        :explain (s/explain-str ::have-args (rest &form))}))
-      `[:have (quote ~have-name) (quote ~have-type) (quote ~have-term) ~infos])))
+      `[:have (quote ~have-name) (quote ~have-type) (quote ~have-term) ~(or infos {})])))
 
 (defmacro pose
   "A local definition `(pose P := e)` allows a proof to refer to term `e` under
 the name `P` in a proof. This is equivalent to `(have P _ :by e)` (with the type of
 `e` inferred)."
   [pose-name pose-kw pose-term]
-  `(have '~pose-name :by '~pose-term))
+  `(have ~pose-name ~(symbol "_") :by ~pose-term))
 
 (defmacro qed
   "A Qed step of the form `(qed e)` checks that the
@@ -299,10 +299,12 @@ An error is signaled if the proof cannot be concluded."
 (defmacro assume
   "An assume step of the form `(assume [x1 T1 x2 T2 ...] <body>)`.
 "
+  {:style/indent [1 :form [1]]}
   [params & body]
     `[:assume ~(meta &form) (quote ~params) 
         ~@body])
-  
+
+
 
 (defn proof
   "Provides a proof of theorem named `thm-name` using the given proof `method`

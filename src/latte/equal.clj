@@ -67,7 +67,7 @@ This is an implicit version of [[equality]]."
   (qed <b>))
 
 (defimplicit eq-sym
-  "Symmetry of equality, an implicit version of [[eq-sym-thm]]."
+  "Symmetry of equality, cf. [[eq-sym-thm]]."
   [def-env ctx [eq-term eq-ty]]
   (let [[T x y] (decompose-equal-type def-env ctx eq-ty)]
     [(list #'eq-sym-thm T x y) eq-term]))
@@ -90,7 +90,7 @@ This is an implicit version of [[equality]]."
   (qed <c>))
 
 (defimplicit eq-trans
-  "Transitivity of `equal`, an implicit version of [[eq-trans-thm]]."
+  "Transitivity of `equal`, cf. [[eq-trans-thm]]."
   [def-env ctx [eq-term1 ty1] [eq-term2 ty2]]
   (let [[T1 x1 y1] (decompose-equal-type def-env ctx ty1)
         [T2 x2 y2] (decompose-equal-type def-env ctx ty2)]
