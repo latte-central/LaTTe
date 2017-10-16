@@ -10,14 +10,13 @@
 
   (:refer-clojure :exclude [and or not])
 
-  (:require [latte.core :as latte :refer [definition defthm defaxiom defnotation proof
-                                          forall ==>
-                                          assume have]]
+  (:require [latte.core :as latte :refer [definition defthm defaxiom defnotation defimplicit
+                                          proof qed assume have]]
 
             [latte.prop :as p :refer [and]]
-            [latte.equal :as eq :refer [equal]]))
+            [latte.equal :as eq :refer [equal equality]]))
 
-(definition ex
+(definition ex-def
   "The encoding for the existential quantifier.
 
 `(ex T P)` encodes the existential quantification
@@ -33,6 +32,12 @@ Remark: this is a second-order, intuitionistic definition that
     (==> (forall [x T] (==> (P x) α))
          α)))
 
+(defimplicit ex
+  "The existential quantified, an implicit version of [[ex-def]]."
+  [def-env ctx [P P-ty]]
+  (let [[T _] (p/decompose-impl-type def-env ctx P-ty)]
+    (list #'ex-def T P)))
+
 (defnotation exists
   "The existential quantification  `(exists [x T] P)`
  is a shortcut for `(ex T (lambda [x T] P))`, corresponding
@@ -40,83 +45,125 @@ Remark: this is a second-order, intuitionistic definition that
 
 > there exists an `x` of type `T` such that `(P x)` is true."
   [bindings body]
-  [:ok (list '∃ bindings body)])
+  [:ok (list #'ex (list 'lambda bindings body))])
 
 (alter-meta! #'exists update-in [:style/indent] (fn [_] [1 :form :form]))
 
-(defthm ex-elim
+(defthm ex-elim-thm
   "The (intuitionistic) elimination rule for the existential quantifier."
   [[T :type] [P (==> T :type)] [A :type]]
-  (==> (ex T P)
+  (==> (ex P)
        (forall [x T] (==> (P x) A))
        A))
 
-(proof ex-elim :script
-  (assume [H1 (ex T P)
+(proof 'ex-elim-thm :script
+  (assume [H1 (ex P)
            H2 (forall [x T] (==> (P x) A))]
-    (have a (==> (forall [x T] (==> (P x) A))
-                 A) :by (H1 A))
-    (have b A :by (a H2))
-    (qed b)))
+    (have <a> (==> (forall [x T] (==> (P x) A))
+                   A) :by (H1 A))
+    (have <b> A :by (<a> H2)))
+  (qed <b>))
 
-(defthm ex-intro
+(defimplicit ex-elim
+  "The elimination rule for the existential quantifier, an implicit version of [[ex-elim-thm]]."
+  [def-env ctx [P P-ty] [A A-ty]]
+  (let [[T _] (p/decompose-impl-type def-env ctx P-ty)]
+    (list #'ex-elim-thm T P A)))
+
+(defthm ex-intro-thm
   "The introduction rule for the existential quantifier."
   [[T :type] [P (==> T :type)] [x T]]
   (==> (P x)
-       (ex T P)))
+       (ex P)))
 
-(proof ex-intro :script
+(proof 'ex-intro-thm :script
   (assume [H (P x)
            A :type
            y (forall [z T] (==> (P z) A))]
-    (have a (==> (P x) A) :by (y x))
-    (have b A :by (a H))
-    (qed b)))
+    (have <a> (==> (P x) A) :by (y x))
+    (have <b> A :by (<a> H)))
+  (qed <b>))
 
-(definition single
+(defimplicit ex-intro
+  "The introduction rule for the existential quantifier, an implicit version of [[ex-intro-thm]]."
+  [def-env ctx [P P-ty] [x x-ty]]
+  (let [[T _] (p/decompose-impl-type def-env ctx P-ty)]
+    (list #'ex-intro-thm T P x)))
+
+(definition single-prop
   "The constraint that \"there exists at most\"..."
   [[T :type] [P (==> T :type)]]
   (forall [x y T]
     (==> (P x)
          (P y)
-         (equal T x y))))
+         (equal x y))))
 
-(definition unique
+(defimplicit single
+  "The constraint that \"there exists at most\"... (an implicit version of [[single-prop]])."
+  [def-env ctx [P P-type]]
+  (let [[T _] (p/decompose-impl-type def-env ctx P-type)]
+    (list #'single-prop T P)))
+
+
+(definition unique-prop
   "The constraint that \"there exists a unique\" ..."
   [[T :type] [P (==> T :type)]]
-  (and (ex T P)
-       (single T P)))
+  (and (ex P)
+       (single-prop T P)))
 
-(defaxiom the
+(defimplicit unique
+  "The constraint that \"there exists a unique\" ... (an implicit version of [[unique-prop]])."
+  [def-env ctx [P P-type]]
+  (let [[T _] (p/decompose-impl-type def-env ctx P-type)]
+    (list #'unique-prop T P)))
+
+(defaxiom the-ax
   "The unique element descriptor.
 
   `(the T P u)` defines the unique inhabitant of type
  `T` satisfying the predicate `P`. This is provided
  thanks to the uniqueness proof `u` (of type `(unique T P)`.
 "
-  [[T :type] [P (==> T :type)] [u (unique T P)]]
+  [[T :type] [P (==> T :type)] [u (unique P)]]
   T)
 
-(defaxiom the-prop
-  "The property of the unique element descriptor."
-  [[T :type] [P (==> T :type)] [u (unique T P)]]
-  (P (the T P u)))
+(defimplicit the
+ "The unique element descriptor.
 
-(defthm the-lemma
+  `(the P u)` defines the unique object
+ satisfying the predicate `P`. This is provided
+ thanks to the uniqueness proof `u` (of type `(unique P)`.
+This is the implicit version of the axiom [[the-ax]]."
+  [def-env ctx [P P-type] [u u-type]]
+  (let [[T _] (p/decompose-impl-type def-env ctx P-type)]
+    (list #'the-ax T P u)))
+
+(defaxiom the-prop-ax
+  "The property of the unique element descriptor."
+  [[T :type] [P (==> T :type)] [u (unique P)]]
+  (P (the P u)))
+
+(defimplicit the-prop
+  "The property of `the`, from [[the-prop-ax]]."
+  [def-env ctx [P P-type] [u u-type]]
+  (let [[T _] (p/decompose-impl-type def-env ctx P-type)]
+    (list #'the-prop-ax T P u)))
+
+(defthm the-lemma-thm
   "The unique element is ... unique."
-  [[T :type] [P (==> T :type)] [u (unique T P)]]
+  [[T :type] [P (==> T :type)] [u (unique P)]]
   (forall [y T]
     (==> (P y)
-         (equal T y (the T P u)))))
+         (equal y (the P u)))))
 
-(proof the-lemma :script
-  (have a (single T P) :by (p/and-elim-right% u))
-  (have b (P (the T P u)) :by (the-prop T P u))
+(proof 'the-lemma-thm :script
+  (have <a> (single-prop T P) :by (p/and-elim-right u))
+  (have <b> (P (the-ax T P u)) :by (the-prop P u))
   (assume [y T
            Hy (P y)]
-    (have c (==> (P y)
-                 (P (the T P u))
-                 (equal T y (the T P u))) :by (a y (the T P u)))
-    (have d (equal T y (the T P u)) :by (c Hy b)))
-  (qed d))
+    (have <c> (==> (P y)
+                   (P (the P u))
+                   (equal y (the P u))) :by (<a> y (the P u)))
+    (have <d> (equal y (the P u)) :by (<c> Hy <b>)))
+  (qed <d>))
 
