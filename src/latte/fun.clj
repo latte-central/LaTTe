@@ -209,45 +209,42 @@
     (have <d> (exists [y U] (equal (inv-f y) x))
           :by ((q/ex-intro (lambda [z U] (equal (inv-f z) x)) y)
                <c>)))
-  [:print-type '<d>]
-  [:print '(surjective (inverse f b))]
   (qed <d>))
 
 
 (defthm inverse-injective
   "The inverse function of a bijection, is injective."
-  [[T :type] [U :type] [f (==> T U)] [b (bijective T U f)]]
-  (injective U T (inverse T U f b)))
+  [[T :type] [U :type] [f (==> T U)] [b (bijective f)]]
+  (injective (inverse f b)))
 
-(proof inverse-injective
+(proof 'inverse-injective
     :script
-  (pose inv-f := (inverse T U f b))
+  (pose inv-f := (inverse f b))
   (assume [x U
            y U
-           Hxy (equal T (inv-f x) (inv-f y))]
-    (have <a> (equal U (f (inv-f x)) (f (inv-f y)))
-          :by ((eq/eq-cong T U f (inv-f x) (inv-f y)) Hxy))
-    (have <b> (equal U x (f (inv-f x)))
-          :by ((eq/eq-sym U (f (inv-f x)) x)
-               ((inverse-prop T U f b) x)))
-    (have <c> (equal U (f (inv-f y)) y)
+           Hxy (equal (inv-f x) (inv-f y))]
+    (have <a> (equal (f (inv-f x)) (f (inv-f y)))
+          :by (eq/eq-cong f Hxy))
+    (have <b> (equal (f (inv-f x)) x)
+          :by ((inverse-prop T U f b) x))
+    (have <c> (equal x (f (inv-f x)))
+          :by (eq/eq-sym <b>))
+    (have <d> (equal (f (inv-f y)) y)
           :by ((inverse-prop T U f b) y))
-    (have <d> (equal U x (f (inv-f y)))
-          :by ((eq/eq-trans U x (f (inv-f x)) (f (inv-f y)))
-               <b> <a>))
-    (have <e> (equal U x y)
-          :by ((eq/eq-trans U x (f (inv-f y)) y)
-               <d> <c>)))
-  (qed <e>))
+    (have <e> (equal x (f (inv-f y)))
+          :by (eq/eq-trans <c> <a>))
+    (have <f> (equal x y)
+          :by (eq/eq-trans <e> <d>)))
+  (qed <f>))
 
 (defthm inverse-bijective
   "The inverse of a bijection is a bijection."
-  [[T :type] [U :type] [f (==> T U)] [b (bijective T U f)]]
-  (bijective U T (inverse T U f b)))
+  [[T :type] [U :type] [f (==> T U)] [b (bijective f)]]
+  (bijective (inverse f b)))
 
-(proof inverse-bijective
+(proof 'inverse-bijective
     :script
-  (have <a> _ :by (p/and-intro% (inverse-injective T U f b)
-                                (inverse-surjective T U f b)))
+  (have <a> _ :by (p/and-intro (inverse-injective T U f b)
+                               (inverse-surjective T U f b)))
   (qed <a>))
 
