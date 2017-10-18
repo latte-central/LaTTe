@@ -495,4 +495,11 @@ Be careful that the parser will be called recursively on the generated term, hen
 ;; ## Basic forms
 ;;}
 
+(defn forall [params body]
+  {:style/indent [1 :form :form]}
+  (list 'forall params body))
+
+(defn lambda [params body]
+  {:style/indent [1 :form :form]}
+  (list 'lambda params body))
 
