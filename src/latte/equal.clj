@@ -4,6 +4,7 @@
   (:refer-clojure :exclude [and or not])
 
   (:require
+   [latte-kernel.defenv :as defenv]
    [latte-kernel.syntax :as stx]
    [latte-kernel.norm :as norm]
    [latte-kernel.typing :as ty]
@@ -17,7 +18,17 @@
 This corresponds to Leibniz's *indiscernibility of identicals*."
   [[T :type] [x T] [y T]]
   (forall [P (==> T :type)]
-    (<=> (P x) (P y))))
+          (<=> (P x) (P y))))
+
+(defn equality-opacity! [flag]
+  "Equality is most of the time handled in an opaque way, but it
+is sometimes required to handle it transparently. This function
+ should be used in this case."
+  (alter-var-root #'equality (fn [eq]
+                               (update eq :opts (fn [opts] (assoc opts :opaque flag))))))
+
+
+
 
 (defimplicit equal
   "Equality of `x` and `y` (which must be of the same type `T`).
@@ -43,10 +54,12 @@ This is an implicit version of [[equality]]."
   [[T :type] [x T]]
   (equal x x))
 
+
 (proof 'eq-refl-thm :script
   (assume [P (==> T :type)]
     (have <a> (<=> (P x) (P x)) :by (p/iff-refl (P x))))
   (qed <a>))
+
 
 (defimplicit eq-refl
   "Equality is reflexive."
@@ -210,5 +223,8 @@ etc.
     [(list #'eq-cong-thm T U f x y) eq-term]))
 
 
+;; outside this namespace,
+;; equality should in general treated as an opaque definition.
+(equality-opacity! true)
 
-
+;; set it to false in case a proof requires it to be transparent.

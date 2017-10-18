@@ -81,7 +81,7 @@
           (let [[status ty _] (ty/type-of-term defenv/empty-env params body-term)]
             (if (= status :ko)
               [:ko ty]
-              [:ok (defenv/->Definition def-name params (count params) body-term ty)])))))))
+              [:ok (defenv/->Definition def-name params (count params) body-term ty {})])))))))
 
 (defn mk-def-doc [kind content explanation]
   (str "\n```\n"
