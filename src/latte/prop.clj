@@ -203,7 +203,7 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
   (qed <b>))
 
 (defimplicit and-intro
-  "A implicit introduction rule that takes a proof
+  "An introduction rule that takes a proof
 `a` of type `A`, a proof `b` of type `B` and yields
 a proof of type `(and A B)`.
 

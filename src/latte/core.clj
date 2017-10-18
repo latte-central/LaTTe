@@ -34,7 +34,7 @@
 
 
 (declare handle-term-definition)
-(declare mk-doc)
+(declare mk-def-doc)
 
 (defmacro definition
   "Defines a mathematical term composed of a `name`, and optional (but highly recommended)
@@ -59,7 +59,7 @@
             `(do
                (def ~def-name ~quoted-def#)
                (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
-                                                             :doc (mk-doc "Definition" (quote ~body) ~doc)
+                                                             :doc (mk-def-doc "Definition" (quote ~body) ~doc)
                                                              :arglists (list (quote ~params)))))
                [:defined :term (quote ~def-name)])))))))
 
@@ -83,7 +83,7 @@
               [:ko ty]
               [:ok (defenv/->Definition def-name params (count params) body-term ty)])))))))
 
-(defn mk-doc [kind content explanation]
+(defn mk-def-doc [kind content explanation]
   (str "\n```\n"
        (with-out-str
          (pp/pprint content))
@@ -155,7 +155,7 @@
   (let [[status definition] (handle-thm-declaration thm-name params ty)]
     (if (= status :ko)
       [:ko definition nil nil nil]
-      (let [metadata {:doc (mk-doc (if (= kind :theorem)
+      (let [metadata {:doc (mk-def-doc (if (= kind :theorem)
                                      "Theorem"
                                      "Lemma") ty doc)
                       :arglists (list params)
@@ -221,7 +221,7 @@ In all cases the introduction of an axiom must be justified with strong
   (let [[status definition] (handle-ax-declaration ax-name params ty)]
     (if (= status :ko)
       [:ko definition nil nil nil]
-      (let [metadata {:doc (mk-doc (if (= kind :axiom)
+      (let [metadata {:doc (mk-def-doc (if (= kind :axiom)
                                      "Axiom"
                                      "Lemma") ty doc)
                       :arglists (list params)}]
@@ -404,6 +404,12 @@ as well as a proof. The proof method is either `:script` (declarative proof scri
 
 (s/def ::iparam (s/tuple symbol? symbol?))
 
+(defn mk-impl-doc [name params explanation]
+  (str "\n```\n"
+       "(" name " " (clojure.string/join " " params) ")"
+       "```\n\n"
+       (or explanation "")))
+
 (defmacro defimplicit
   [& args]
   (let [conf-form (s/conform ::implicit args)]
@@ -414,7 +420,7 @@ as well as a proof. The proof method is either `:script` (declarative proof scri
             {def-env :def-env ctx :ctx params :params} header]
         (when (defenv/registered-definition? def-name)
           (println "[Warning] redefinition as implicit"))
-        (let [metadata (merge (meta &form) {:doc (or doc "")})]
+        (let [metadata (merge (meta &form) {:doc (mk-impl-doc def-name (mapv first params) doc)})]
           `(do
              (def ~def-name (defenv/->Implicit '~def-name (fn [~def-env ~ctx ~@params] ~@body)))
              (alter-meta! (var ~def-name) #(merge % (quote ~metadata)))
