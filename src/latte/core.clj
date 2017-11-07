@@ -527,6 +527,67 @@ Be careful that the parser will be called recursively on the generated term, hen
 
 
 ;;{
+;; ## Top-level term parsing
+;;}
+
+(defn- parse-context-args [def-env args]
+  (loop [args args, ctx []]
+    (if (seq args)
+      (do
+        (when (not (and (vector? (first args))
+                        (= (count (first args)) 2)))
+          (throw (ex-info "Context argument must be a binding pair." {:argument (first args)})))
+        (let [[x ty] (first args)
+              ty' (stx/parse def-env ty)]
+          (when (not (symbol? x))
+            (throw (ex-info "Binding variable  must be a symbol." {:argument (first args) :variable x})))
+          (when (not (ty/proper-type? def-env ctx ty'))
+            (throw (ex-info "Binding type is not a type." {:argument (first args) :binding-type ty})))
+          (recur (rest args) (cons [x ty'] ctx))))
+      (do ;; (println "[parse-context-args] ctx=" ctx)
+          ctx))))
+
+(defmacro term [& args]
+    (let [def-env {}
+          t (stx/parse def-env (last args))
+          ctx (parse-context-args def-env (butlast args))]
+      ;; (println "[term] t = " t " ctx = " ctx)
+      (if (latte-kernel.norm/beta-eq? def-env ctx t :kind)
+        '□
+        (let [ty (ty/type-of def-env ctx t)]
+          (list 'quote (latte-kernel.unparser/unparse t))))))
+
+;;{
+;; ## Top-level type checking
+;;}
+
+(defmacro type-of [& args]
+  (let [def-env {}
+        t (stx/parse def-env (last args))
+        ctx (parse-context-args def-env (butlast args))]
+    (let [ty (ty/type-of def-env ctx t)]
+      (list 'quote (latte-kernel.unparser/unparse ty)))))
+
+(defmacro type-check? [& args]
+  (let [def-env {}
+        t (stx/parse def-env (last (butlast args)))
+        ty (stx/parse def-env (last args))
+        ctx (parse-context-args def-env (butlast (butlast args)))]
+    ;;(println "[check-type?] ctx=" ctx)
+    (let [tty (ty/type-of def-env ctx t)]
+      (n/beta-eq? def-env ctx ty tty))))
+
+;;{
+;; ## Top-level term equivalence
+;;}
+
+(defmacro term= [ctx t1 t2]
+  (let [def-env {}
+        t1 (stx/parse def-env t1)
+        t2 (stx/parse def-env t2)]
+    (n/beta-eq? def-env ctx t1 t2)))
+
+;;{
 ;; ## Basic forms
 ;;}
 
