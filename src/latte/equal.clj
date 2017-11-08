@@ -64,7 +64,7 @@ This is an implicit version of [[equality]]."
 (defimplicit eq-refl
   "Equality is reflexive."
   [def-env ctx [x x-ty]]
-  (list #'eq-refl-thm x-ty x x))
+  (list #'eq-refl-thm x-ty x))
 
 (defthm eq-sym-thm
   "The symmetry property of equality."
