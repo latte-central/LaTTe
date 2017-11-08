@@ -547,45 +547,44 @@ Be careful that the parser will be called recursively on the generated term, hen
       (do ;; (println "[parse-context-args] ctx=" ctx)
           ctx))))
 
-(defmacro term [& args]
-    (let [def-env {}
-          t (stx/parse def-env (last args))
-          ctx (parse-context-args def-env (butlast args))]
-      ;; (println "[term] t = " t " ctx = " ctx)
-      (if (latte-kernel.norm/beta-eq? def-env ctx t :kind)
-        '□
-        (let [ty (ty/type-of def-env ctx t)]
-          (list 'quote (latte-kernel.unparser/unparse t))))))
+(defmacro term 
+  "Parse a LaTTe term at the top-level. A context can be provided
+  in the form of a serie of `[var type]` pairs before the actual term."
+  [& args]
+  (let [def-env defenv/empty-env
+        t (stx/parse def-env (last args))
+        ctx (parse-context-args def-env (butlast args))]
+    ;; (println "[term] t = " t " ctx = " ctx)
+    (if (latte-kernel.norm/beta-eq? def-env ctx t :kind)
+      '□
+      (let [ty (ty/type-of def-env ctx t)]
+        (list 'quote (latte-kernel.unparser/unparse t))))))
 
 ;;{
 ;; ## Top-level type checking
 ;;}
 
-(defmacro type-of [& args]
-  (let [def-env {}
+(defmacro type-of 
+  "Give the type of a term `t` in a context at the top-levle. 
+  To only parse the term use [[term]]."
+  [& args]
+  (let [def-env defenv/empty-env
         t (stx/parse def-env (last args))
         ctx (parse-context-args def-env (butlast args))]
     (let [ty (ty/type-of def-env ctx t)]
       (list 'quote (latte-kernel.unparser/unparse ty)))))
 
-(defmacro type-check? [& args]
-  (let [def-env {}
+(defmacro type-check?
+  "Check if a term `t` in of the specified type `ty`.
+  A context can be specified as with [[type-of]]."
+  [& args]
+  (let [def-env defenv/empty-env
         t (stx/parse def-env (last (butlast args)))
         ty (stx/parse def-env (last args))
         ctx (parse-context-args def-env (butlast (butlast args)))]
     ;;(println "[check-type?] ctx=" ctx)
     (let [tty (ty/type-of def-env ctx t)]
       (n/beta-eq? def-env ctx ty tty))))
-
-;;{
-;; ## Top-level term equivalence
-;;}
-
-(defmacro term= [ctx t1 t2]
-  (let [def-env {}
-        t1 (stx/parse def-env t1)
-        t2 (stx/parse def-env t2)]
-    (n/beta-eq? def-env ctx t1 t2)))
 
 ;;{
 ;; ## Basic forms
