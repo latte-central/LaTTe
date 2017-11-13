@@ -306,21 +306,11 @@ An error is signaled if the proof cannot be concluded."
 
 
 (defn try-proof
-  "Provides a proof of theorem named `thm-name` using the given proof `method`
-  and `steps`.
-  There are for now two proof methods available:
-    - the `:term` method with one step: a direct proof/lambda-term
-      inhabiting the theorem/type (based on the proof-as-term, proposition-as-type
-      correspondances). This is a low-level proof method. 
-
-    - the `:script` method with a declarative proof script. It is a high-level
-  (human-readable) proof method. A low-level proof term is
-  synthetized from the script
-
+  "Provides a proof of theorem named `thm-name` using the given proof `steps`.
   This version only checks if the proof is correct or not, use the [[proof]] function
-for actually registering the proof."
+  for actually registering the proof."
   {:style/indent [2 :form :form [1]]}
-  [thm-name method & steps]
+  [thm-name & steps]
   (let [def-env defenv/empty-env
         [status thm] (if (symbol? thm-name)
                        (let [[status', thm] (defenv/fetch-definition def-env thm-name)]
@@ -333,27 +323,18 @@ for actually registering the proof."
                              :thm-name thm-name}])]
     (if (= status :ko)
       [:failed thm]
-      (let [[status infos] (p/check-proof def-env (reverse (:params thm)) thm-name (:type thm) method steps)]
+      (let [[status infos] (p/check-proof def-env (reverse (:params thm)) thm-name (:type thm) steps)]
         (if (= status :ko)
           (do ;; (println "infos = " infos)
             [:failed thm-name infos])
-          (let [new-thm (assoc thm :proof [method steps])]
+          (let [new-thm (assoc thm :proof steps)]
             ;; (alter-var-root (resolve thm-name) (fn [_] new-thm))
             [:qed thm-name]))))))
 
 (defn proof
-  "Provides a proof of theorem named `thm-name` using the given proof `method`
-  and `steps`.
-  There are for now two proof methods available:
-    - the `:term` method with one step: a direct proof/lambda-term
-      inhabiting the theorem/type (based on the proof-as-term, proposition-as-type
-      correspondances). This is a low-level proof method. 
-
-    - the `:script` method with a declarative proof script. It is a high-level
-  (human-readable) proof method. A low-level proof term is
-  synthetized from the script"
+  "Provides a proof of theorem named `thm-name` using the given proof `steps`."
   {:style/indent [2 :form :form [1]]}
-  [thm-name method & steps]
+  [thm-name & steps]
   (let [def-env defenv/empty-env
         [status thm] (if (symbol? thm-name)
                        (let [[status', thm] (defenv/fetch-definition def-env thm-name)]
@@ -366,12 +347,12 @@ for actually registering the proof."
                              :thm-name thm-name}])]
     (when (= status :ko)
       (throw (ex-info (:msg thm) (dissoc thm :msg))))
-    (let [[status infos] (p/check-proof def-env (reverse (:params thm)) thm-name (:type thm) method steps)]
+    (let [[status infos] (p/check-proof def-env (reverse (:params thm)) thm-name (:type thm) steps)]
       (if (= status :ko)
         (do ;; (println "infos = " infos)
-            (throw (ex-info (str "Proof failed: " (:msg infos)) {:theorem thm-name
-                                                                 :error (dissoc infos :msg)})))
-        (let [new-thm (assoc thm :proof [method steps])]
+          (throw (ex-info (str "Proof failed: " (:msg infos)) {:theorem thm-name
+                                                               :error (dissoc infos :msg)})))
+        (let [new-thm (assoc thm :proof steps)]
           (alter-var-root (resolve thm-name) (fn [_] new-thm))
           [:qed thm-name])))))
 
