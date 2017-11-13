@@ -55,7 +55,7 @@
   (==> (bijective f)
        (surjective f)))
 
-(proof 'bijective-is-surjective :script
+(proof 'bijective-is-surjective
   (assume [H (bijective f)]
     (have <a> (surjective f) :by (p/and-elim-right H)))
   (qed <a>))
@@ -66,7 +66,7 @@
   (==> (bijective f)
        (injective f)))
 
-(proof 'bijective-is-injective :script
+(proof 'bijective-is-injective
   (assume [H (bijective f)]
     (have <a> (injective f) :by (p/and-elim-left H)))
   (qed <a>))
@@ -92,8 +92,7 @@
        (injective g)
        (injective (compose f g))))
 
-(proof 'compose-injective
-    :script
+(proof 'compose-injective  
   (assume [Hf (injective f)
            Hg (injective g)]
     (assume [x T
@@ -113,8 +112,7 @@
   (==> (injective f)
        (forall [y U] (q/single (lambda [x T] (equal (f x) y))))))
 
-(proof 'injective-single
-    :script
+(proof 'injective-single   
   (assume [Hf (injective f)]
     (assume [y U]
       (assume [x1 T
@@ -133,8 +131,7 @@
   (==> (bijective f)
        (forall [y U] (q/unique (lambda [x T] (equal (f x) y))))))
 
-(proof 'bijective-unique
-    :script
+(proof 'bijective-unique  
   (assume [Hf (bijective f)]
     (have <a> (injective f)
           :by ((bijective-is-injective T U f) Hf))
@@ -167,8 +164,7 @@
   [[T :type] [U :type] [f (==> T U)] [b (bijective f)]]
   (forall [y U] (equal (f ((inverse f b) y)) y)))
 
-(proof 'inverse-prop
-    :script
+(proof 'inverse-prop  
   (assume [y U]
     (have <a> (equal (f ((inverse f b) y)) y)
           :by (q/the-prop (lambda [z T] (equal (f z) y))
@@ -181,8 +177,7 @@
   [[T :type] [U :type] [f (==> T U)] [b (bijective f)]]
   (forall [x T] (equal ((inverse f b) (f x)) x)))
 
-(proof 'inverse-prop-conv
-    :script
+(proof 'inverse-prop-conv  
   (assume [x T]
     (have <a> (equal (f ((inverse f b) (f x))) (f x))
           :by ((inverse-prop T U f b) (f x)))
@@ -197,8 +192,7 @@
   [[T :type] [U :type] [f (==> T U)] [b (bijective f)]]
   (surjective (inverse f b)))
 
-(proof 'inverse-surjective
-    :script
+(proof 'inverse-surjective 
   (have <a> (injective f) :by ((bijective-is-injective T U f) b))
   (pose inv-f := (inverse f b))
   (assume [x T]
@@ -217,8 +211,7 @@
   [[T :type] [U :type] [f (==> T U)] [b (bijective f)]]
   (injective (inverse f b)))
 
-(proof 'inverse-injective
-    :script
+(proof 'inverse-injective 
   (pose inv-f := (inverse f b))
   (assume [x U
            y U
@@ -243,7 +236,6 @@
   (bijective (inverse f b)))
 
 (proof 'inverse-bijective
-    :script
   (have <a> _ :by (p/and-intro (inverse-injective T U f b)
                                (inverse-surjective T U f b)))
   (qed <a>))

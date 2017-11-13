@@ -55,7 +55,7 @@ This is an implicit version of [[equality]]."
   (equal x x))
 
 
-(proof 'eq-refl-thm :script
+(proof 'eq-refl-thm 
   (assume [P (==> T :type)]
     (have <a> (<=> (P x) (P x)) :by (p/iff-refl (P x))))
   (qed <a>))
@@ -72,7 +72,7 @@ This is an implicit version of [[equality]]."
   (==> (equal x y)
        (equal y x)))
 
-(proof 'eq-sym-thm :script
+(proof 'eq-sym-thm 
   (assume [Heq (equal x y)
            P (==> T :type)]
     (have <a> (<=> (P x) (P y)) :by (Heq P))
@@ -92,7 +92,7 @@ This is an implicit version of [[equality]]."
        (equal y z)
        (equal x z)))
 
-(proof 'eq-trans-thm :script
+(proof 'eq-trans-thm 
   (assume [H1 (equal x y)
            H2 (equal y z)
            P (==> T :type)]
@@ -164,7 +164,7 @@ etc.
 ;;        (equal T a d)))
 
 ;; (proof test-eq-trans
-;;     :script
+;;     
 ;;   (assume [H1 (equal T a b)
 ;;            H2 (equal T b c)
 ;;            H3 (equal T c d)]
@@ -183,7 +183,7 @@ etc.
        (P x)
        (P y)))
 
-(proof 'eq-subst-thm :script
+(proof 'eq-subst-thm 
   (assume [H1 (equal x y)
            H2 (P x)]
     (have <a> (<=> (P x) (P y)) :by (H1 P))
@@ -202,7 +202,7 @@ etc.
   (==> (equal x y)
        (equal (f x) (f y))))
 
-(proof 'eq-cong-thm :script
+(proof 'eq-cong-thm
   (assume [H1 (equal x y)
            Q (==> U :type)]
     (assume [H2 (Q (f x))]

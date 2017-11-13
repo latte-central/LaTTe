@@ -366,25 +366,24 @@ An error is signaled if the proof cannot be concluded."
 
 (s/def ::example (s/cat :params ::def-params
                         :body ::def-body
-                        :method #{:script :term}
                         :steps (s/+ any?)))
 
 (declare handle-example-thm)
 
 (defmacro example
-  "An example of the form `(example T <method> <steps>)` is the statement of a proposition, as a type `T`, 
-as well as a proof. The proof method is either `:script` (declarative proof script) or `:term` (proof term)."
+  "An example of the form `(example T <steps>)` is the statement of a proposition, as a type `T`, 
+as well as a proof."
   {:style/indent [2 :form :form [1]]}
   [& args]
   (let [conf-form (s/conform ::example args)]
     (if (= conf-form :clojure.spec.alpha/invalid)
       (throw (ex-info "Syntax error in example."
                       {:explain (s/explain-str ::example args)}))
-      (let [{params :params body :body method :method steps :steps} conf-form
+      (let [{params :params body :body steps :steps} conf-form
             [status thm] (handle-example-thm params body)]
         (if (= status :ko)
           (throw (ex-info "Cannot check example." thm))
-          `(let [[status# infos#] (p/check-proof defenv/empty-env '~(reverse (:params thm)) '~(:name thm) '~(:type thm) '~method '~steps)]
+          `(let [[status# infos#] (p/check-proof defenv/empty-env '~(reverse (:params thm)) '~(:name thm) '~(:type thm) ~steps)]
              (if (= status# :ko)
                (do ;; (println "infos = " infos)
                  (throw (ex-info (str "Proof failed: " (:msg infos#)) (dissoc infos# :msg))))

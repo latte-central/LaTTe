@@ -56,7 +56,7 @@ Remark: this is a second-order, intuitionistic definition that
        (forall [x T] (==> (P x) A))
        A))
 
-(proof 'ex-elim-thm :script
+(proof 'ex-elim-thm
   (assume [H1 (ex P)
            H2 (forall [x T] (==> (P x) A))]
     (have <a> (==> (forall [x T] (==> (P x) A))
@@ -76,7 +76,7 @@ Remark: this is a second-order, intuitionistic definition that
   (==> (P x)
        (ex P)))
 
-(proof 'ex-intro-thm :script
+(proof 'ex-intro-thm
   (assume [H (P x)
            A :type
            y (forall [z T] (==> (P z) A))]
@@ -156,7 +156,7 @@ This is the implicit version of the axiom [[the-ax]]."
     (==> (P y)
          (equal y (the P u)))))
 
-(proof 'the-lemma-thm :script
+(proof 'the-lemma-thm
   (have <a> (single-prop T P) :by (p/and-elim-right u))
   (have <b> (P (the-ax T P u)) :by (the-prop P u))
   (assume [y T

@@ -31,8 +31,7 @@ This can be seen as an elimination rule for ¬¬ (not-not) propositions."
   [[A :type]]
   (==> (not (not A)) A))
 
-(proof 'not-not-impl
-    :script
+(proof 'not-not-impl 
   (assume [H (not (not A))]
     (have <em> (or A (not A)) :by (excluded-middle-ax A))
     (have <a> (==> (==> A A)
@@ -54,7 +53,7 @@ This can be seen as an elimination rule for ¬¬ (not-not) propositions."
   [[A :type]]
   (<=> A (not (not A))))
 
-(proof 'not-not :script
+(proof 'not-not
   (have <a> (==> A (not (not A))) :by (p/impl-not-not A))
   (have <b> (==> (not (not A)) A) :by (not-not-impl A))
   (have <c> _ :by (p/and-intro <a> <b>))
@@ -69,7 +68,7 @@ classical logic."
   (==> (==> (not A) B)
        (or A B)))
 
-(proof 'not-impl-or-intro :script
+(proof 'not-impl-or-intro
   (assume [H (==> (not A) B)]
     (assume [Hnot (not (or A B))]
       (assume [x A]

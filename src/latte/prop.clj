@@ -24,11 +24,7 @@
   [[A :type]]
   (==> A A))
 
-;; (proof impl-refl
-;;        :term
-;;        (lambda [x A] x))
-
-(proof 'impl-refl :script
+(proof 'impl-refl
   (assume [x A]
     (have <a> A :by x))
   (qed <a>))
@@ -39,8 +35,8 @@
   (==> A B A))
 
 (proof 'impl-ignore
-    :term '(lambda [x A]
-             (lambda [y B] x)))
+    (qed (lambda [x A]
+                 (lambda [y B] x))))
 
 (defthm impl-trans-thm
   "Implication is transitive."
@@ -49,8 +45,7 @@
        (==> B C)
        (==> A C)))
 
-(proof 'impl-trans-thm
-    :script
+(proof 'impl-trans-thm  
   (assume [H1 (==> A B)
            H2 (==> B C)
            x A]
@@ -88,12 +83,7 @@
   [[A :type]]
   (==> absurd A))
 
-;; (proof ex-falso
-;;        :term
-;;        (lambda [f absurd] (f A)))
-
-(proof 'ex-falso
-    :script
+(proof 'ex-falso   
   (assume [f absurd]
     (have <a> A :by (f A)))
   (qed <a>))
@@ -109,14 +99,8 @@
   (==> A (not A)
        absurd))
 
-;; (proof absurd-intro
-;;        :term
-;;        (lambda [x A]
-;;          (lambda [y (neg A)]
-;;            (y x))))
 
-(proof 'absurd-intro
-    :script
+(proof 'absurd-intro    
   (assume [x A
            y (not A)]
     (have <a> absurd :by (y x)))
@@ -130,8 +114,7 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
   [[A :type]]
   (==> A (not (not A))))
 
-(proof 'impl-not-not
-    :script
+(proof 'impl-not-not   
   (assume [x A
            H (not A)]
     (have <a> absurd :by (H x)))
@@ -147,7 +130,7 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
   []
   truth)
 
-(proof 'truth-is-true :script
+(proof 'truth-is-true 
   (have <a> truth :by (impl-refl absurd))
   (qed <a>))
 
@@ -184,16 +167,7 @@ Note that double-negation is a law of classical (non-intuitionistic) logic."
   (==> A B
        (and A B)))
 
-;; (proof land-intro
-;;        :term
-;;        (lambda [x A]
-;;          (lambda [y B]
-;;            (lambda [C :type]
-;;              (lambda [z (==> A B C)]
-;;                z x y)))))
-
-(proof 'and-intro-thm
-    :script
+(proof 'and-intro-thm  
   (assume [x A
            y B
            C :type
@@ -211,9 +185,10 @@ This is an implicit version of [[and-intro-thm]]."
   [def-env ctx [a ty-a] [b ty-b]]
   [[(list #'and-intro-thm ty-a ty-b) a] b])
 
+
 (example [[A :type] [B :type] [x A] [y B]]
     (and A B)
-  :term (and-intro x y))
+  (qed (and-intro x y)))
 
 (defthm and-elim-left-thm
   "Elimination rule for logical conjunction.
@@ -222,7 +197,7 @@ This is an implicit version of [[and-intro-thm]]."
   (==> (and A B)
        A))
 
-(proof 'and-elim-left-thm :script
+(proof 'and-elim-left-thm 
   (assume [H1 (and A B)]
     (have <a> (==> (==> A B A) A) :by (H1 A))
     (have <b> (==> A B A) :by (impl-ignore A B))
@@ -265,8 +240,7 @@ This is an implicit version of [[and-elim-left-thm]]."
   (==> (and A B)
        B))
 
-(proof 'and-elim-right-thm
-    :script
+(proof 'and-elim-right-thm   
   (assume [H1 (and A B)]
     (have <a> (==> (==> A B B) B) :by (H1 B))
     (have <b> (==> A B B) :by (lambda [x A]
@@ -290,7 +264,7 @@ This is an implicit version of [[and-elim-right-thm]]."
   (==> (and A B)
        (and B A)))
 
-(proof 'and-sym-thm :script
+(proof 'and-sym-thm 
   (assume [H (and A B)]
     ;; (have <a> A :by ((and-elim-left A B) H))
     (have <a> A :by (and-elim-left H))
@@ -336,8 +310,7 @@ This is the introduction by the left operand."
   (==> A
        (or A B)))
 
-(proof 'or-intro-left-thm
-    :script
+(proof 'or-intro-left-thm  
   (assume [x A
            C :type
            H1 (==> A C)
@@ -357,8 +330,7 @@ This is the introduction by the right operand."
   (==> B
        (or A B)))
 
-(proof 'or-intro-right-thm
-    :script
+(proof 'or-intro-right-thm  
   (assume [y B
            C :type
            H1 (==> A C)
@@ -387,8 +359,7 @@ cf. [[or-not-elim-left]] and [[or-not-elim-right]]."
               (==> B C)
               C))))
 
-(proof 'or-elim-thm
-    :script
+(proof 'or-elim-thm  
   (assume [H1 (forall [D :type] (==> (==> A D)
                                      (==> B D)
                                      D))
@@ -446,8 +417,7 @@ This eliminates to the left operand."
   (==> (or A B) (not B)
        A))
 
-(proof 'or-not-elim-left
-    :script
+(proof 'or-not-elim-left  
   (assume [H1 (or A B)
            H2 (not B)]
     (have <a> (==> (==> A A) (==> B A) A) :by (H1 A))
@@ -466,7 +436,7 @@ This eliminates to the right operand."
        B))
 
 (proof 'or-not-elim-right
-    :script
+    
   (assume [H1 (or A B)
            H2 (not A)]
     (have <a> (==> (==> A B) (==> B B) B) :by (H1 B))
@@ -483,7 +453,7 @@ This eliminates to the right operand."
   (==> (or A B)
        (or B A)))
 
-(proof 'or-sym-thm :script
+(proof 'or-sym-thm 
   (assume [H1 (or A B)
            D :type
            H2 (==> B D)
@@ -504,7 +474,7 @@ This eliminates to the right operand."
   (==> (or A B)
        (==> (not A) B)))
 
-(proof 'or-not-impl-elim :script
+(proof 'or-not-impl-elim 
   (assume [H (or A B)
            Hn (not A)]
     (assume [x A]
@@ -523,8 +493,7 @@ This eliminates to the right operand."
   (==> (or (or A B) C)
        (or A (or B C))))
 
-(proof 'or-assoc-thm
-    :script
+(proof 'or-assoc-thm  
   (assume [H1 (or (or A B)
                  C)]
     (assume [H2 (or A B)]
@@ -553,8 +522,7 @@ This eliminates to the right operand."
   (==> (or A (or B C))
        (or (or A B) C)))
 
-(proof 'or-assoc-conv-thm
-    :script
+(proof 'or-assoc-conv-thm    
   (assume [H1 (or A (or B C))]
     (assume [H2 A]
       (have <a1> (or A B)
@@ -600,8 +568,7 @@ This eliminates to the right operand."
   [[A :type]]
   (<=> A A))
 
-(proof 'iff-refl
-    :script
+(proof 'iff-refl   
   (have <a> (==> A A) :by (impl-refl A))
   (have <b> (==> (==> A A)
                  (==> A A)
@@ -617,8 +584,7 @@ This eliminates to the right operand."
        (==> B A)
        (<=> A B)))
 
-(proof 'iff-intro-thm
-    :script
+(proof 'iff-intro-thm   
   (assume [H1 (==> A B)
            H2 (==> B A)]
     (have <a> (==> (==> A B)
@@ -642,8 +608,7 @@ This eliminates to the right operand."
   (==> (<=> A B)
        (==> A B)))
 
-(proof 'iff-elim-if-thm
-    :script
+(proof 'iff-elim-if-thm   
   (assume [H (<=> A B)]
     (have <a> (==> (<=> A B)
                  (==> A B))
@@ -670,8 +635,7 @@ This eliminates to the right operand."
   (==> (<=> A B)
        (==> B A)))
 
-(proof 'iff-elim-only-if-thm
-    :script
+(proof 'iff-elim-only-if-thm   
   (assume [H (<=> A B)]
     (have <a> (==> (<=> A B)
                  (==> B A))
@@ -691,8 +655,7 @@ This eliminates to the right operand."
   (==> (<=> A B)
        (<=> B A)))
 
-(proof 'iff-sym-thm
-    :script
+(proof 'iff-sym-thm    
   (assume [H (<=> A B)]
     (have <a> (==> B A) :by (iff-elim-only-if H))
     (have <b> (==> A B) :by (iff-elim-if H))
@@ -716,7 +679,6 @@ This eliminates to the right operand."
        (<=> A C)))
 
 (proof 'iff-trans-thm
-    :script
   (assume [H1 (<=> A B)
            H2 (<=> B C)]
     (have <a> (==> A B) :by (iff-elim-if H1))
