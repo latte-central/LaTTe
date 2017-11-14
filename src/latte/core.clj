@@ -309,7 +309,7 @@ An error is signaled if the proof cannot be concluded."
   "Provides a proof of theorem named `thm-name` using the given proof `steps`.
   This version only checks if the proof is correct or not, use the [[proof]] function
   for actually registering the proof."
-  {:style/indent [2 :form :form [1]]}
+  {:style/indent [1 :form [1]]}
   [thm-name & steps]
   (let [def-env defenv/empty-env
         [status thm] (if (symbol? thm-name)
@@ -333,7 +333,7 @@ An error is signaled if the proof cannot be concluded."
 
 (defn proof
   "Provides a proof of theorem named `thm-name` using the given proof `steps`."
-  {:style/indent [2 :form :form [1]]}
+  {:style/indent [1 :form [1]]}
   [thm-name & steps]
   (let [def-env defenv/empty-env
         [status thm] (if (symbol? thm-name)
