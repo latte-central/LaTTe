@@ -570,11 +570,21 @@ Be careful that the parser will be called recursively on the generated term, hen
 ;; ## Basic forms
 ;;}
 
-(defn forall [params body]
+(defn forall
+  "The universal quantifier `(forall [x A] t)` is ∀x:A.t (or Πx:A.t in type theory).
+  
+  As a syntactic sugar an expression of form `(forall [x y z A] t)`
+  translates to `(forall [x A] (forall [y A] (forall [z A] t)))`"
   {:style/indent [1 :form :form]}
+  [params body]
   (list 'forall params body))
 
-(defn lambda [params body]
+(defn lambda  
+  "The abstraction `(lambda [x A] t)` is λx:A.t.
+  
+  As a syntactic sugar an expression of form `(lambda [x y z A] t)`
+  translates to `(lambda [x A] (lambda [y A] (lambda [z A] t)))`"
   {:style/indent [1 :form :form]}
+  [params body]
   (list 'lambda params body))
 
