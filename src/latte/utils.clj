@@ -7,25 +7,22 @@
 (def ^:dynamic *decomposer-performs-norm* true)
 
 (defn decomposer
-  ([decompose-fn def-env ctx term] (decomposer decompose-fn def-env ctx term true))
-  ([decompose-fn def-env ctx term retry?]
+  ([decompose-fn def-env ctx term] (decomposer decompose-fn def-env ctx term true true))
+  ([decompose-fn def-env ctx term try-delta? try-norm?]
    (let [[status res]
          (try [:ok (decompose-fn term)]
               (catch Exception e
                 [:ko e]))]
      (if (= status :ok)
        res
-       (if retry?
-         (let [[term' ok?] (if *decomposer-performs-delta-steps*
-                             (norm/delta-step def-env ctx term)
-                             [term false])]
-           (if ok?
-             (recur decompose-fn def-env ctx term' true)
-             (if *decomposer-performs-norm*
-               (let [term' (norm/normalize def-env ctx term)]
-                 (recur decompose-fn def-env ctx term' false))
-               (throw res))))
-         ;; no retry
-         (throw res))))))
+       (let [[term' rcount] (if (and *decomposer-performs-delta-steps* try-delta?)
+                              (norm/delta-step def-env ctx term)
+                              [term 0])]
+         (if (pos? rcount)
+           (recur decompose-fn def-env ctx term' false try-norm?)
+           (if (and *decomposer-performs-norm* try-norm?)
+             (let [term' (norm/normalize def-env ctx term)]
+               (recur decompose-fn def-env ctx term' false false))
+             (throw res))))))))
 
 
