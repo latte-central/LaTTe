@@ -5,6 +5,7 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.pprint :as pp]
             [latte-kernel.utils :as u]
+            [latte-kernel.syntax :as syntax]
             [latte-kernel.presyntax :as stx]
             [latte-kernel.unparser :as unparser]
             [latte-kernel.typing :as ty]
@@ -70,18 +71,31 @@
                 (reduced [:ko ty])
                 [:ok (conj params [x ty])]))) [:ok []] params))
 
+(defn mk-params-renaming
+  ([params] (mk-params-renaming params 1))
+  ([params level]
+   (loop [params params, level level, nparams [], ren {}]
+     (if (seq params)
+       (let [[x ty] (first params)
+             x' (symbol (str "%" level))]
+         (recur (rest params) (inc level) (conj nparams [x' (syntax/renaming ty ren)]) (assoc ren x x')))
+       [nparams ren]))))
+
+
 (defn handle-term-definition [def-name params body]
   ;; parse parameters
   (let [[status params] (parse-parameters defenv/empty-env params)]
     (if (= status :ko)
       [:ko params]
-      (let [[status body-term] (stx/parse-term defenv/empty-env body)]
+      (let [[params' ren] (mk-params-renaming params)
+            [status body-term] (stx/parse-term defenv/empty-env body)]
         (if (= status :ko)
           [:ko body-term]
-          (let [[status ty _] (ty/type-of-term defenv/empty-env params body-term)]
+          (let [body-term' (syntax/renaming body-term ren)
+                [status ty _] (ty/type-of-term defenv/empty-env params' body-term')]
             (if (= status :ko)
               [:ko ty]
-              [:ok (defenv/->Definition def-name params (count params) body-term ty {})])))))))
+              [:ok (defenv/->Definition def-name params' (count params') body-term' ty {})])))))))
 
 (defn mk-def-doc [kind content explanation]
   (str "\n```\n"
@@ -166,13 +180,14 @@
   (let [[status params] (parse-parameters defenv/empty-env params)]
     (if (= status :ko)
       [:ko params]
-      (let [[status ty'] (stx/parse-term defenv/empty-env ty)]
+      (let [[params' ren] (mk-params-renaming params)
+            [status ty'] (stx/parse-term defenv/empty-env ty)]
         (if (= status :ko)
-          [:ko ty']          
-          (if (not (ty/proper-type? defenv/empty-env params ty'))
-            [:ko {:msg "Theorem body is not a proper type" :theorem thm-name :type ty'}]
-            [:ok (defenv/->Theorem thm-name params (count params) ty' false)]))))))
-
+          [:ko ty']
+          (let [ty'' (syntax/renaming ty' ren)]
+            (if (not (ty/proper-type? defenv/empty-env params' ty''))
+              [:ko {:msg "Theorem body is not a proper type" :theorem thm-name :type ty''}]
+              [:ok (defenv/->Theorem thm-name params (count params) ty'' false)])))))))
 
 ;;{
 ;; ## Axioms
@@ -231,12 +246,14 @@ In all cases the introduction of an axiom must be justified with strong
   (let [[status params] (parse-parameters defenv/empty-env params)]
     (if (= status :ko)
       [:ko params]
-      (let [[status ty'] (stx/parse-term defenv/empty-env ty)]
+      (let [[params' ren] (mk-params-renaming params)
+            [status ty'] (stx/parse-term defenv/empty-env ty)]
         (if (= status :ko)
-          [:ko ty']          
-          (if (not (ty/proper-type? defenv/empty-env params ty'))
-            [:ko {:msg "Axiom body is not a proper type" :axiom ax-name :type ty'}]
-            [:ok (defenv/->Axiom ax-name params (count params) ty')]))))))
+          [:ko ty']
+          (let [ty''(syntax/renaming ty' ren)]
+            (if (not (ty/proper-type? defenv/empty-env params' ty''))
+              [:ko {:msg "Axiom body is not a proper type" :axiom ax-name :type (unparser/unparse ty'')}]
+              [:ok (defs/mkaxiom ax-name params' ty'')])))))))
 
 ;;{
 ;; ## Proofs
@@ -399,7 +416,7 @@ as well as a proof."
           [:ko ty']          
           (if (not (ty/proper-type? defenv/empty-env params ty'))
             [:ko {:msg "Example body is not a proper type" :type ty'}]
-            [:ok (defenv/->Theorem (gensym "example") params (count params) ty' false)]))))))
+            [:ok (defs/mkthm (gensym "example") params ty')]))))))
 
 ;;{
 ;; ## Implicits
