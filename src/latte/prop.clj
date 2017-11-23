@@ -495,7 +495,7 @@ This eliminates to the right operand."
 
 (proof 'or-assoc-thm  
   (assume [H1 (or (or A B)
-                 C)]
+                  C)]
     (assume [H2 (or A B)]
       (assume [H3 A]
         (have <a> (or A (or B C))
@@ -505,7 +505,8 @@ This eliminates to the right operand."
               :by (or-intro-left H4 C))
         (have <b> (or A (or B C))
               :by (or-intro-right A <b1>)))
-      (have <c> _
+      (have <c> ;; _
+        (or A (or B C))
             :by (or-elim H2 (or A (or B C))
                          <a> <b>)))
     (assume [H5 C]
@@ -516,6 +517,7 @@ This eliminates to the right operand."
     (have <e> _ :by (or-elim H1 (or A (or B C))
                              <c> <d>)))
   (qed <e>))
+
 
 (defthm or-assoc-conv-thm
   [[A :type] [B :type] [C :type]]
