@@ -542,10 +542,12 @@ This eliminates to the right operand."
               :by (or-intro-right (or A B) H5)))
       (have <d> _
             :by (or-elim H3 (or (or A B) C)
-                          <b> <c>)))
+                         <b> <c>)))
     (have <e> _
           :by (or-elim H1 (or (or A B) C)
                         <a> <d>)))
+  [:print '<e> {}]
+  [:print-type '<e> {}]
   (qed <e>))
 
 (defimplicit or-assoc
