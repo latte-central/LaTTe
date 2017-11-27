@@ -562,16 +562,20 @@ This eliminates to the right operand."
       (have <d> _
             :by (or-elim H3 (or (or A B) C)
                          <b> <c>))
-      ;; [:print '<d> {:norm true}]
-      ;;[:print-type '[(or-elim-thm B C) H3] {:norm true}]
+      ;;[:print '<d> {:norm false}]
       ;;[:print-type '<d> {:norm true}]
+      [:print-def '<b> {}]
+      [:print-def '<d> {}]
       )
-    [:print-type '<d> {:norm true}]
+    [:print-def '<b> {}]
+    [:print-def '<d> {}]
+    ;;[:print '<b> {:norm true}]
+    ;;[:print-type '<b> {:norm true}]
     (have <e> _
           :by (or-elim H1 (or (or A B) C)
                        <a> <d>))
-    [:print '<e> {:delta false, :norm true}]
-    [:print-type '<e> {:norm true}]
+    ;;[:print '<e> {:delta true, :norm true}]
+    ;;[:print-type '<e> {:norm true}]
     )
   ;;[:print '<e> {}]
   ;;[:print-type '<e> {:norm true}]
