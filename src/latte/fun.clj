@@ -135,13 +135,17 @@
   (assume [Hf (bijective f)]
     (have <a> (injective f)
           :by ((bijective-is-injective T U f) Hf))
+    ;; [:print-def '<a> {}]
     (have <b> (surjective f)
           :by ((bijective-is-surjective T U f) Hf))
+    ;;[:print-def '<b> {}]
     (assume [y U]
       (have <c> (q/ex (lambda [x T] (equal (f x) y)))
             :by (<b> y))
+      [:print-def '<c> {}]
       (have <d> (q/single (lambda [x T] (equal (f x) y)))
             :by ((injective-single T U f) <a> y))
+      [:print-def '<d> {}]
       (have <e> (q/unique (lambda [x T] (equal (f x) y)))
             :by (p/and-intro <c> <d>))))
   (qed <e>))

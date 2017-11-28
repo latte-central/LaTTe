@@ -529,52 +529,23 @@ This eliminates to the right operand."
     (assume [H2 A]
       (have <a1> (or A B)
             :by (or-intro-left H2 B))
-      ;;[:print '<a1> {}]
       (have <a> (or (or A B) C)
-            :by (or-intro-left <a1> C))
-      ;;[:print '<a> {:norm true}]
-      ;;[:print-type '<a> {}]
-      )
-    ;;[:print '<a1> {}]
-    ;;[:print '<a> {:norm true}]
-    ;;[:print-type '<a> {}]
+            :by (or-intro-left <a1> C)))
     (assume [H3 (or B C)]
       (assume [H4 B]
         (have <b1> (or A B)
               :by (or-intro-right A H4))
-        ;;[:print '<b1> {}]
         (have <b> (or (or A B) C)
-              :by (or-intro-left <b1> C))
-        ;;[:print '<b> {:norm true}]
-        ;;[:print-type '<b> {}]
-        )
-      ;;[:print '<b1> {}]
-      ;;[:print '<b> {:norm true}]
-      ;;[:print-type '<b> {}]
+              :by (or-intro-left <b1> C)))
       (assume [H5 C]
         (have <c> (or (or A B) C)
-              :by (or-intro-right (or A B) H5))
-        ;;[:print '<c> {:norm true}]
-        ;;[:print-type '<c> {}]
-        )
-      ;;[:print '<c> {:norm true}]
-      ;;[:print-type '<c> {}]
+              :by (or-intro-right (or A B) H5)))
       (have <d> _
             :by (or-elim H3 (or (or A B) C)
-                         <b> <c>))
-      ;;[:print-def '<d> {:delta false}]
-      [:print-defenv {:delta false}]
-      )
-    ;[:print-def '<d> {:delta false}]
-    [:print-defenv {:delta false}]
+                         <b> <c>)))
     (have <e> _
           :by (or-elim H1 (or (or A B) C)
-                       <a> <d>))
-    ;;[:print '<e> {:delta true, :norm true}]
-    ;;[:print-type '<e> {:norm true}]
-    )
-  ;;[:print '<e> {}]
-  ;;[:print-type '<e> {:norm true}]
+                       <a> <d>)))
   (qed <e>))
 
 (defimplicit or-assoc
