@@ -11,6 +11,7 @@ be done in a qualified way, i.e. favor `classic/not-not-impl`
 
   (:require [latte.core :as latte :refer [defthm defaxiom proof
                                           assume have qed]]
+            [latte.utils :as u]
             [latte.prop :as p :refer [or not and <=>]]))
 
 
@@ -31,6 +32,12 @@ This can be seen as an elimination rule for ¬¬ (not-not) propositions."
   [[A :type]]
   (==> (not (not A)) A))
 
+
+;; for the following proof disjunction must be made
+;; transparent
+
+(u/set-opacity! #'or false)
+
 (proof 'not-not-impl 
   (assume [H (not (not A))]
     (have <em> (or A (not A)) :by (excluded-middle-ax A))
@@ -46,6 +53,8 @@ This can be seen as an elimination rule for ¬¬ (not-not) propositions."
             (have <f> A :by (<e> <d>)))
     (have <g> A :by (<c> <f>)))
   (qed <g>))
+
+(u/set-opacity! #'or true)
 
 
 (defthm not-not
