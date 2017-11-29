@@ -56,9 +56,7 @@ This is an implicit version of [[equality]]."
 
 (proof 'eq-refl-thm 
   (assume [P (==> T :type)]
-    (have <a> (<=> (P x) (P x)) :by (p/iff-refl (P x)))
-    [:print-def '<a> {}])
-  [:print-def '<a> {}]
+    (have <a> (<=> (P x) (P x)) :by (p/iff-refl (P x))))
   (qed <a>))
 
 (defimplicit eq-refl
