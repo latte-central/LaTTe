@@ -16,7 +16,7 @@
      (if (= status :ok)
        res
        (let [[term' rcount] (if (and *decomposer-performs-delta-steps* try-delta?)
-                              (norm/delta-step def-env ctx term)
+                              (norm/delta-step def-env norm/letenv-empty ctx term)
                               [term 0])]
          (if (pos? rcount)
            (recur decompose-fn def-env ctx term' false try-norm?)

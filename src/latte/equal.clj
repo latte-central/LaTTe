@@ -54,12 +54,12 @@ This is an implicit version of [[equality]]."
   [[T :type] [x T]]
   (equal x x))
 
-
 (proof 'eq-refl-thm 
   (assume [P (==> T :type)]
-    (have <a> (<=> (P x) (P x)) :by (p/iff-refl (P x))))
+    (have <a> (<=> (P x) (P x)) :by (p/iff-refl (P x)))
+    [:print-def '<a> {}])
+  [:print-def '<a> {}]
   (qed <a>))
-
 
 (defimplicit eq-refl
   "Equality is reflexive."
@@ -206,8 +206,8 @@ etc.
   (assume [H1 (equal x y)
            Q (==> U :type)]
     (assume [H2 (Q (f x))]
-            (have <a1> _ :by (eq-subst-thm T (lambda [z T] (Q (f z))) x y))
-            (have <a> (Q (f y)) :by (<a1> H1 H2)))
+      (have <a1> _ :by (eq-subst-thm T (lambda [z T] (Q (f z))) x y))
+      (have <a> (Q (f y)) :by (<a1> H1 H2)))
     (have <b> (equal y x) :by (eq-sym H1))
     (assume [H3 (Q (f y))]
       (have <c1> _ :by (eq-subst-thm T (lambda [z T] (Q (f z))) y x))
@@ -221,7 +221,6 @@ etc.
   (let [[T x y] (decompose-equal-type def-env ctx eq-ty)
         [T' U] (p/decompose-impl-type def-env ctx f-ty)]
     [(list #'eq-cong-thm T U f x y) eq-term]))
-
 
 ;; outside this namespace,
 ;; equality should in general treated as an opaque definition.
