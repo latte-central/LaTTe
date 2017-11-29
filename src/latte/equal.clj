@@ -20,7 +20,6 @@ This corresponds to Leibniz's *indiscernibility of identicals*."
   (forall [P (==> T :type)]
           (<=> (P x) (P y))))
 
-
 (defimplicit equal
   "Equality of `x` and `y` (which must be of the same type `T`).
 This is an implicit version of [[equality]]."
@@ -30,6 +29,7 @@ This is an implicit version of [[equality]]."
 (defn decompose-equal-type [def-env ctx t]
   (decomposer
    (fn [t]
+     (println "[decompose-equal-tye] t=" t)
      (if (clojure.core/and (seq t)
                            (= (count t) 4)
                            (= (first t) #'latte.equal/equality))
@@ -39,6 +39,20 @@ This is an implicit version of [[equality]]."
        ;; definition ... add dummy witnesses ?
        (throw (ex-info "Cannot infer an equal-type" {:type t}))))
    def-env ctx t))
+
+(defthm eq-intro
+  "Introduction rule for [[equal]]. This is useful because
+equality is opaque by default."
+  [[T :type] [x T] [y T]]
+  (==> (forall [P (==> T :type)]
+               (<=> (P x) (P y)))
+       (equal x y)))
+
+(proof 'eq-intro
+  (assume [H (forall [P (==> T :type)]
+                     (<=> (P x) (P y)))]
+    (have <a> (equal x y) :by H))
+  (qed <a>))
 
 (defthm eq-refl-thm
   "The reflexivity property of equality."
@@ -166,7 +180,7 @@ etc.
 ;;     (qed <a>)))
 
 (defthm eq-subst-thm
-  "Substitutivity property of equality."
+  "Substitutivity property of equality. This is the main elimination rule."
   [[T :type] [P (==> T :type)] [x T] [y T]]
   (==> (equal x y)
        (P x)
@@ -182,8 +196,31 @@ etc.
 (defimplicit eq-subst
   "Substitutivity of `equal`, an implicit version of [[eq-subst-thm]]."
   [def-env ctx [P P-type] [eq-term eq-type] [Px Px-type]]
+  (println "[eq-subst]: ea-type=" eq-type)
   (let [[T x y] (decompose-equal-type def-env ctx eq-type)]
     [[(list #'eq-subst-thm T P x y) eq-term] Px]))
+
+(defthm eq-subst-sym-thm
+  "Substitutivity property of equality, the symmetric of [[eq-subst-thm]]"
+  [[T :type] [P (==> T :type)] [x T] [y T]]
+  (==> (equal x y)
+       (P y)
+       (P x)))
+
+(proof 'eq-subst-sym-thm
+  (assume [H1 (equal x y)
+           H2 (P y)]
+    (have <a> (equal y x) :by (eq-sym H1))
+    [:print-def '<a> {}]
+    (have <b> (P x) :by (eq-subst P <a> H2)))
+  (qed <b>))
+
+(defimplicit eq-subst-sym
+  "Substitutivity of `equal`, an implicit version of [[eq-subst-sym-thm]]."
+  [def-env ctx [P P-type] [eq-term eq-type] [Px Px-type]]
+  (let [[T x y] (decompose-equal-type def-env ctx eq-type)]
+    [[(list #'eq-subst-sym-thm T P x y) eq-term] Px]))
+
 
 (defthm eq-cong-thm
   "Congruence property of equality."

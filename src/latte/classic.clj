@@ -32,18 +32,12 @@ This can be seen as an elimination rule for ¬¬ (not-not) propositions."
   [[A :type]]
   (==> (not (not A)) A))
 
-
-;; for the following proof disjunction must be made
-;; transparent
-
-(u/set-opacity! #'or false)
-
 (proof 'not-not-impl 
   (assume [H (not (not A))]
     (have <em> (or A (not A)) :by (excluded-middle-ax A))
     (have <a> (==> (==> A A)
                    (==> (not A) A)
-                   A) :by (<em> A))
+                   A) :by ((p/or-elim-thm A (not A)) <em> A))
     (have <b> (==> A A) :by (p/impl-refl A))
     (have <c> (==> (==> (not A) A)
                    A) :by (<a> <b>))
@@ -54,9 +48,6 @@ This can be seen as an elimination rule for ¬¬ (not-not) propositions."
     (have <g> A :by (<c> <f>)))
   (qed <g>))
 
-(u/set-opacity! #'or true)
-
-
 (defthm not-not
   "The double-negation law of classical logic."
   [[A :type]]
@@ -65,7 +56,7 @@ This can be seen as an elimination rule for ¬¬ (not-not) propositions."
 (proof 'not-not
   (have <a> (==> A (not (not A))) :by (p/impl-not-not A))
   (have <b> (==> (not (not A)) A) :by (not-not-impl A))
-  (have <c> _ :by (p/and-intro <a> <b>))
+  (have <c> _ :by (p/iff-intro <a> <b>))
   (qed <c>))
 
 (defthm not-impl-or-intro

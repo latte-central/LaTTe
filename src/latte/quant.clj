@@ -13,6 +13,7 @@
   (:require [latte.core :as latte :refer [definition defthm defaxiom defnotation defimplicit
                                           proof qed assume have]]
 
+            [latte.utils :as u]
             [latte.prop :as p :refer [and]]
             [latte.equal :as eq :refer [equal equality]]))
 
@@ -90,6 +91,9 @@ Remark: this is a second-order, intuitionistic definition that
   (let [[T _] (p/decompose-impl-type def-env ctx P-ty)]
     (list #'ex-intro-thm T P x)))
 
+;; ex is made opaque
+(u/set-opacity! #'ex-intro true)
+
 (definition single-prop
   "The constraint that \"there exists at most\"..."
   [[T :type] [P (==> T :type)]]
@@ -104,12 +108,59 @@ Remark: this is a second-order, intuitionistic definition that
   (let [[T _] (p/decompose-impl-type def-env ctx P-type)]
     (list #'single-prop T P)))
 
+(defthm single-intro-thm
+  "Introduction rule for [[single]]."
+  [[T :type] [P (==> T :type)]]
+  (==> (forall [x y T]
+               (==> (P x)
+                    (P y)
+                    (equal x y)))
+       (single P)))
+
+(proof 'single-intro-thm
+  (assume [H (forall [x y T]
+               (==> (P x)
+                    (P y)
+                    (equal x y)))]
+    (have <a> (single P) :by H))
+  (qed <a>))
+
+(defimplicit single-intro
+  "There proof that there is a single `x` such that `(P x)`, cf [[single-intro-thm]]."
+  [def-env ctx [P P-ty]]
+  (let [[T _] (p/decompose-impl-type def-env ctx P-ty)]
+    (list #'single-intro-thm T P)))
+
+(defthm single-elim-thm
+  "Elimination rule for [[single]]."
+  [[T :type] [P (==> T :type)] [x T] [y T]]
+  (==> (single P)
+       (P x)
+       (P y)
+       (equal x y)))
+
+(proof 'single-elim-thm
+  (assume [H1 (single P)
+           H2 (P x)
+           H3 (P y)]
+    (have <a> (equal x y)
+          :by (H1 x y H2 H3)))
+  (qed <a>))
+
+(defimplicit single-elim
+  "Elimination rule for [[single]], cf. [[single-elim-thm]]."
+  [def-env ctx [P P-ty] [x x-ty] [y y-ty]]
+  (let [[T _] (p/decompose-impl-type def-env ctx P-ty)]
+    (list #'single-elim-thm T P x y)))
+
+;; single can now be made opaque
+(u/set-opacity! #'single true)
 
 (definition unique-prop
   "The constraint that \"there exists a unique\" ..."
   [[T :type] [P (==> T :type)]]
   (and (ex P)
-       (single-prop T P)))
+       (single P)))
 
 (defimplicit unique
   "The constraint that \"there exists a unique\" ... (an implicit version of [[unique-prop]])."

@@ -99,7 +99,6 @@
   (==> A (not A)
        absurd))
 
-
 (proof 'absurd-intro    
   (assume [x A
            y (not A)]
@@ -435,8 +434,7 @@ This eliminates to the right operand."
   (==> (or A B) (not A)
        B))
 
-(proof 'or-not-elim-right
-    
+(proof 'or-not-elim-right    
   (assume [H1 (or A B)
            H2 (not A)]
     (have <a> (==> (==> A B) (==> B B) B) :by (H1 B))
@@ -620,9 +618,14 @@ This eliminates to the right operand."
 
 (defn decompose-iff-type
   [def-env ctx t]
-  (let [[L R] (decompose-and-type def-env ctx t)
-        [A B] (decompose-impl-type def-env ctx L)]
-    [A B]))
+  (if (clojure.core/and (seq? t) 
+                           (= (count t) 3)
+                           (= (first t) #'latte.prop/<=>))
+    [(second t) (nth t 2)]
+    ;; or something that works if things are made transparent
+    (let [[L R] (decompose-and-type def-env ctx t)
+          [A B] (decompose-impl-type def-env ctx L)]
+      [A B])))
 
 (defimplicit iff-elim-if
   "Left (if) elimination for `<=>`, an implicit version of [[iff-elim-if-thm]]."
@@ -708,5 +711,4 @@ This eliminates to the right operand."
 
 (set-opacity! #'or true)
 (set-opacity! #'and true)
-
-
+;;(set-opacity! #'<=> true)
