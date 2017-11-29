@@ -9,7 +9,7 @@
             [latte-kernel.typing :as ty]
             [latte-kernel.norm :as norm]
             [latte-kernel.unparser :as unparser]
-            [latte.utils :refer [decomposer]]
+            [latte.utils :refer [set-opacity! decomposer]]
             [latte.core
              :as latte
              :refer [defthm defimplicit definition example
@@ -703,5 +703,10 @@ This eliminates to the right operand."
     ;; XXX: check that B and C are equal ?
     [[(list #'iff-trans-thm A B D) iff-term1] iff-term2]))
 
+
+;; opaque definitions by default
+
+(set-opacity! #'or true)
+(set-opacity! #'and true)
 
 

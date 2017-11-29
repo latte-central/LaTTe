@@ -26,3 +26,9 @@
              (throw res))))))))
 
 
+(defn set-opacity! [defvar flag]
+  "Equality is most of the time handled in an opaque way, but it
+is sometimes required to handle it transparently. This function
+ should be used in this case."
+  (alter-var-root defvar (fn [eq]
+                           (update eq :opts (fn [opts] (assoc opts :opaque flag))))))

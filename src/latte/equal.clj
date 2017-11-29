@@ -8,7 +8,7 @@
    [latte-kernel.syntax :as stx]
    [latte-kernel.norm :as norm]
    [latte-kernel.typing :as ty]
-   [latte.utils :refer [decomposer]]
+   [latte.utils :refer [decomposer set-opacity!]]
    [latte.core :as latte :refer [definition defthm defimplicit defimplicit*
                                           assume have qed proof]]
    [latte.prop :as p :refer [<=> and or not]]))
@@ -19,15 +19,6 @@ This corresponds to Leibniz's *indiscernibility of identicals*."
   [[T :type] [x T] [y T]]
   (forall [P (==> T :type)]
           (<=> (P x) (P y))))
-
-(defn equality-opacity! [flag]
-  "Equality is most of the time handled in an opaque way, but it
-is sometimes required to handle it transparently. This function
- should be used in this case."
-  (alter-var-root #'equality (fn [eq]
-                               (update eq :opts (fn [opts] (assoc opts :opaque flag))))))
-
-
 
 
 (defimplicit equal
@@ -222,6 +213,6 @@ etc.
 
 ;; outside this namespace,
 ;; equality should in general treated as an opaque definition.
-(equality-opacity! true)
+(set-opacity! #'equality true)
 
 ;; set it to false in case a proof requires it to be transparent.
