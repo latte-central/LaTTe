@@ -29,7 +29,6 @@ This is an implicit version of [[equality]]."
 (defn decompose-equal-type [def-env ctx t]
   (decomposer
    (fn [t]
-     (println "[decompose-equal-tye] t=" t)
      (if (clojure.core/and (seq t)
                            (= (count t) 4)
                            (= (first t) #'latte.equal/equality))
@@ -196,7 +195,6 @@ etc.
 (defimplicit eq-subst
   "Substitutivity of `equal`, an implicit version of [[eq-subst-thm]]."
   [def-env ctx [P P-type] [eq-term eq-type] [Px Px-type]]
-  (println "[eq-subst]: ea-type=" eq-type)
   (let [[T x y] (decompose-equal-type def-env ctx eq-type)]
     [[(list #'eq-subst-thm T P x y) eq-term] Px]))
 
@@ -206,21 +204,6 @@ etc.
   (==> (equal x y)
        (P y)
        (P x)))
-
-(proof 'eq-subst-sym-thm
-  (assume [H1 (equal x y)
-           H2 (P y)]
-    (have <a> (equal y x) :by (eq-sym H1))
-    [:print-def '<a> {}]
-    (have <b> (P x) :by (eq-subst P <a> H2)))
-  (qed <b>))
-
-(defimplicit eq-subst-sym
-  "Substitutivity of `equal`, an implicit version of [[eq-subst-sym-thm]]."
-  [def-env ctx [P P-type] [eq-term eq-type] [Px Px-type]]
-  (let [[T x y] (decompose-equal-type def-env ctx eq-type)]
-    [[(list #'eq-subst-sym-thm T P x y) eq-term] Px]))
-
 
 (defthm eq-cong-thm
   "Congruence property of equality."
@@ -248,8 +231,20 @@ etc.
         [T' U] (p/decompose-impl-type def-env ctx f-ty)]
     [(list #'eq-cong-thm T U f x y) eq-term]))
 
-;; outside this namespace,
-;; equality should in general treated as an opaque definition.
+;; now that we have intros and elims, we make equality opaque.
 (set-opacity! #'equality true)
 
-;; set it to false in case a proof requires it to be transparent.
+(proof 'eq-subst-sym-thm
+  (assume [H1 (equal x y)
+           H2 (P y)]
+    (have <a> (equal y x) :by (eq-sym H1))
+    (have <b> (P x) :by (eq-subst P <a> H2)))
+  (qed <b>))
+
+(defimplicit eq-subst-sym
+  "Substitutivity of `equal`, an implicit version of [[eq-subst-sym-thm]]."
+  [def-env ctx [P P-type] [eq-term eq-type] [Px Px-type]]
+  (let [[T x y] (decompose-equal-type def-env ctx eq-type)]
+    [[(list #'eq-subst-sym-thm T P x y) eq-term] Px]))
+
+
