@@ -1,7 +1,7 @@
 (ns latte.simple-types
   (:require [clojure.test :as test :refer [deftest is]])
-  (:require [latte.core :as l :refer [==> term lambda type-of type-check?]])
-  (:require [latte.kernel.norm :as n :refer [beta-eq?]])
+  (:require [latte.core :as l :refer [term lambda type-of type-check?]])
+  (:require [latte-kernel.norm :as n :refer [beta-eq?]])
   )
 
 ;;{
@@ -24,9 +24,9 @@
         type-of-result (type-of [sigma :type] (lambda [x sigma] x))
         ;; (Π [⇧ sigma] sigma)
         term-result    (term [sigma :type] (==> sigma sigma))]
-    (is (and (is (beta-eq? type-of-result term-result))
+    (is (and (beta-eq? type-of-result term-result)
              ;; "normal" non-equality from clojure.core
-             (is (not=     type-of-result term-result)))))
+             (not= type-of-result term-result))))
 
   (is (true? (type-check? [sigma :type] (lambda [x sigma] x)
                           (==> sigma sigma))))
@@ -48,7 +48,7 @@
                                 (lambda [u gamma] (y x)))
         ;; (Π [⇧ gamma] beta)
         term-result    (term [beta :type] [gamma :type] (==> gamma beta))]
-    (is (and (is (beta-eq? type-of-result term-result))
+    (is (and (beta-eq? type-of-result term-result)
              ;; "normal" non-equality from clojure.core
-             (is (not=     type-of-result term-result)))))
+             (not=     type-of-result term-result))))
   )

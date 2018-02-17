@@ -14,9 +14,6 @@
              :as latte
              :refer [defthm defimplicit definition example
                      proof assume have qed]
-             ;; [definition term type-of defthm defspecial
-             ;; lambda forall ==>
-             ;;                             assume have qed proof try-proof]
              ]))
 
 (defthm impl-refl
