@@ -1,6 +1,7 @@
 (ns latte.utils
   "Misc. utilities for LaTTe libraries."
-  (:require [latte-kernel.norm :as norm]))
+  (:require [latte-kernel.defenv :as defenv]
+            [latte-kernel.norm :as norm]))
 
 ;; decomposer (rebindable) parameters
 (def ^:dynamic *decomposer-performs-delta-steps* true)
@@ -32,3 +33,33 @@ is sometimes required to handle it transparently. This function
  should be used in this case."
   (alter-var-root defvar (fn [eq]
                            (update eq :opts (fn [opts] (assoc opts :opaque flag))))))
+
+
+(defn fetch-ns-elements
+  "Fetch the LaTTe elements in specified `ns` (or the current namespace by default)."
+  ([] (fetch-ns-elements *ns*))
+  ([ns] (let [defs (ns-map ns)
+              ;; some cleanups
+              defs (into {}
+                         (filter #(and (not (clojure.string/starts-with? (str (second %)) "#'clojure."))
+                                       (var? (second %))) defs))]
+          (reduce (fn [elems [ename evar]]
+                    (let [elem (var-get evar)]
+                      (cond
+                        (defenv/definition? elem)
+                        (assoc-in elems [:definitions ename] elem)
+                        (defenv/theorem? elem)
+                        (assoc-in elems [:theorems ename] elem)
+                        (defenv/axiom? elem)
+                        (assoc-in elems [:axioms ename] elem)
+                        (defenv/notation? elem)
+                        (assoc-in elems [:notations ename] elem)
+                        (defenv/implicit? elem)
+                        (assoc-in elems [:implicits ename] elem)
+                        :else elems)))
+                  {:theorems {}
+                   :definitions {}
+                   :axioms {}
+                   :notations {}
+                   :implicits {}} defs))))
+
