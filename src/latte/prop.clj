@@ -25,6 +25,7 @@
   (assume [x A]
     (have <a> A :by x))
   (qed <a>))
+;; or direct term:  (qed (lambda [x A] x))
 
 (defthm impl-ignore
   "A variant of reflexivity."
@@ -34,6 +35,7 @@
 (proof 'impl-ignore
     (qed (lambda [x A]
                  (lambda [y B] x))))
+;; or script:  (assume [x _ y _] (have <a> A :by x)) (qed <a>)
 
 (defthm impl-trans-thm
   "Implication is transitive."
@@ -43,13 +45,12 @@
        (==> A C)))
 
 (proof 'impl-trans-thm  
-  (assume [H1 (==> A B)
-           H2 (==> B C)
+  (assume [H1 _ ;; (==> A B)
+           H2 _ ;; (==> B C)
            x A]
     (have <a> B :by (H1 x))
     (have <b> C :by (H2 <a>)))
   (qed <b>))
-
 
 (defn decompose-impl-type [def-env ctx t]
   (decomposer (fn [t] (match
@@ -432,8 +433,7 @@ This eliminates to the right operand."
        B))
 
 (proof 'or-not-elim-right    
-  (assume [H1 (or A B)
-           H2 (not A)]
+  (assume [H1 _ H2 _]
     (have <a> (==> (==> A B) (==> B B) B) :by (H1 B))
     (have <b> (==> B B) :by (impl-refl B))
     (assume [x A]
