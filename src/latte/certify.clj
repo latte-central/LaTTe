@@ -9,8 +9,7 @@
             [latte.utils :as u]
             [clojure.string :as string]
             [clojure.java.io :as io]
-            [clojure.edn :as edn]
-            [latte.prop :as prop]))
+            [clojure.edn :as edn]))
 
 (defn fetch-namespaces-with-prefix
   [prefix]

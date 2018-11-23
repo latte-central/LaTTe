@@ -331,6 +331,9 @@ An error is signaled if the proof cannot be concluded."
             ;; (alter-var-root (resolve thm-name) (fn [_] new-thm))
             [:qed thm-name]))))))
 
+
+(def ^:dynamic *proof-certification-enabled* true)
+
 (defn proof
   "Provides a proof of theorem named `thm-name` using the given proof `steps`."
   {:style/indent [1 :form [1]]}
