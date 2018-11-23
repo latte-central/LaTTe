@@ -82,7 +82,7 @@ The *reference documentation* is at: http://latte-central.github.io/LaTTe/
 
 LaTTe may be of some interest for you:
 
-  - **obviously** if you are interested in type theory and the way it can be implemented on a Computer. LaTTe has been implemented with readability and simplicify in mind (more so than efficiency or correctness),
+  - **obviously** if you are interested in type theory and the way it can be implemented on a Computer. LaTTe has been implemented with readability and simplicity in mind (more so than efficiency or correctness),
   - **probably** if you are interested in the "mechanical" formalization of mathematics, intuitionistic logic, etc. (although you might not learn much, you may be interested in contributing definitions, theorems and proofs),
   - **maybe** if you are curious about the lambda-calculus (the underlying theory of your favorite programming language) and dependent types (a current trend) and what you can do with these besides programming.
 
