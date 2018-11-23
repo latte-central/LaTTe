@@ -19,6 +19,8 @@ LaTTe 1.x
  
  - [X] explicit substitutions [Canceled (branch letstx) 11/2017]
 
+ - [X] implicit goal hypotheses using `_` [Done v101.0 11/2018]
+
  - [ ] certificate generation and certified uberjars deployment
 
  - [ ] externalize and port library `prelude`
