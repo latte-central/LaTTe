@@ -11,12 +11,27 @@
             [clojure.java.io :as io]
             [clojure.edn :as edn]))
 
+;; some dummy utilities, perhaps not needed (otherwise they'd go to the `utils`
+
 (defn fetch-namespaces-with-prefix
   [prefix]
   (reduce (fn [namespaces ns-obj]
             (if (string/starts-with? (str (ns-name ns-obj)) prefix)
               (conj namespaces ns-obj)
               namespaces)) [] (all-ns)))
+
+
+;; ========================
+;; The certificate database
+;; ========================
+
+(defonce +global-proof-certificate+ {})
+
+
+
+;; ===========================
+;; The certification functions
+;; ===========================
 
 (def ^:dynamic *verbose-certification* true)
 
