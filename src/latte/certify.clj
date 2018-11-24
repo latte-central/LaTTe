@@ -18,14 +18,6 @@
               (conj namespaces ns-obj)
               namespaces)) [] (all-ns)))
 
-(the-ns 'latte.prop)
-
-
-(fetch-namespaces-with-prefix "latte")
-
-
-(u/fetch-ns-elements (the-ns 'latte.prop))
-
 (def ^:dynamic *verbose-certification* true)
 
 (defn mk-timestamp-file! [library-name]
