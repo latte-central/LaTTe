@@ -20,15 +20,43 @@
               (conj namespaces ns-obj)
               namespaces)) [] (all-ns)))
 
+(defn theorem-signature
+  "Sign the specified theorem contents."
+  [params type proof]
+  (digest/sha-256 (str params "/" type "/" proof)))
 
 ;; ========================
 ;; The certificate database
 ;; ========================
 
-(defonce +global-proof-certificate+ {})
+(defonce +global-proof-certificate+ (atom {}))
 
 
-
+(defn load-namespace-certificate! [namesp-name]
+  (let [cert-dir (io/resource "resources/cert")
+        namesp-file (io/resource (str "resources/cert" namesp-name))]
+    (if (or (nil? cert-dir) (nil? namesp-file))
+      ;; put an empty map for this namespace
+      (swap! +global-proof-certificate+ #(assoc % namesp-name {}))
+      ;; if there is a certification directory, try to find the correct certificate
+      (let [thm-cert (edn/read (io/input-stream namesp-file))]
+        (swap! +global-proof-certificate+ #(assoc % namesp-name thm-cert))))))
+        
+(defn proof-certified?
+  [namesp thm-name thm-params thm-type thm-proof]
+  (let [namesp-name (str namesp)
+        namesp-cert (get +global-proof-certificate+ namesp-name ::not-found)]
+    (if (= namesp-cert ::not-found)
+      (do (load-namespace-certificate! namesp-name)
+          (recur namesp thm-name thm-params thm-type thm-proof))
+      ;; found a certificate
+      (let [thm-cert (get namesp-cert thm-name ::not-found)]
+        (if (= thm-cert ::not-found)
+          false
+          ;; found a certificate
+          (let [new-cert (theorem-signature thm-params thm-type thm-proof)]
+            (= new-cert namesp-cert)))))))
+            
 ;; ===========================
 ;; The certification functions
 ;; ===========================
@@ -51,9 +79,7 @@
       (println "  ==> write file:" (str "'" timestamp-filename "'")))
     ;; spit timestamp
     (spit timestamp-file {:library library-name
-                          :timestamp timestamp })
-    (when *verbose-certification*
-      (println "  ==> done"))))
+                          :timestamp timestamp })))
 
 ;; (mk-timestamp-file! "latte")
 
@@ -85,10 +111,6 @@
   ([] (demonstrated-theorems *ns*)))
 
 ;; (demonstrated-theorems 'latte.prop)
-
-(defn theorem-signature [params type proof]
-  "Sign the specified theorem contents."
-  (digest/sha-256 (str params "/" type "/" proof)))
 
 (defn certified-theorems
   "Build a map of theorem certifications from a map `thms' of theorems.
@@ -122,19 +144,21 @@
 ;; (certify-namespace! 'latte.prop)
 
 (defn certify-library! [library-name namespaces]
-  (when *verbose-certification*
-    (println "=== Certifying library:" library-name)
-    (println "  ==> namespaces:" namespaces "==="))
-  ;; 1) clear the certificate
-  (clear-certification!)
-  ;; 2) create the certificate directory
-  (let [cert-dir (io/file "resources/cert")]
-    (.mkdir cert-dir)
+  (let [start-time (System/currentTimeMillis)]
     (when *verbose-certification*
-      (println " ==> certification directory created"))
-    ;; 3) create timestamp file
-    (mk-timestamp-file! library-name)
-    ;; 4) certify namespaces
-    (doseq [namesp namespaces]
-      (certify-namespace! namesp))
-    (println "=== Certificate issued ==")))
+      (println "=== Certifying library:" library-name)
+      (println "  ==> namespaces:" namespaces "==="))
+    ;; 1) clear the certificate
+    (clear-certification!)
+    ;; 2) create the certificate directory
+    (let [cert-dir (io/file "resources/cert")]
+      (.mkdir cert-dir)
+      (when *verbose-certification*
+        (println " ==> certification directory created"))
+      ;; 3) create timestamp file
+      (mk-timestamp-file! library-name)
+      ;; 4) certify namespaces
+      (doseq [namesp namespaces]
+        (certify-namespace! namesp))
+      (let [end-time (System/currentTimeMillis)]
+        (println "=== Certificate issued in" (str (- end-time start-time)  "ms") "==")))))
