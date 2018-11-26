@@ -29,23 +29,28 @@
 ;; The certificate database
 ;; ========================
 
-(defonce +global-proof-certificate+ (atom {}))
-
+(def +global-proof-certificate+ (atom {}))
 
 (defn load-namespace-certificate! [namesp-name]
-  (let [cert-dir (io/resource "resources/cert")
-        namesp-file (io/resource (str "resources/cert" namesp-name))]
-    (if (or (nil? cert-dir) (nil? namesp-file))
+  (let [cert-dir (or (io/resource "resources/cert")
+                     (io/file "resources/cert"))
+        namesp-fname (str "resources/cert/" namesp-name ".cert")
+        namesp-file (or (io/resource namesp-fname)
+                        (io/file namesp-fname))]
+    (println "[load-certificate] cert-dir=" cert-dir)
+    (println "[load-certificate] cert-file=" namesp-file)
+    (if (or (nil? cert-dir) (nil? namesp-file) (and (instance? java.io.File namesp-file)
+                                                    (not (.exists namesp-file))))
       ;; put an empty map for this namespace
       (swap! +global-proof-certificate+ #(assoc % namesp-name {}))
       ;; if there is a certification directory, try to find the correct certificate
-      (let [thm-cert (edn/read (io/input-stream namesp-file))]
+      (let [thm-cert (edn/read-string (slurp (io/input-stream namesp-file)))]
         (swap! +global-proof-certificate+ #(assoc % namesp-name thm-cert))))))
         
 (defn proof-certified?
   [namesp thm-name thm-params thm-type thm-proof]
   (let [namesp-name (str namesp)
-        namesp-cert (get +global-proof-certificate+ namesp-name ::not-found)]
+        namesp-cert (get @+global-proof-certificate+ namesp-name ::not-found)]
     (if (= namesp-cert ::not-found)
       (do (load-namespace-certificate! namesp-name)
           (recur namesp thm-name thm-params thm-type thm-proof))
@@ -56,7 +61,7 @@
           ;; found a certificate
           (let [new-cert (theorem-signature thm-params thm-type thm-proof)]
             (= new-cert namesp-cert)))))))
-            
+
 ;; ===========================
 ;; The certification functions
 ;; ===========================
