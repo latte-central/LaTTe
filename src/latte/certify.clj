@@ -11,15 +11,11 @@
             [clojure.java.io :as io]
             [clojure.edn :as edn]))
 
-;; some dummy utilities, perhaps not needed (otherwise they'd go to the `utils`
+;; ====================
+;; The signature scheme
+;; ====================
 
-(defn fetch-namespaces-with-prefix
-  [prefix]
-  (reduce (fn [namespaces ns-obj]
-            (if (string/starts-with? (str (ns-name ns-obj)) prefix)
-              (conj namespaces ns-obj)
-              namespaces)) [] (all-ns)))
-
+;; thx: https://github.com/tebeka/clj-digest
 (defn theorem-signature
   "Sign the specified theorem contents."
   [params type proof]
@@ -29,16 +25,18 @@
 ;; The certificate database
 ;; ========================
 
-(def +global-proof-certificate+ (atom {}))
+(defonce +global-proof-certificate+ (atom {}))
 
-(defn load-namespace-certificate! [namesp-name]
+(defn load-namespace-certificate!
+  "Load the namespace named `namesp-name` certificate, if any."
+  [namesp-name]
   (let [cert-dir (or (io/resource "cert")
                      (io/file "resources/cert"))
         namesp-fname (str namesp-name ".cert")
         namesp-file (or (io/resource (str "cert/" namesp-fname))
                         (io/file (str "resources/cert/" namesp-fname)))]
-    (println "[load-certificate] cert-dir=" cert-dir)
-    (println "[load-certificate] cert-file=" namesp-file)
+    ;;(println "[load-certificate] cert-dir=" cert-dir)
+    ;;(println "[load-certificate] cert-file=" namesp-file)
     (if (or (nil? cert-dir) (nil? namesp-file) (and (instance? java.io.File namesp-file)
                                                     (not (.exists namesp-file))))
       ;; put an empty map for this namespace
@@ -48,6 +46,7 @@
         (swap! +global-proof-certificate+ #(assoc % namesp-name thm-cert))))))
         
 (defn proof-certified?
+  "Check if the provided proof is certified."
   [namesp thm-name thm-params thm-type thm-proof]
   (let [namesp-name (str namesp)
         namesp-cert (get @+global-proof-certificate+ namesp-name ::not-found)]
