@@ -15,38 +15,44 @@ LaTTe 1.x
  - [X] `defimplicit` for programmatic calculations on terms 
    (replaces specials) [Done v0.99 - 10/2017]
    
- - [X] Opacity flag for definitions [Done v100.0 11/2017]
+ - [X] Opacity flag for definitions [Done v0.100.0 11/2017]
  
  - [X] explicit substitutions [Canceled (branch letstx) 11/2017]
 
- - [X] implicit goal hypotheses using `_` [Done v101.0 11/2018]
+ - [X] implicit goal hypotheses using `_` [Done v0.101.0 11/2018]
 
- - [ ] certificate generation and certified uberjars deployment
+ - [X] certificate generation and certified uberjars deployment [Done v0.102.0 11/2018]
 
- - [ ] externalize and port library `prelude`
- 
- - [ ] port library `sets`
- 
- - [ ] port library `integers`
- 
- - [ ] finalize 1.0 documentation
- 
+ - [X] externalize and port library `prelude` [Done v0.103.0 11/2018]
+
+ - [ ] cleanup library `prelude`
+
+ - [X] port library `sets` [Done v0.103.0 11/2018]
+
+ - [ ] cleanup library `sets`
+
+ - [X] port library `integers` [Done v0.103.0 11/2018]
+
+ - [ ] cleanup library `integers`
+
  - [ ] beta release(s)
- 
+
+ - [ ] LaTTe tutorial
+
+ - [ ] finalize 1.0 documentation
+  
  - [ ] final release v1.0
 
 LaTTe 2.x
 ---------
 
- - [ ] higher-order unification framework
-
- - [ ] proof refinement with holes
- 
- - [ ] auto-implicits with HO-unification
- 
- - [ ] proof search and query
+... (incomplete, unordered, undecided) ...
 
  - [ ] rewriting framework
+
+ - [ ] proof search and query
+ 
+ - [ ] proof refinement with holes
  
  - [ ] library `finite sets`
  
