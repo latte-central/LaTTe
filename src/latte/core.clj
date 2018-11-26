@@ -354,8 +354,8 @@ An error is signaled if the proof cannot be concluded."
     (let [certified-proof?
           (and *proof-certification-enabled*
                (cert/proof-certified? *ns* thm-name (:params thm) (:type thm) steps))]
-      (when certified-proof?
-        (println (str "[proof] theorem '" *ns* "/" thm-name "' has certified proof")))
+      ;; (when certified-proof?
+      ;;   (println (str "[proof] theorem '" *ns* "/" thm-name "' has certified proof")))
       (let [[status infos] (if certified-proof?
                              [:ok {}]
                              (p/check-proof def-env (reverse (:params thm)) thm-name (:type thm) steps))]

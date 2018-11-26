@@ -3,14 +3,7 @@
   This is mainly for certifying the core library (target `certify`)
   but other functionalities are provided, like listing axioms, etc."
 
-  (:gen-class)
-  
-  (:require [latte.utils :as u]
-            [latte.prop]
-            [latte.equal]
-            [latte.quant]
-            [latte.classic]
-            [latte.fun]
+  (:require [latte.utils :as u]            
             [latte.certify :as cert]))
 
 (defn run-header []
@@ -23,7 +16,7 @@
   (println "Available LaTTe commands:")
   (println "  :certify              | certify the" library-name "library (written in resources/cert)")
   (println "  :clear-cert           | clear the last certification (if any)")
-  (println "  :axioms  [namespaces] | list all axioms in `namespaces`, or in whole " library-name "library if not specified")
+  (println "  :axioms  [namespaces] | list all axioms in `namespaces`, or in whole" library-name "library if not specified")
   (println "  :help                 | this message"))
 
 (defn run-certify! [library-name namespaces]
@@ -40,22 +33,17 @@
   )
 
 
-(defn -main [& args]
+(defn latte-main [args library-name namespaces]
   (run-header)
   (if args
     (case (first args)
-      ":certify" (run-certify! "core" ['latte.prop 'latte.equal 'latte.quant 'latte.classic 'latte.fun])
+      ":certify" (run-certify! library-name namespaces)
       ":clear-cert" (run-clear-cert!)
-      ":axioms" (run-axioms! (rest args) ['latte.prop 'latte.equal 'latte.quant 'latte.classic 'latte.fun])
+      ":axioms" (run-axioms! (rest args) namespaces)
       ":help"
       ;; does not understand
       (do (println "==> Does not understand: " (first args))
-          (run-doc "core")))
+          (run-doc library-name)))
     (run-doc "core")))
-
-
-
-
-
 
 
