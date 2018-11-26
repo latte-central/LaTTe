@@ -22,7 +22,13 @@ http://latte-central.github.io/LaTTe/
 LaTTe is a **proof assistant library** based on type theory (a variant of
 λD as described in the book [Type theory and formal proof: an introduction](http://www.cambridge.org/fr/academic/subjects/computer-science/programming-languages-and-applied-logic/type-theory-and-formal-proof-introduction)).
 
-**New!** Watch Latte *live* at: https://www.youtube.com/watch?v=5YTCY7wm0Nw
+ - **Hot!** Watch Latte *live* at: https://www.youtube.com/watch?v=5YTCY7wm0Nw
+ 
+ - **Sizzling!** A paper about LaTTe at the European Lisp Symposium, 2017:
+   https://github.com/latte-central/latte-ELS-2017 
+   [[PDF]](https://github.com/latte-central/latte-ELS-2017/blob/master/paper/latte-els-2017.pdf)
+   
+ - **Blistering** LaTTe was in the [Hack news!](https://news.ycombinator.com/item?id=18383654)
 
 The specific feature of LaTTe is its design as a library (unlike most proof assistant, generally designed as tools) tightly integrated with the Clojure language. It is of course fully implemented in Clojure, but most importantly all the definitional aspects of the assistant (definitions, theorem and axioms) are handled using Clojure namespaces, definitions and macros.
 
@@ -43,7 +49,7 @@ The proof of the theorem can be also constructed as a Clojure form:
 
 ```clojure
 (proof impl-refl
-  :term (lambda [x A] x))
+  (qed (lambda [x A] x)))
 ```
 (i.e. the identity function is a proof of reflexivity for implication)
 
@@ -51,10 +57,9 @@ The proof of the theorem can be also constructed as a Clojure form:
 
 ```clojure
 (proof impl-refl
-       :script
-       (assume [x A]
-         (have concl A :by x)
-         (qed concl)))
+   (assume [x A]
+     (have concl A :by x))
+   (qed concl))
 ```
 
 ... which, with some training, can be read as a "standard" mathematical proof:
@@ -74,9 +79,19 @@ Given the tight integration with the Clojure language, *existing Clojure develop
 
 ## How?
 
-There will be a *tutorial* at some point ...
+ - There will be a *tutorial* at some point ...
 
-The *reference documentation* is at: http://latte-central.github.io/LaTTe/
+ - The *reference documentation* is at: http://latte-central.github.io/LaTTe/
+ 
+**Standard library** : 
+ 
+ - The **prelude** library is at: https://github.com/latte-central/latte-prelude
+ 
+ - The **(typed) sets** library is at: https://github.com/latte-central/latte-sets
+ 
+ - The **integer arithmetic** library is at: https://github.com/latte-central/latte-integers
+
+(obviously more to come ...)
 
 ## Who?
 
@@ -92,11 +107,9 @@ LaTTe is, at least for now, an experiment more than a finalized product, but it 
 
 A few non-trivial formalizations have been conducted using LaTTe:
 
- - some **typed set theory**: https://github.com/latte-central/latte-sets
- - a (starting) formalization of **integer arithmetics**: https://github.com/latte-central/latte-integers 
- - a (gorilla REPL) document about **Knaster-Tarski fixed point theorem(s)**: https://github.com/latte-central/fixed-points
+ - e.g. a (gorilla REPL) document about **Knaster-Tarski fixed point theorem(s)**: https://github.com/latte-central/fixed-points
 
 Contributions such as mathematical content or enhancement/correction of the underlying machinery are very much welcomed.
 
 ----
-Copyright (C) 2015-2016 Frederic Peschanski (MIT license, cf. `LICENSE`)
+Copyright (C) 2015-2018 Frederic Peschanski (MIT license, cf. `LICENSE`)
