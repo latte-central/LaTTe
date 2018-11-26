@@ -11,7 +11,8 @@
             [latte-kernel.typing :as ty]
             [latte-kernel.norm :as n]
             [latte-kernel.defenv :as defenv]
-            [latte-kernel.proof :as p]))
+            [latte-kernel.proof :as p]
+            [latte.certify :as cert]))
 
 ;; Initialisation of unparser
 (unparser/install-fundamental-unparsers!)
@@ -350,15 +351,20 @@ An error is signaled if the proof cannot be concluded."
                              :thm-name thm-name}])]
     (when (= status :ko)
       (throw (ex-info (:msg thm) (dissoc thm :msg))))
-    (let [[status infos] (p/check-proof def-env (reverse (:params thm)) thm-name (:type thm) steps)]
-      (if (= status :ko)
-        (do ;; (println "infos = " infos)
-          (throw (ex-info (str "Proof failed: " (:msg infos)) {:theorem thm-name
-                                                               :error (dissoc infos :msg)})))
-        (let [new-thm (assoc thm :proof steps)]
-          (alter-var-root (resolve thm-name) (fn [_] new-thm))
-          [:qed thm-name])))))
-
+    (let [certified-proof?
+          (and *proof-certification-enabled*
+               (cert/proof-certified? *ns* thm-name (:params thm) (:type thm) steps))]
+      (println "[proof] certified?" certified-proof? " (ns=" (str *ns*) ")")
+      (let [[status infos] (if certified-proof?
+                             [:ok {}]
+                             (p/check-proof def-env (reverse (:params thm)) thm-name (:type thm) steps))]
+        (if (= status :ko)
+          (do ;; (println "infos = " infos)
+            (throw (ex-info (str "Proof failed: " (:msg infos)) {:theorem thm-name
+                                                                 :error (dissoc infos :msg)})))
+          (let [new-thm (assoc thm :proof steps)]
+            (alter-var-root (resolve thm-name) (fn [_] new-thm))
+            [:qed thm-name]))))))
 
 ;;{
 ;; ## Examples

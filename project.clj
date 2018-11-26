@@ -1,4 +1,4 @@
-(defproject latte "0.101.0-SNAPSHOT"
+(defproject latte "0.102.0-SNAPSHOT"
   :description "LaTTe : a Laboratory for Type Theory Experiments"
   :url "https://github.com/fredokun/LaTTe.git"
   :license {:name "MIT Licence"
@@ -8,8 +8,8 @@
                  [digest "1.4.8"]
                  [latte-kernel "0.101.0-SNAPSHOT"]]
   :main latte.main
-  :aliases { "certify" ["run" ":certify"]}
-  :clean-targets ^{:protect false} ["resources/cert"]
+  :aliases {"certify" ["run" ":certify"]
+            "clear-cert" ["run" ":clear-cert"]}
   :codox {:output-path "docs"
           :metadata {:doc/format :markdown}
           :namespaces [latte.core latte.prop latte.classic

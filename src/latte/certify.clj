@@ -32,11 +32,11 @@
 (def +global-proof-certificate+ (atom {}))
 
 (defn load-namespace-certificate! [namesp-name]
-  (let [cert-dir (or (io/resource "resources/cert")
+  (let [cert-dir (or (io/resource "cert")
                      (io/file "resources/cert"))
-        namesp-fname (str "resources/cert/" namesp-name ".cert")
-        namesp-file (or (io/resource namesp-fname)
-                        (io/file namesp-fname))]
+        namesp-fname (str namesp-name ".cert")
+        namesp-file (or (io/resource (str "cert/" namesp-fname))
+                        (io/file (str "resources/cert/" namesp-fname)))]
     (println "[load-certificate] cert-dir=" cert-dir)
     (println "[load-certificate] cert-file=" namesp-file)
     (if (or (nil? cert-dir) (nil? namesp-file) (and (instance? java.io.File namesp-file)
@@ -60,7 +60,7 @@
           false
           ;; found a certificate
           (let [new-cert (theorem-signature thm-params thm-type thm-proof)]
-            (= new-cert namesp-cert)))))))
+            (= new-cert thm-cert)))))))
 
 ;; ===========================
 ;; The certification functions
