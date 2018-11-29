@@ -1,4 +1,4 @@
-(defproject latte "0.103.0-SNAPSHOT"
+(defproject latte "1.0b1-SNAPSHOT"
   :description "LaTTe : a Laboratory for Type Theory Experiments"
   :url "https://github.com/fredokun/LaTTe.git"
   :license {:name "MIT Licence"
@@ -6,7 +6,7 @@
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/core.match "0.3.0-alpha5"]
                  [digest "1.4.8"]
-                 [latte-kernel "0.101.0-SNAPSHOT"]]
+                 [latte-kernel "1.0b1-SNAPSHOT"]]
   :codox {:output-path "docs"
           :metadata {:doc/format :markdown}
           :namespaces [latte.core]}

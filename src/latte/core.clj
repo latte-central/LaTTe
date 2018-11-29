@@ -65,14 +65,15 @@
                                                              :arglists (list (quote ~params)))))
                [:defined :term (quote ~def-name)])))))))
 
-(defn parse-parameters [def-env params]
+(defn ^:no-doc parse-parameters
+  [def-env params]
   (reduce (fn [[sts params] [x ty]]
             (let [[status ty] (stx/parse-term def-env ty)]
               (if (= status :ko)
                 (reduced [:ko ty])
                 [:ok (conj params [x ty])]))) [:ok []] params))
 
-(defn handle-term-definition [def-name params body]
+(defn ^:no-doc handle-term-definition [def-name params body]
   ;; parse parameters
   (let [[status params] (parse-parameters defenv/empty-env params)]
     (if (= status :ko)
@@ -85,7 +86,7 @@
               [:ko ty]
               [:ok (defenv/->Definition def-name params (count params) body-term ty {})])))))))
 
-(defn mk-def-doc [kind content explanation]
+(defn ^:no-doc mk-def-doc [kind content explanation]
   (str "\n```\n"
        (with-out-str
          (pp/pprint content))
@@ -149,7 +150,7 @@
                (alter-meta! (var ~def-name) #(merge % (quote ~metadata))) 
                [:declared :lemma (quote ~def-name)])))))))
 
-(defn handle-defthm [kind thm-name doc params ty]
+(defn ^:no-doc handle-defthm [kind thm-name doc params ty]
   (when (defenv/registered-definition? thm-name)
     (println "[Warning] redefinition as" (if (= kind :theorem)
                                            "theorem"
@@ -164,7 +165,7 @@
                       :private (= kind :lemma)}]
         [:ok thm-name definition metadata]))))
 
-(defn handle-thm-declaration [thm-name params ty]
+(defn ^:no-doc handle-thm-declaration [thm-name params ty]
   (let [[status params] (parse-parameters defenv/empty-env params)]
     (if (= status :ko)
       [:ko params]
@@ -214,7 +215,7 @@ In all cases the introduction of an axiom must be justified with strong
                (alter-meta! (var ~def-name) #(merge % (quote ~metadata))) 
                [:declared :axiom (quote ~def-name)])))))))
 
-(defn handle-defaxiom [kind ax-name doc params ty]
+(defn ^:no-doc handle-defaxiom [kind ax-name doc params ty]
   (when (defenv/registered-definition? ax-name)
     (println "[Warning] redefinition as" (if (= kind :axiom)
                                            "axiom"
@@ -228,7 +229,7 @@ In all cases the introduction of an axiom must be justified with strong
                       :arglists (list params)}]
         [:ok ax-name definition metadata]))))
 
-(defn handle-ax-declaration [ax-name params ty]
+(defn ^:no-doc handle-ax-declaration [ax-name params ty]
   (let [[status params] (parse-parameters defenv/empty-env params)]
     (if (= status :ko)
       [:ko params]
@@ -400,7 +401,7 @@ as well as a proof."
                (do
                  [:checked :example]))))))))
 
-(defn handle-example-thm [params ty]
+(defn ^:no-doc handle-example-thm [params ty]
   (let [[status params] (parse-parameters defenv/empty-env params)]
     (if (= status :ko)
       [:ko params]
@@ -429,7 +430,7 @@ as well as a proof."
 
 (s/def ::iparam (s/tuple symbol? symbol?))
 
-(defn mk-impl-doc [name params explanation]
+(defn ^:no-doc mk-impl-doc [name params explanation]
   (str "\n```\n"
        "(" name " " (clojure.string/join " " params) ")"
        "```\n\n"
