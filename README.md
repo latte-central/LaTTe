@@ -28,7 +28,7 @@ LaTTe is a **proof assistant library** based on type theory (a variant of
    https://github.com/latte-central/latte-ELS-2017 
    [[PDF]](https://github.com/latte-central/latte-ELS-2017/blob/master/paper/latte-els-2017.pdf)
    
- - **Blistering** LaTTe was in the [Hack news!](https://news.ycombinator.com/item?id=18383654)
+ - **Blistering** LaTTe was in the [Hacker news!](https://news.ycombinator.com/item?id=18383654)
 
 The specific feature of LaTTe is its design as a library (unlike most proof assistant, generally designed as tools) tightly integrated with the Clojure language. It is of course fully implemented in Clojure, but most importantly all the definitional aspects of the assistant (definitions, theorem and axioms) are handled using Clojure namespaces, definitions and macros.
 
@@ -39,6 +39,7 @@ For example, the fact that logical implication is reflexive can be stated *direc
   "Implication is reflexive."
   [[A :type]]
   (==> A A))
+;; => [:declared :theorem impl-refl]
 ```
 in plain text:
 > assuming a type `A`, then `A` implies `A`.
@@ -48,18 +49,20 @@ The proof of the theorem can be also constructed as a Clojure form:
   - either giving a lambda-term as a direct proof (exploiting the proposition-as-type, proof-as-term correspondance) :
 
 ```clojure
-(proof impl-refl
+(proof 'impl-refl
   (qed (lambda [x A] x)))
+;; => [:qed impl-refl]
 ```
 (i.e. the identity function is a proof of reflexivity for implication)
 
   - or using a declarative *proof script*:
 
 ```clojure
-(proof impl-refl
+(proof 'impl-refl
    (assume [x A]
      (have concl A :by x))
    (qed concl))
+;; => [:qed impl-refl]
 ```
 
 ... which, with some training, can be read as a "standard" mathematical proof:
@@ -75,7 +78,7 @@ Of course, all the proofs are *checked for correctness*. Without the introductio
 ## Yes, but what?
 
 LaTTe helps you formalize mathematic concepts and construct formal proofs of theorems (propositions) about such concepts.
-Given the tight integration with the Clojure language, *existing Clojure development environments* (e.g. Cider) can be used as an interactive proof assistant.
+Given the tight integration with the Clojure language, *existing* Clojure development environments (e.g. Cider, Cursive) can be used as (quite effective) interactive proof assistants.
 
 ## How?
 
