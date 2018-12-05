@@ -34,7 +34,7 @@
                            :params ::def-params
                            :body ::def-body))
 
-(declare handle-term-definition)
+(declare handle-de-term)
 (declare mk-def-doc)
 
 (defmacro definition
@@ -53,7 +53,7 @@
       (let [{def-name :name doc :doc params :params body :body} conf-form]
         (when (defenv/registered-definition? def-name)
           (println "[Warning] redefinition as term: " def-name))
-        (let [[status definition] (handle-term-definition def-name params body)]
+        (let [[status definition] (handle-de-term def-name params body)]
           (when (= status :ko)
             (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
           (let [quoted-def# definition]
@@ -72,7 +72,7 @@
                 (reduced [:ko ty])
                 [:ok (conj params [x ty])]))) [:ok []] params))
 
-(defn ^:no-doc handle-term-definition [def-name params body]
+(defn ^:no-doc handle-de-term [def-name params body]
   ;; parse parameters
   (let [[status params] (parse-parameters defenv/empty-env params)]
     (if (= status :ko)
@@ -108,7 +108,7 @@
                         :body ::def-body))
 
 (declare handle-defthm)
-(declare handle-thm-declaration)
+(declare handle-de-theorem)
 
 (defmacro defthm
   "Declaration of a theorem of the specified `name` (first argument)
@@ -152,7 +152,7 @@
 (defn ^:no-doc handle-defthm [kind thm-name doc params ty]
   (when (defenv/registered-definition? thm-name)
     (println "[Warning] redefinition as" (name kind) ":" thm-name))
-  (let [[status definition] (handle-thm-declaration thm-name params ty)]
+  (let [[status definition] (handle-de-theorem thm-name params ty)]
     (if (= status :ko)
       [:ko definition nil nil nil]
       (let [metadata {:doc (mk-def-doc (clojure.string/capitalize (name kind)) ty doc)
@@ -160,7 +160,7 @@
                       :private (= kind :lemma)}]
         [:ok thm-name definition metadata]))))
 
-(defn ^:no-doc handle-thm-declaration [thm-name params ty]
+(defn ^:no-doc handle-de-theorem [thm-name params ty]
   (let [[status params] (parse-parameters defenv/empty-env params)]
     (if (= status :ko)
       [:ko params]
@@ -181,7 +181,7 @@
                       :body ::def-body))
 
 (declare handle-defaxiom)
-(declare handle-ax-declaration)
+(declare handle-de-axiom)
 
 (defmacro defaxiom
   "Declaration of an axiom with the specified `name` (first argument)
@@ -213,14 +213,14 @@ In all cases the introduction of an axiom must be justified with strong
 (defn ^:no-doc handle-defaxiom [kind ax-name doc params ty]
   (when (defenv/registered-definition? ax-name)
     (println "[Warning] redefinition as" (name kind) ":" ax-name))
-  (let [[status definition] (handle-ax-declaration ax-name params ty)]
+  (let [[status definition] (handle-de-axiom ax-name params ty)]
     (if (= status :ko)
       [:ko definition nil nil nil]
       (let [metadata {:doc (mk-def-doc (clojure.string/capitalize (name kind)) ty doc)
                       :arglists (list params)}]
         [:ok ax-name definition metadata]))))
 
-(defn ^:no-doc handle-ax-declaration [ax-name params ty]
+(defn ^:no-doc handle-de-axiom [ax-name params ty]
   (let [[status params] (parse-parameters defenv/empty-env params)]
     (if (= status :ko)
       [:ko params]
