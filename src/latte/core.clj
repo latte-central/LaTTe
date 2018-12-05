@@ -152,15 +152,11 @@
 
 (defn ^:no-doc handle-defthm [kind thm-name doc params ty]
   (when (defenv/registered-definition? thm-name)
-    (println "[Warning] redefinition as" (if (= kind :theorem)
-                                           "theorem"
-                                           "lemma") ":" thm-name))
+    (println "[Warning] redefinition as" (name kind) ":" thm-name))
   (let [[status definition] (handle-thm-declaration thm-name params ty)]
     (if (= status :ko)
       [:ko definition nil nil nil]
-      (let [metadata {:doc (mk-def-doc (if (= kind :theorem)
-                                     "Theorem"
-                                     "Lemma") ty doc)
+      (let [metadata {:doc (mk-def-doc (clojure.string/capitalize (name kind)) ty doc)
                       :arglists (list params)
                       :private (= kind :lemma)}]
         [:ok thm-name definition metadata]))))
@@ -217,15 +213,11 @@ In all cases the introduction of an axiom must be justified with strong
 
 (defn ^:no-doc handle-defaxiom [kind ax-name doc params ty]
   (when (defenv/registered-definition? ax-name)
-    (println "[Warning] redefinition as" (if (= kind :axiom)
-                                           "axiom"
-                                           "primitive") ":" ax-name))
+    (println "[Warning] redefinition as" (name kind) ":" ax-name))
   (let [[status definition] (handle-ax-declaration ax-name params ty)]
     (if (= status :ko)
       [:ko definition nil nil nil]
-      (let [metadata {:doc (mk-def-doc (if (= kind :axiom)
-                                     "Axiom"
-                                     "Lemma") ty doc)
+      (let [metadata {:doc (mk-def-doc (clojure.string/capitalize (name kind)) ty doc)
                       :arglists (list params)}]
         [:ok ax-name definition metadata]))))
 
