@@ -34,6 +34,33 @@
                            :params ::def-params
                            :body ::def-body))
 
+(defn ^:no-doc parse-parameters
+  [def-env params]
+  (reduce (fn [[sts params] [x ty]]
+            (let [[status ty] (stx/parse-term def-env ty)]
+              (if (= status :ko)
+                (reduced [:ko ty])
+                [:ok (conj params [x ty])]))) [:ok []] params))
+
+(def defenv-fn-map
+  {:theorem defenv/->Theorem
+   :axiom defenv/->Axiom})
+
+(defn ^:no-doc handle-de [stmt stmt-name params ty]
+  (let [[status params] (parse-parameters defenv/empty-env params)]
+    (if (= status :ko)
+      [:ko params]
+      (let [[status ty'] (stx/parse-term defenv/empty-env ty)]
+        (if (= status :ko)
+          [:ko ty']
+          (if (not (ty/proper-type? defenv/empty-env params ty'))
+            [:ko {:msg (str (clojure.string/capitalize (name stmt)) " body is not a proper type")
+                  stmt stmt-name
+                  :type (unparser/unparse ty')}]
+            [:ok (cond
+                   (= stmt :theorem) ((defenv-fn-map stmt) stmt-name params (count params) ty' false)
+                   (= stmt :axiom)   ((defenv-fn-map stmt) stmt-name params (count params) ty'))]))))))
+
 (declare handle-de-term)
 (declare mk-def-doc)
 
@@ -63,14 +90,6 @@
                                                              :doc (mk-def-doc "Definition" (quote ~body) ~doc)
                                                              :arglists (list (quote ~params)))))
                [:defined :term (quote ~def-name)])))))))
-
-(defn ^:no-doc parse-parameters
-  [def-env params]
-  (reduce (fn [[sts params] [x ty]]
-            (let [[status ty] (stx/parse-term def-env ty)]
-              (if (= status :ko)
-                (reduced [:ko ty])
-                [:ok (conj params [x ty])]))) [:ok []] params))
 
 (defn ^:no-doc handle-de-term [def-name params body]
   ;; parse parameters
@@ -160,16 +179,8 @@
                       :private (= kind :lemma)}]
         [:ok thm-name definition metadata]))))
 
-(defn ^:no-doc handle-de-theorem [thm-name params ty]
-  (let [[status params] (parse-parameters defenv/empty-env params)]
-    (if (= status :ko)
-      [:ko params]
-      (let [[status ty'] (stx/parse-term defenv/empty-env ty)]
-        (if (= status :ko)
-          [:ko ty']
-          (if (not (ty/proper-type? defenv/empty-env params ty'))
-            [:ko {:msg "Theorem body is not a proper type" :theorem thm-name :type (unparser/unparse ty')}]
-            [:ok (defenv/->Theorem thm-name params (count params) ty' false)]))))))
+(defn ^:no-doc handle-de-theorem [stmt-name params ty]
+  (handle-de :theorem stmt-name params ty))
 
 ;;{
 ;; ## Axioms
@@ -220,16 +231,8 @@ In all cases the introduction of an axiom must be justified with strong
                       :arglists (list params)}]
         [:ok ax-name definition metadata]))))
 
-(defn ^:no-doc handle-de-axiom [ax-name params ty]
-  (let [[status params] (parse-parameters defenv/empty-env params)]
-    (if (= status :ko)
-      [:ko params]
-      (let [[status ty'] (stx/parse-term defenv/empty-env ty)]
-        (if (= status :ko)
-          [:ko ty']
-          (if (not (ty/proper-type? defenv/empty-env params ty'))
-            [:ko {:msg "Axiom body is not a proper type" :axiom ax-name :type (unparser/unparse ty')}]
-            [:ok (defenv/->Axiom ax-name params (count params) ty')]))))))
+(defn ^:no-doc handle-de-axiom   [stmt-name params ty]
+  (handle-de :axiom   stmt-name params ty))
 
 ;;{
 ;; ## Proofs
