@@ -34,7 +34,6 @@
                            :params ::def-params
                            :body ::def-body))
 
-
 (declare handle-term-definition)
 (declare mk-def-doc)
 
@@ -542,6 +541,21 @@ Be careful that the parser will be called recursively on the generated term, hen
       '□
       (let [ty (ty/type-of def-env ctx t)]
         (list 'quote (latte-kernel.unparser/unparse t))))))
+
+(defmacro term-eq? 
+  "Checks if two terms `t` and `u` are equal in the sense of
+  having the \"same\" normal form (up-to alpha-conversion, the
+  safe renaming of bound variables.
+
+  A context can be provided
+  in the form of a serie of `[var type]` pairs before the actual term."
+  [& args]
+  (let [def-env defenv/empty-env
+        t2 (stx/parse def-env (last args))
+        t1 (stx/parse def-env (last (butlast args)))
+        ctx (parse-context-args def-env (butlast (butlast args)))]
+    ;; (println "[term] t = " t " ctx = " ctx)
+    (latte-kernel.norm/beta-eq? def-env ctx t1 t2)))
 
 ;;{
 ;; ## Top-level type checking

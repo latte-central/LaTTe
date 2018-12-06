@@ -3,6 +3,7 @@
   (:require [latte-kernel.defenv :as defenv]
             [latte-kernel.norm :as norm]))
 
+
 ;; decomposer (rebindable) parameters
 (def ^:dynamic *decomposer-performs-delta-steps* true)
 (def ^:dynamic *decomposer-performs-norm* true)
