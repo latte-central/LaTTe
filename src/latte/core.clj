@@ -57,21 +57,17 @@
           (let [[status ty _] (ty/type-of-term defenv/empty-env params body')]
             (if (= status :ko)
               [:ko ty]
-              (if (= stmt :term)
-                [:ok (defenv/->Definition stmt-name params (count params) body' ty {})]
-                (if (->> ty
-                         (n/normalize defenv/empty-env params)
-                         syntax/sort?
-                         not)
-                  [:ko {:msg (str (clojure.string/capitalize (name stmt)) " body is not a proper type")
-                        stmt stmt-name
-                        :type (unparser/unparse body')}]
-                  [:ok (cond
-                         (= stmt :theorem) ((defenv-fn-map stmt) stmt-name params (count params) body' false)
-                         (= stmt :axiom)   ((defenv-fn-map stmt) stmt-name params (count params) body'))])))))))))
-
-(defn ^:no-doc handle-de-term [stmt-name params body]
-  (handle-de :term stmt-name params body))
+              (if (and (not= stmt :term) (->> ty
+                                              (n/normalize defenv/empty-env params)
+                                              syntax/sort?
+                                              not))
+                [:ko {:msg (str (clojure.string/capitalize (name stmt)) " body is not a sort-type")
+                      stmt stmt-name
+                      :type (unparser/unparse body')}]
+                [:ok (cond
+                       (= stmt :theorem) ((defenv-fn-map stmt) stmt-name params (count params) body' false)
+                       (= stmt :axiom)   ((defenv-fn-map stmt) stmt-name params (count params) body')
+                       (= stmt :term)    ((defenv-fn-map stmt) stmt-name params (count params) body' ty {}))]))))))))
 
 (declare mk-def-doc)
 
@@ -91,7 +87,7 @@
       (let [{def-name :name doc :doc params :params body :body} conf-form]
         (when (defenv/registered-definition? def-name)
           (println "[Warning] redefinition as term: " def-name))
-        (let [[status definition] (handle-de-term def-name params body)]
+        (let [[status definition] (handle-de :term def-name params body)]
           (when (= status :ko)
             (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
           (let [quoted-def# definition]
