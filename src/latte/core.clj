@@ -54,16 +54,19 @@
       (let [[status body'] (stx/parse-term defenv/empty-env body)]
         (if (= status :ko)
           [:ko body']
-          (if (->> (ty/type-of defenv/empty-env params body')
-                   (n/normalize defenv/empty-env params)
-                   syntax/sort?
-                   not)
-            [:ko {:msg (str (clojure.string/capitalize (name stmt)) " body is not a proper type")
-                  stmt stmt-name
-                  :type (unparser/unparse body')}]
-            [:ok (cond
-                   (= stmt :theorem) ((defenv-fn-map stmt) stmt-name params (count params) body' false)
-                   (= stmt :axiom)   ((defenv-fn-map stmt) stmt-name params (count params) body'))]))))))
+          (let [[status ty t'] (ty/type-of-term defenv/empty-env params body')]
+            (if (= status :ko)
+              (throw (ex-info "Type checking error" ty))
+              (if (->> ty
+                       (n/normalize defenv/empty-env params)
+                       syntax/sort?
+                       not)
+                [:ko {:msg (str (clojure.string/capitalize (name stmt)) " body is not a proper type")
+                      stmt stmt-name
+                      :type (unparser/unparse body')}]
+                [:ok (cond
+                       (= stmt :theorem) ((defenv-fn-map stmt) stmt-name params (count params) body' false)
+                       (= stmt :axiom)   ((defenv-fn-map stmt) stmt-name params (count params) body'))]))))))))
 
 (defn ^:no-doc handle-de-term [stmt-name params body]
   ;; parse parameters
