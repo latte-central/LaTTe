@@ -43,9 +43,15 @@
                 [:ok (conj params [x ty])]))) [:ok []] params))
 
 (def defenv-fn-map
-  {:theorem defenv/->Theorem
+  {:example defenv/->Theorem
+   :theorem defenv/->Theorem
    :axiom defenv/->Axiom
    :term defenv/->Definition})
+
+(defn in?
+  "true if seq contains elm"
+  [seq elm]
+  (boolean (some (fn [e] (= elm e)) seq)))
 
 (defn ^:no-doc handle-de [stmt stmt-name params body]
   (let [[status params] (parse-parameters defenv/empty-env params)]
@@ -57,14 +63,16 @@
           (let [[status ty _] (ty/type-of-term defenv/empty-env params body')]
             (if (= status :ko)
               [:ko ty]
-              (if (and (not= stmt :term) (->> ty
-                                              (n/normalize defenv/empty-env params)
-                                              syntax/sort?
-                                              not))
+              (if (and (in? [:theorem :axiom :example] stmt)
+                       (->> ty
+                            (n/normalize defenv/empty-env params)
+                            syntax/sort?
+                            not))
                 [:ko {:msg (str (clojure.string/capitalize (name stmt)) " body is not a sort-type")
                       stmt stmt-name
                       :type (unparser/unparse body')}]
                 [:ok (cond
+                       (= stmt :example) ((defenv-fn-map stmt) stmt-name params (count params) body' false)
                        (= stmt :theorem) ((defenv-fn-map stmt) stmt-name params (count params) body' false)
                        (= stmt :axiom)   ((defenv-fn-map stmt) stmt-name params (count params) body')
                        (= stmt :term)    ((defenv-fn-map stmt) stmt-name params (count params) body' ty {}))]))))))))
@@ -359,8 +367,6 @@ An error is signaled if the proof cannot be concluded."
                         :body ::def-body
                         :steps (s/+ any?)))
 
-(declare handle-example-thm)
-
 (defmacro example
   "An example of the form `(example T <steps>)` is the statement of a proposition, as a type `T`, 
 as well as a proof."
@@ -371,7 +377,7 @@ as well as a proof."
       (throw (ex-info "Syntax error in example."
                       {:explain (s/explain-str ::example args)}))
       (let [{params :params body :body steps :steps} conf-form
-            [status thm] (handle-example-thm params body)]
+            [status thm] (handle-de :example (gensym (name :example)) params body)]
         (if (= status :ko)
           (throw (ex-info "Cannot check example." thm))
           `(let [[status# infos#] (p/check-proof defenv/empty-env '~(reverse (:params thm)) '~(:name thm) '~(:type thm) ~steps)]
@@ -381,22 +387,9 @@ as well as a proof."
                (do
                  [:checked :example]))))))))
 
-(defn ^:no-doc handle-example-thm [params ty]
-  (let [[status params] (parse-parameters defenv/empty-env params)]
-    (if (= status :ko)
-      [:ko params]
-      (let [[status ty'] (stx/parse-term defenv/empty-env ty)]
-        (if (= status :ko)
-          [:ko ty']          
-          (if (not (ty/proper-type? defenv/empty-env params ty'))
-            [:ko {:msg "Example body is not a proper type" :type ty'}]
-            [:ok (defenv/->Theorem (gensym "example") params (count params) ty' false)]))))))
-
 ;;{
 ;; ## Implicits
 ;;}
-
-
 
 (s/def ::implicit-header (s/cat :def-env symbol?
                             :ctx symbol?
