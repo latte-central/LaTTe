@@ -121,7 +121,6 @@
                         :body ::def-body))
 
 (declare handle-defthm)
-(declare handle-de-theorem)
 
 (defmacro defthm
   "Declaration of a theorem of the specified `name` (first argument)
@@ -165,16 +164,13 @@
 (defn ^:no-doc handle-defthm [kind thm-name doc params ty]
   (when (defenv/registered-definition? thm-name)
     (println "[Warning] redefinition as" (name kind) ":" thm-name))
-  (let [[status definition] (handle-de-theorem thm-name params ty)]
+  (let [[status definition] (handle-de :theorem thm-name params ty)]
     (if (= status :ko)
       [:ko definition nil nil nil]
       (let [metadata {:doc (mk-def-doc (clojure.string/capitalize (name kind)) ty doc)
                       :arglists (list params)
                       :private (= kind :lemma)}]
         [:ok thm-name definition metadata]))))
-
-(defn ^:no-doc handle-de-theorem [stmt-name params ty]
-  (handle-de :theorem stmt-name params ty))
 
 ;;{
 ;; ## Axioms
@@ -186,7 +182,6 @@
                       :body ::def-body))
 
 (declare handle-defaxiom)
-(declare handle-de-axiom)
 
 (defmacro defaxiom
   "Declaration of an axiom with the specified `name` (first argument)
@@ -218,15 +213,12 @@ In all cases the introduction of an axiom must be justified with strong
 (defn ^:no-doc handle-defaxiom [kind ax-name doc params ty]
   (when (defenv/registered-definition? ax-name)
     (println "[Warning] redefinition as" (name kind) ":" ax-name))
-  (let [[status definition] (handle-de-axiom ax-name params ty)]
+  (let [[status definition] (handle-de :axiom ax-name params ty)]
     (if (= status :ko)
       [:ko definition nil nil nil]
       (let [metadata {:doc (mk-def-doc (clojure.string/capitalize (name kind)) ty doc)
                       :arglists (list params)}]
         [:ok ax-name definition metadata]))))
-
-(defn ^:no-doc handle-de-axiom   [stmt-name params ty]
-  (handle-de :axiom   stmt-name params ty))
 
 ;;{
 ;; ## Proofs
