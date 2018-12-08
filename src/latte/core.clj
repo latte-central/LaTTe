@@ -54,32 +54,24 @@
       (let [[status body'] (stx/parse-term defenv/empty-env body)]
         (if (= status :ko)
           [:ko body']
-          (let [[status ty t'] (ty/type-of-term defenv/empty-env params body')]
-            (if (= status :ko)
-              (throw (ex-info "Type checking error" ty))
-              (if (->> ty
-                       (n/normalize defenv/empty-env params)
-                       syntax/sort?
-                       not)
-                [:ko {:msg (str (clojure.string/capitalize (name stmt)) " body is not a proper type")
-                      stmt stmt-name
-                      :type (unparser/unparse body')}]
-                [:ok (cond
-                       (= stmt :theorem) ((defenv-fn-map stmt) stmt-name params (count params) body' false)
-                       (= stmt :axiom)   ((defenv-fn-map stmt) stmt-name params (count params) body'))]))))))))
-
-(defn ^:no-doc handle-de-term [stmt-name params body]
-  ;; parse parameters
-  (let [[status params] (parse-parameters defenv/empty-env params)]
-    (if (= status :ko)
-      [:ko params]
-      (let [[status body'] (stx/parse-term defenv/empty-env body)]
-        (if (= status :ko)
-          [:ko body']
           (let [[status ty _] (ty/type-of-term defenv/empty-env params body')]
             (if (= status :ko)
               [:ko ty]
-              [:ok (defenv/->Definition stmt-name params (count params) body' ty {})])))))))
+              (if (= stmt :term)
+                [:ok (defenv/->Definition stmt-name params (count params) body' ty {})]
+                (if (->> ty
+                         (n/normalize defenv/empty-env params)
+                         syntax/sort?
+                         not)
+                  [:ko {:msg (str (clojure.string/capitalize (name stmt)) " body is not a proper type")
+                        stmt stmt-name
+                        :type (unparser/unparse body')}]
+                  [:ok (cond
+                         (= stmt :theorem) ((defenv-fn-map stmt) stmt-name params (count params) body' false)
+                         (= stmt :axiom)   ((defenv-fn-map stmt) stmt-name params (count params) body'))])))))))))
+
+(defn ^:no-doc handle-de-term [stmt-name params body]
+  (handle-de :term stmt-name params body))
 
 (declare mk-def-doc)
 
@@ -109,9 +101,6 @@
                                                              :doc (mk-def-doc "Definition" (quote ~body) ~doc)
                                                              :arglists (list (quote ~params)))))
                [:defined :term (quote ~def-name)])))))))
-
-#_(defn ^:no-doc handle-de-term [def-name params body]
-  (handle-de :term def-name params body))
 
 (defn ^:no-doc mk-def-doc [kind content explanation]
   (str "\n```\n"
