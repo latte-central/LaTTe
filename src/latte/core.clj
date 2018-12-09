@@ -130,7 +130,7 @@
 
 (declare handle-def-axiom-thm)
 
-(defn handle-axiom-thm-lemma
+(defn handle-defmacro
   [stmt & args]
   (let [conf-form (apply #(s/conform ::definition %) args)]
     (if (= conf-form :clojure.spec.alpha/invalid)
@@ -154,13 +154,13 @@
 
   A theorem declared must later on be demonstrated using the [[proof]] form."
   [& args]
-  (handle-axiom-thm-lemma :theorem args))
+  (handle-defmacro :theorem args))
 
 (defmacro deflemma
   "Declaration of a lemma, i.e. an auxiliary theorem. In LaTTe a lemma
   is private. To export a theorem the [[defthm]] form must be used instead."
   [& args]
-  (handle-axiom-thm-lemma :lemma args))
+  (handle-defmacro :lemma args))
 
 ;;{
 ;; ## Axioms
@@ -180,7 +180,7 @@ favored, but axioms are sometimes required (e.g. the law of the excluded
 In all cases the introduction of an axiom must be justified with strong
  (albeit informal) arguments."
   [& args]
-  (handle-axiom-thm-lemma :axiom args))
+  (handle-defmacro :axiom args))
 
 (defn ^:no-doc handle-def-axiom-thm [stmt stmt-name doc params ty]
   (when (defenv/registered-definition? stmt-name)
