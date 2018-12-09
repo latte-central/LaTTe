@@ -180,18 +180,7 @@ favored, but axioms are sometimes required (e.g. the law of the excluded
 In all cases the introduction of an axiom must be justified with strong
  (albeit informal) arguments."
   [& args]
-  (let [conf-form (s/conform ::definition args)]
-    (if (= conf-form :clojure.spec.alpha/invalid)
-      (throw (ex-info "Cannot declare axiom: syntax error."
-                      {:explain (s/explain-str ::definition args)}))
-      (let [{ax-name :name doc :doc params :params body :body} conf-form]
-        (let [[status def-name definition metadata] (handle-def-axiom-thm :axiom ax-name doc params body)]
-          (if (= status :ko)
-            (throw (ex-info "Cannot declare axiom." {:name ax-name :error def-name}))
-            `(do
-               (def ~def-name ~definition)
-               (alter-meta! (var ~def-name) #(merge % (quote ~metadata))) 
-               [:declared :axiom (quote ~def-name)])))))))
+  (handle-axiom-thm-lemma :axiom args))
 
 (defn ^:no-doc handle-def-axiom-thm [stmt stmt-name doc params ty]
   (when (defenv/registered-definition? stmt-name)
