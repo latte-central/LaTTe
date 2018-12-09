@@ -166,11 +166,6 @@
 ;; ## Axioms
 ;;}
 
-(s/def ::axiom (s/cat :name ::def-name
-                      :doc (s/? ::def-doc)
-                      :params ::def-params
-                      :body ::def-body))
-
 (defmacro defaxiom
   "Declaration of an axiom with the specified `name` (first argument)
   an optional `docstring` (second argument), a vector of `parameters`
@@ -185,10 +180,10 @@ favored, but axioms are sometimes required (e.g. the law of the excluded
 In all cases the introduction of an axiom must be justified with strong
  (albeit informal) arguments."
   [& args]
-  (let [conf-form (s/conform ::axiom args)]
+  (let [conf-form (s/conform ::definition args)]
     (if (= conf-form :clojure.spec.alpha/invalid)
       (throw (ex-info "Cannot declare axiom: syntax error."
-                      {:explain (s/explain-str ::axiom args)}))
+                      {:explain (s/explain-str ::definition args)}))
       (let [{ax-name :name doc :doc params :params body :body} conf-form]
         (let [[status def-name definition metadata] (handle-def-axiom-thm :axiom ax-name doc params body)]
           (if (= status :ko)
