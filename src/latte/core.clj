@@ -130,7 +130,7 @@
 
 (declare handle-def-axiom-thm)
 
-(defn handle-thm-lemma
+(defn handle-axiom-thm-lemma
   [stmt & args]
   (let [conf-form (apply #(s/conform ::definition %) args)]
     (if (= conf-form :clojure.spec.alpha/invalid)
@@ -154,13 +154,13 @@
 
   A theorem declared must later on be demonstrated using the [[proof]] form."
   [& args]
-  (handle-thm-lemma :theorem args))
+  (handle-axiom-thm-lemma :theorem args))
 
 (defmacro deflemma
   "Declaration of a lemma, i.e. an auxiliary theorem. In LaTTe a lemma
   is private. To export a theorem the [[defthm]] form must be used instead."
   [& args]
-  (handle-thm-lemma :lemma args))
+  (handle-axiom-thm-lemma :lemma args))
 
 ;;{
 ;; ## Axioms
