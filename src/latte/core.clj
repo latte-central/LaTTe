@@ -123,11 +123,6 @@
 ;; The specs are as follows.
 ;;}
 
-(s/def ::theorem (s/cat :name ::def-name
-                        :doc (s/? ::def-doc)
-                        :params ::def-params
-                        :body ::def-body))
-
 (declare handle-defthm)
 
 (defmacro defthm
@@ -139,10 +134,10 @@
 
   A theorem declared must later on be demonstrated using the [[proof]] form."
   [& args]
-  (let [conf-form (s/conform ::theorem args)]
+  (let [conf-form (s/conform ::definition args)]
     (if (= conf-form :clojure.spec.alpha/invalid)
       (throw (ex-info "Cannot declare theorem: syntax error."
-                      {:explain (s/explain-str ::theorem args)}))
+                      {:explain (s/explain-str ::definition args)}))
       (let [{thm-name :name doc :doc params :params body :body} conf-form]
         (let [[status def-name definition metadata] (handle-defthm :theorem thm-name doc params body)]
           (if (= status :ko)
@@ -156,10 +151,10 @@
   "Declaration of a lemma, i.e. an auxiliary theorem. In LaTTe a lemma
   is private. To export a theorem the [[defthm]] form must be used instead."
   [& args]
-  (let [conf-form (s/conform ::theorem args)]
+  (let [conf-form (s/conform ::definition args)]
     (if (= conf-form :clojure.spec.alpha/invalid)
       (throw (ex-info "Cannot declare lemma: syntax error."
-                      {:explain (s/explain-str ::theorem args)}))
+                      {:explain (s/explain-str ::definition args)}))
       (let [{thm-name :name doc :doc params :params body :body} conf-form]
         (let [[status def-name definition metadata] (handle-defthm :lemma thm-name doc params body)]
           (if (= status :ko)
