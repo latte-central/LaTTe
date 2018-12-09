@@ -42,15 +42,6 @@
                 (reduced [:ko ty])
                 [:ok (conj params [x ty])]))) [:ok []] params))
 
-(def defenv-fn-map
-  {
-   :term defenv/->Definition
-   :theorem defenv/->Theorem
-   :lemma defenv/->Theorem
-   :axiom defenv/->Axiom
-   :example defenv/->Theorem
-   })
-
 (defn in?
   "true if seq contains elm"
   [seq elm]
@@ -75,11 +66,11 @@
                       stmt stmt-name
                       :type (unparser/unparse body')}]
                 [:ok (cond
-                       (= stmt :term)    ((defenv-fn-map stmt) stmt-name params (count params) body' ty {})
-                       (= stmt :theorem) ((defenv-fn-map stmt) stmt-name params (count params) body' false)
-                       (= stmt :lemma)   ((defenv-fn-map stmt) stmt-name params (count params) body' false)
-                       (= stmt :axiom)   ((defenv-fn-map stmt) stmt-name params (count params) body')
-                       (= stmt :example) ((defenv-fn-map stmt) stmt-name params (count params) body' false)
+                       (= stmt :term)    (defenv/->Definition stmt-name params (count params) body' ty {})
+                       (= stmt :theorem) (defenv/->Theorem    stmt-name params (count params) body' false)
+                       (= stmt :lemma)   (defenv/->Theorem    stmt-name params (count params) body' false)
+                       (= stmt :axiom)   (defenv/->Axiom      stmt-name params (count params) body')
+                       (= stmt :example) (defenv/->Theorem    stmt-name params (count params) body' false)
                        )]))))))))
 
 (declare mk-def-doc)
@@ -123,12 +114,22 @@
 
 
 ;;{
-;; ## Theorems and lemmas
+;; ## Theorems, lemmas, axioms
 ;;
 ;; The specs are as follows.
 ;;}
 
-(declare handle-def-axiom-thm)
+(defn ^:no-doc handle-def-axiom-thm [stmt stmt-name doc params ty]
+  (when (defenv/registered-definition? stmt-name)
+    (println "[Warning] redefinition as" (name stmt) ":" stmt-name))
+  (let [[status definition] (handle-de stmt stmt-name params ty)]
+    (if (= status :ko)
+      [:ko definition nil nil nil]
+      (let [metadata (cond->>
+                         {:doc (mk-def-doc (clojure.string/capitalize (name stmt)) ty doc)
+                          :arglists (list params)}
+                       (in? [:theorem :lemma] stmt) {:private (= stmt :lemma)})]
+        [:ok stmt-name definition metadata]))))
 
 (defn handle-defmacro
   [stmt & args]
@@ -162,10 +163,6 @@
   [& args]
   (handle-defmacro :lemma args))
 
-;;{
-;; ## Axioms
-;;}
-
 (defmacro defaxiom
   "Declaration of an axiom with the specified `name` (first argument)
   an optional `docstring` (second argument), a vector of `parameters`
@@ -181,18 +178,6 @@ In all cases the introduction of an axiom must be justified with strong
  (albeit informal) arguments."
   [& args]
   (handle-defmacro :axiom args))
-
-(defn ^:no-doc handle-def-axiom-thm [stmt stmt-name doc params ty]
-  (when (defenv/registered-definition? stmt-name)
-    (println "[Warning] redefinition as" (name stmt) ":" stmt-name))
-  (let [[status definition] (handle-de stmt stmt-name params ty)]
-    (if (= status :ko)
-      [:ko definition nil nil nil]
-      (let [metadata (cond->>
-                         {:doc (mk-def-doc (clojure.string/capitalize (name stmt)) ty doc)
-                          :arglists (list params)}
-                       (in? [:theorem :lemma] stmt) {:private (= stmt :lemma)})]
-        [:ok stmt-name definition metadata]))))
 
 ;;{
 ;; ## Proofs
@@ -425,7 +410,7 @@ as well as a proof."
 
 (s/def ::notation (s/cat :name ::def-name
                          :doc (s/? ::def-doc)
-                         :params (s/coll-of symbol? :kind vector?)
+                         :params (s/coll-o symbol? :kind vector?)
                          :body (s/+ any?)))
 
 (defmacro defnotation
