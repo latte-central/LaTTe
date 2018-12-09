@@ -125,44 +125,37 @@
 
 (declare handle-defthm)
 
+(defn handle-thm-lemma
+  [stmt & args]
+  (let [conf-form (apply #(s/conform ::definition %) args)]
+    (if (= conf-form :clojure.spec.alpha/invalid)
+      (throw (ex-info (str "Cannot declare " (name stmt) ": syntax error.")
+                      {:explain (apply #(s/explain-str ::definition %) args)}))
+      (let [{stmt-name :name doc :doc params :params body :body} conf-form]
+        (let [[status def-name definition metadata] (handle-defthm stmt stmt-name doc params body)]
+          (if (= status :ko)
+            (throw (ex-info (str "Cannot declare " (name stmt) ".") {:name stmt-name :error def-name}))
+            `(do
+               (def ~def-name ~definition)
+               (alter-meta! (var ~def-name) #(merge % (quote ~metadata)))
+               [:declared ~stmt (quote ~def-name)])))))))
+
 (defmacro defthm
   "Declaration of a theorem of the specified `name` (first argument)
   an optional `docstring` (second argument), a vector of `parameters`
  and the theorem proposition (last argument).
  Each parameter is a pair `[x T]` with `x` the parameter name and `T` its
-  type. 
+  type.
 
   A theorem declared must later on be demonstrated using the [[proof]] form."
   [& args]
-  (let [conf-form (s/conform ::definition args)]
-    (if (= conf-form :clojure.spec.alpha/invalid)
-      (throw (ex-info "Cannot declare theorem: syntax error."
-                      {:explain (s/explain-str ::definition args)}))
-      (let [{thm-name :name doc :doc params :params body :body} conf-form]
-        (let [[status def-name definition metadata] (handle-defthm :theorem thm-name doc params body)]
-          (if (= status :ko)
-            (throw (ex-info "Cannot declare theorem." {:name thm-name :error def-name}))
-            `(do
-               (def ~def-name ~definition)
-               (alter-meta! (var ~def-name) #(merge % (quote ~metadata))) 
-               [:declared :theorem (quote ~def-name)])))))))
+  (handle-thm-lemma :theorem args))
 
 (defmacro deflemma
   "Declaration of a lemma, i.e. an auxiliary theorem. In LaTTe a lemma
   is private. To export a theorem the [[defthm]] form must be used instead."
   [& args]
-  (let [conf-form (s/conform ::definition args)]
-    (if (= conf-form :clojure.spec.alpha/invalid)
-      (throw (ex-info "Cannot declare lemma: syntax error."
-                      {:explain (s/explain-str ::definition args)}))
-      (let [{thm-name :name doc :doc params :params body :body} conf-form]
-        (let [[status def-name definition metadata] (handle-defthm :lemma thm-name doc params body)]
-          (if (= status :ko)
-            (throw (ex-info "Cannot declare lemma." {:name thm-name :error def-name}))
-            `(do
-               (def ~def-name ~definition)
-               (alter-meta! (var ~def-name) #(merge % (quote ~metadata))) 
-               [:declared :lemma (quote ~def-name)])))))))
+  (handle-thm-lemma :lemma args))
 
 (defn ^:no-doc handle-defthm [kind thm-name doc params ty]
   (when (defenv/registered-definition? thm-name)
