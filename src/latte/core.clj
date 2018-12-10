@@ -206,7 +206,7 @@
   [category args]
   (let [spec (case category
                :theorem ::theorem
-               :lemma ::lemma
+               :lemma ::theorem  ;; XXX: same spec
                :axiom ::axiom
                (throw (ex-info "Cannot check conformance: not a statement category (please report)" {:category category})))
         conf-form (s/conform spec args)]
@@ -230,7 +230,7 @@
   ;;}
   
     (when (defenv/registered-definition? thm-name)
-      (log/warn (str "Redefinition as" (name category) ":") thm-name))
+      (log/warn (str "Redefinition as " (name category) ":") thm-name))
     ;;{
     ;; and then we proceed with the main steps:
     ;;
@@ -304,7 +304,7 @@
 
       (defthm <name>
         \"<docstring>\"
-        [[x1 T1] ... [xN TN]] ;; params
+        [[x1 T1] ... [xN TN]] ;; <params>
         <body>)
 
   with the specified `name` (first argument)
@@ -325,78 +325,34 @@
       (let [metadata (statement-metadata :theorem doc params body)]
         (define-statement! :theorem thm-name result metadata)))))
 
-(comment
-;;; XXX:   <<<<OLD starts here>>>
-
-(declare handle-defthm)
-(declare handle-thm-declaration)
-
-(defmacro defthm
-  "Declaration of a theorem of the specified `name` (first argument)
-  an optional `docstring` (second argument), a vector of `parameters`
- and the theorem proposition (last argument).
- Each parameter is a pair `[x T]` with `x` the parameter name and `T` its
-  type. 
-
-  A theorem declared must later on be demonstrated using the [[proof]] form."
-  [& args]
-  (let [conf-form (s/conform ::theorem args)]
-    (if (= conf-form :clojure.spec.alpha/invalid)
-      (throw (ex-info "Cannot declare theorem: syntax error."
-                      {:explain (s/explain-str ::theorem args)}))
-      (let [{thm-name :name doc :doc params :params body :body} conf-form]
-        (let [[status def-name definition metadata] (handle-defthm :theorem thm-name doc params body)]
-          (if (= status :ko)
-            (throw (ex-info "Cannot declare theorem." {:name thm-name :error def-name}))
-            `(do
-               (def ~def-name ~definition)
-               (alter-meta! (var ~def-name) #(merge % (quote ~metadata))) 
-               [:declared :theorem (quote ~def-name)])))))))
+;;{
+;; ### Lemmas
+;;
+;; A lemma is a theorem that is not exported, i.e. it remains private
+;; in the namespace where it is defined (it is still available as a
+;; Clojure var).
+;;}
 
 (defmacro deflemma
   "Declaration of a lemma, i.e. an auxiliary theorem. In LaTTe a lemma
-  is private. To export a theorem the [[defthm]] form must be used instead."
+  is private. To export a theorem the [[defthm]] form must be used instead.
+  Otherwise the two forms are the same."
   [& args]
-  (let [conf-form (s/conform ::theorem args)]
-    (if (= conf-form :clojure.spec.alpha/invalid)
-      (throw (ex-info "Cannot declare lemma: syntax error."
-                      {:explain (s/explain-str ::theorem args)}))
-      (let [{thm-name :name doc :doc params :params body :body} conf-form]
-        (let [[status def-name definition metadata] (handle-defthm :lemma thm-name doc params body)]
-          (if (= status :ko)
-            (throw (ex-info "Cannot declare lemma." {:name thm-name :error def-name}))
-            `(do
-               (def ~def-name ~definition)
-               (alter-meta! (var ~def-name) #(merge % (quote ~metadata))) 
-               [:declared :lemma (quote ~def-name)])))))))
-
-(defn ^:no-doc handle-defthm [kind thm-name doc params ty]
-  (when (defenv/registered-definition? thm-name)
-    (println "[Warning] redefinition as" (name kind) ":" thm-name))
-  (let [[status definition] (handle-thm-declaration thm-name params ty)]
+  (let [{thm-name :name doc :doc params :params body :body}
+        (conform-statement :lemma args)
+        [status result] (handle-statement :lemma thm-name params body)]
     (if (= status :ko)
-      [:ko definition nil nil nil]
-      (let [metadata {:doc (mk-def-doc (clojure.string/capitalize (name kind)) ty doc)
-                      :arglists (list params)
-                      :private (= kind :lemma)}]
-        [:ok thm-name definition metadata]))))
-
-(defn ^:no-doc handle-thm-declaration [thm-name params ty]
-  (let [[status params] (parse-parameters defenv/empty-env params)]
-    (if (= status :ko)
-      [:ko params]
-      (let [[status ty'] (stx/parse-term defenv/empty-env ty)]
-        (if (= status :ko)
-          [:ko ty']
-          (if (not (ty/proper-type? defenv/empty-env params ty'))
-            [:ko {:msg "Theorem body is not a proper type" :theorem thm-name :type (unparser/unparse ty')}]
-            [:ok (defenv/->Theorem thm-name params (count params) ty' false)]))))))
-
-);; end of comment
-
+      (throw (ex-info "Cannot declare lemma." result))
+      (let [metadata (statement-metadata :lemma doc params body)]
+        (define-statement! :lemma thm-name result metadata)))))
 
 ;;{
-;; ## Axioms
+;; ### Axioms
+;;
+;; An axiom is like a theorem but whose proof is assumed.
+;; It is a good practice to rely on the minimum amount of axioms,
+;; although they cannot be avoided in general (e.g. for classical logic,
+;; for the definite descriptor, for set equality, etc.).
 ;;}
 
 (s/def ::axiom (s/cat :name ::def-name
@@ -404,13 +360,18 @@
                       :params ::def-params
                       :body ::def-body))
 
-(declare handle-defaxiom)
-(declare handle-ax-declaration)
 
 (defmacro defaxiom
-  "Declaration of an axiom with the specified `name` (first argument)
-  an optional `docstring` (second argument), a vector of `parameters`
- and the axiom statement (last argument).
+  "Declaration of an axiom of the form:
+
+      (defaxiom <name>
+        \"<docstring>\"
+        [[x1 T1] ... [xN TN]] ;; <params>
+        <body>)
+
+  with the specified `name` (first argument)
+  an optional `docstring` (second argument), a vector `params` of parameters
+ and the axiom `body`, the axiom statement as a lambda-term (last argument).
  Each parameter is a pair `[x T]` with `x` the parameter name and `T` its
   type. 
 
@@ -421,40 +382,13 @@ favored, but axioms are sometimes required (e.g. the law of the excluded
 In all cases the introduction of an axiom must be justified with strong
  (albeit informal) arguments."
   [& args]
-  (let [conf-form (s/conform ::axiom args)]
-    (if (= conf-form :clojure.spec.alpha/invalid)
-      (throw (ex-info "Cannot declare axiom: syntax error."
-                      {:explain (s/explain-str ::axiom args)}))
-      (let [{ax-name :name doc :doc params :params body :body} conf-form]
-        (let [[status def-name definition metadata] (handle-defaxiom :axiom ax-name doc params body)]
-          (if (= status :ko)
-            (throw (ex-info "Cannot declare axiom." {:name ax-name :error def-name}))
-            `(do
-               (def ~def-name ~definition)
-               (alter-meta! (var ~def-name) #(merge % (quote ~metadata))) 
-               [:declared :axiom (quote ~def-name)])))))))
-
-(defn ^:no-doc handle-defaxiom [kind ax-name doc params ty]
-  (when (defenv/registered-definition? ax-name)
-    (println "[Warning] redefinition as" (name kind) ":" ax-name))
-  (let [[status definition] (handle-ax-declaration ax-name params ty)]
+  (let [{thm-name :name doc :doc params :params body :body}
+        (conform-statement :axiom args)
+        [status result] (handle-statement :axiom thm-name params body)]
     (if (= status :ko)
-      [:ko definition nil nil nil]
-      (let [metadata {:doc (mk-def-doc (clojure.string/capitalize (name kind)) ty doc)
-                      :arglists (list params)}]
-        [:ok ax-name definition metadata]))))
-
-(defn ^:no-doc handle-ax-declaration [ax-name params ty]
-  (let [[status params] (parse-parameters defenv/empty-env params)]
-    (if (= status :ko)
-      [:ko params]
-      (let [[status ty'] (stx/parse-term defenv/empty-env ty)]
-        (if (= status :ko)
-          [:ko ty']
-          (if (not (ty/proper-type? defenv/empty-env params ty'))
-            [:ko {:msg "Axiom body is not a proper type" :axiom ax-name :type (unparser/unparse ty')}]
-            [:ok (defenv/->Axiom ax-name params (count params) ty')]))))))
-
+      (throw (ex-info "Cannot declare axiom." result))
+      (let [metadata (statement-metadata :axiom doc params body)]
+        (define-statement! :axiom thm-name result metadata)))))
 
 ;;{
 ;; ## Proofs
