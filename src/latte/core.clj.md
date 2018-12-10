@@ -1,11 +1,12 @@
 
-;;{
-;; # Top-level LaTTe forms and utilities
-;;
-;; In this namespace the main user-level syntactic forms of the
-;; LaTTe proof assistant are defined.
-;;}
 
+# Top-level LaTTe forms and utilities
+
+In this namespace the main user-level syntactic forms of the
+LaTTe proof assistant are defined.
+
+
+```clojure
 (ns latte.core
   "This namespace provides the top-level forms of the LaTTe
   framework."
@@ -20,34 +21,38 @@
             [latte-kernel.proof :as p]
             [latte.certify :as cert]))
 
-;;{
-;; The unparser takes low-level lambda-terms and try
-;; to give them some readability.
-;; For users, this is mostly useful for understanding the
-;; reasons why a statement or a proof would fail.
-;;
-;; It is also a nice debugging aid when developping/extending
-;; the proof assistant itself.
-;;
-;; Unparsers are installed in an imperative way, and the following
-;; installs the most basic ones (e.g. recognizing implications vs.
-;; dependent products, simplifying nested implications, etc.)
-;; A few more important unparsers are installed by the standard library.
-;;}
+```
 
+The unparser takes low-level lambda-terms and try
+to give them some readability.
+For users, this is mostly useful for understanding the
+reasons why a statement or a proof would fail.
+
+It is also a nice debugging aid when developping/extending
+the proof assistant itself.
+
+Unparsers are installed in an imperative way, and the following
+installs the most basic ones (e.g. recognizing implications vs.
+dependent products, simplifying nested implications, etc.)
+A few more important unparsers are installed by the standard library.
+
+
+```clojure
 ;; Initialization of unparser
 (unparser/install-fundamental-unparsers!)
 
-;;{
-;; ## Definitions
-;;
-;; Mathematical developments always start with the definition of
-;; mathematical concepts.
-;;
-;; In LaTTe this is handled by the `definition' top-level form.
-;; The following *spec* describes the grammar of this form.
-;;}
+```
 
+## Definitions
+
+Mathematical developments always start with the definition of
+mathematical concepts.
+
+In LaTTe this is handled by the `definition' top-level form.
+The following *spec* describes the grammar of this form.
+
+
+```clojure
 (s/def ::def-name symbol?)
 (s/def ::def-doc string?)
 (s/def ::param (s/tuple symbol? any?))
@@ -59,10 +64,12 @@
                            :params ::def-params
                            :body ::def-body))
 
-;;{
-;; The `definition` macro is defined below.
-;;}
+```
 
+The `definition` macro is defined below.
+
+
+```clojure
 (declare handle-term-definition)
 (declare mk-def-doc)
 
@@ -84,9 +91,11 @@
   Note that it is a Clojure `def`, the term is defined in the namespace where the `definition` 
   form is invoked."
   [& args]
-  ;;{
-  ;; First, we check the arguments syntax according to the spec grammar.
-  ;;}
+```
+
+First, we check the arguments syntax according to the spec grammar.
+
+```clojure
   (let [conf-form (s/conform ::definition args)]
     (if (= conf-form :clojure.spec.alpha/invalid)
       (throw (ex-info "Cannot define term: syntax error."
@@ -97,9 +106,11 @@
         (let [[status definition] (handle-term-definition def-name params body)]
           (when (= status :ko)
             (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
-          ;;{
-          ;; Second, after some checks, we register the definition in the currently active namespace (i.e. `*ns*`).
-          ;;}          
+```
+
+Second, after some checks, we register the definition in the currently active namespace (i.e. `*ns*`).
+
+```clojure
           (let [quoted-def# definition]
             `(do
                (def ~def-name ~quoted-def#)
@@ -108,11 +119,13 @@
                                                              :arglists (list (quote ~params)))))
                [:defined :term (quote ~def-name)])))))))
 
-;;{
-;; The following function parse a sequence of terms, the `params` (parameters),
-;; using LaTTe *presyntax* (in namespace `latte-kernel.presyntax`).
-;;}
+```
 
+The following function parse a sequence of terms, the `params` (parameters),
+using LaTTe *presyntax* (in namespace `latte-kernel.presyntax`).
+
+
+```clojure
 (defn ^:no-doc parse-parameters
   [def-env params]
   (reduce (fn [[sts params] [x ty]]
@@ -121,39 +134,49 @@
                 (reduced [:ko ty])
                 [:ok (conj params [x ty])]))) [:ok []] params))
 
-;;{
-;; The following is how we handle the definitions.
-;;}
+```
 
+The following is how we handle the definitions.
+
+
+```clojure
 (defn ^:no-doc handle-term-definition [def-name params body]
-  ;;{
-  ;; At this stage the definition is of the form:
-  ;;
-  ;; ```clojure
-  ;; (definition <def-name> [<params> ...] <body>)
-  ;; ```
-  ;;
-  ;; - Step 1: we parse the parameters (`parms`) of the definiton
-  ;;}
+```
+
+At this stage the definition is of the form:
+
+```clojure
+(definition <def-name> [<params> ...] <body>)
+```
+
+- Step 1: we parse the parameters (`parms`) of the definiton
+
+```clojure
   (let [[status params] (parse-parameters defenv/empty-env params)]
     (if (= status :ko)
       [:ko params]
-      ;;{
-      ;; - Step 2: the `body` of the definition is also parsed.
-      ;;}
+```
+
+- Step 2: the `body` of the definition is also parsed.
+
+```clojure
       (let [[status body-term] (stx/parse-term defenv/empty-env body)]
         (if (= status :ko)
           [:ko body-term]
-          ;;{
-          ;; - Step 3: the type of the definition is computed based on the parsed parameters and body
-          ;; (in the empty definitional environment because we use the current namespace implicitly)
-          ;;}
+```
+
+- Step 3: the type of the definition is computed based on the parsed parameters and body
+(in the empty definitional environment because we use the current namespace implicitly)
+
+```clojure
           (let [[status ty _] (ty/type-of-term defenv/empty-env params body-term)]
             (if (= status :ko)
               [:ko ty]
-              ;;{
-              ;; If Step 1-3 went well, the definition is created and returned
-              ;;}
+```
+
+If Step 1-3 went well, the definition is created and returned
+
+```clojure
               [:ok (defenv/->Definition def-name params (count params) body-term ty {})])))))))
 
 (defn ^:no-doc mk-def-doc [kind content explanation]
@@ -167,12 +190,14 @@
 ;; (definition id [[A :type]] (lambda [x A] x))
 
 
-;;{
-;; ## Theorems and lemmas
-;;
-;; The specs are as follows.
-;;}
+```
 
+## Theorems and lemmas
+
+The specs are as follows.
+
+
+```clojure
 (s/def ::theorem (s/cat :name ::def-name
                         :doc (s/? ::def-doc)
                         :params ::def-params
@@ -242,10 +267,12 @@
             [:ko {:msg "Theorem body is not a proper type" :theorem thm-name :type (unparser/unparse ty')}]
             [:ok (defenv/->Theorem thm-name params (count params) ty' false)]))))))
 
-;;{
-;; ## Axioms
-;;}
+```
 
+## Axioms
+
+
+```clojure
 (s/def ::axiom (s/cat :name ::def-name
                       :doc (s/? ::def-doc)
                       :params ::def-params
@@ -302,12 +329,14 @@ In all cases the introduction of an axiom must be justified with strong
             [:ko {:msg "Axiom body is not a proper type" :axiom ax-name :type (unparser/unparse ty')}]
             [:ok (defenv/->Axiom ax-name params (count params) ty')]))))))
 
-;;{
-;; ## Proofs
-;;
-;; The specs are as follows.
-;;}
+```
 
+## Proofs
+
+The specs are as follows.
+
+
+```clojure
 (s/def ::assume (s/cat :command #(= % :assume)
                        :params ::def-params
                        :body any?
@@ -430,13 +459,15 @@ An error is signaled if the proof cannot be concluded."
             (alter-var-root (resolve thm-name) (fn [_] new-thm))
             [:qed thm-name]))))))
 
-;;{
-;; ## Examples
-;;
-;; Examples allow to check propositions at the top-level. They are like unrecorded theorems with proofs.
-;;
-;;}
+```
 
+## Examples
+
+Examples allow to check propositions at the top-level. They are like unrecorded theorems with proofs.
+
+
+
+```clojure
 (s/def ::example (s/cat :params ::def-params
                         :body ::def-body
                         :steps (s/+ any?)))
@@ -474,12 +505,14 @@ as well as a proof."
             [:ko {:msg "Example body is not a proper type" :type ty'}]
             [:ok (defenv/->Theorem (gensym "example") params (count params) ty' false)]))))))
 
-;;{
-;; ## Implicits
-;;}
+```
+
+## Implicits
 
 
 
+
+```clojure
 (s/def ::implicit-header (s/cat :def-env symbol?
                             :ctx symbol?
                             :params (s/+ ::iparam)))
@@ -541,11 +574,13 @@ as well as a proof."
              (alter-meta! (var ~def-name) #(merge % (quote ~metadata)))
              [:defined :implicit* (quote ~def-name)]))))))
 
-;;{
-;; ## Notations
-;;}
+```
+
+## Notations
 
 
+
+```clojure
 (s/def ::notation (s/cat :name ::def-name
                          :doc (s/? ::def-doc)
                          :params (s/coll-of symbol? :kind vector?)
@@ -579,10 +614,12 @@ Be careful that the parser will be called recursively on the generated term, hen
            [:defined :notation (quote ~def-name)])))))
 
 
-;;{
-;; ## Top-level term parsing
-;;}
+```
 
+## Top-level term parsing
+
+
+```clojure
 (defn- parse-context-args [def-env args]
   (loop [args args, ctx []]
     (if (seq args)
@@ -628,10 +665,12 @@ Be careful that the parser will be called recursively on the generated term, hen
     ;; (println "[term] t = " t " ctx = " ctx)
     (latte-kernel.norm/beta-eq? def-env ctx t1 t2)))
 
-;;{
-;; ## Top-level type checking
-;;}
+```
 
+## Top-level type checking
+
+
+```clojure
 (defmacro type-of 
   "Give the type of a term `t` in a context at the top-levle. 
   To only parse the term use [[term]]."
@@ -654,10 +693,12 @@ Be careful that the parser will be called recursively on the generated term, hen
     (let [tty (ty/type-of def-env ctx t)]
       (n/beta-eq? def-env ctx ty tty))))
 
-;;{
-;; ## Basic forms
-;;}
+```
 
+## Basic forms
+
+
+```clojure
 (defn forall
   "The universal quantifier `(forall [x A] t)` is ∀x:A.t (or Πx:A.t in type theory).
   
@@ -676,3 +717,4 @@ Be careful that the parser will be called recursively on the generated term, hen
   [params body]
   (list 'lambda params body))
 
+```
