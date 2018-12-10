@@ -212,7 +212,8 @@
         conf-form (s/conform spec args)]
     (if (= conf-form :clojure.spec.alpha/invalid)
       (throw (ex-info (str "Cannot declare " (name category) ": syntax error.")
-                      {:explain (s/explain-str spec args)})))))
+                      {:explain (s/explain-str spec args)}))
+      conf-form)))
 
 ;;{
 ;; Now the maing handling of theorem-like statements is with the following function,
@@ -252,7 +253,7 @@
               ;;{
               ;;  - Step 4: if all went well, we construct the internal representation.
               ;;}
-              [:ok (build-statement thm-name params body-term)]))))))
+              [:ok (build-statement category thm-name params body-term)]))))))
 
 ;;{
 ;; The following function builds the internal representation of a statement
