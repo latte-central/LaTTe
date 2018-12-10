@@ -69,12 +69,12 @@
 (defmacro definition
   "Defines a mathematical term with the following structure:
 
-  ```clojure
-  (definition <name>
-    \"<docstring>\"
-    [[x1 T1] ... [xN TN]]
-    <lambda-term>)
-  ```
+  
+      (definition <name>
+        \"<docstring>\"
+        [[x1 T1] ... [xN TN]]
+        <lambda-term>)
+
 
   composed of a `name`, and optional (but highly recommended)
   `docstring`, a vector of `parameters` (typed variables) and a `lambda-term` as definitional content.
@@ -133,20 +133,20 @@
   ;; (definition <def-name> [<params> ...] <body>)
   ;; ```
   ;;
-  ;; - Step 1: we parse the parameters (`parms`) of the definiton
+  ;;  - Step 1: we parse the parameters (`parms`) of the definiton
   ;;}
   (let [[status params] (parse-parameters defenv/empty-env params)]
     (if (= status :ko)
       [:ko params]
       ;;{
-      ;; - Step 2: the `body` of the definition is also parsed.
+      ;;  - Step 2: the `body` of the definition is also parsed.
       ;;}
       (let [[status body-term] (stx/parse-term defenv/empty-env body)]
         (if (= status :ko)
           [:ko body-term]
           ;;{
-          ;; - Step 3: the type of the definition is computed based on the parsed parameters and body
-          ;; (in the empty definitional environment because we use the current namespace implicitly)
+          ;;  - Step 3: the type of the definition is computed based on the parsed parameters and body
+          ;;  (in the empty definitional environment because we use the current namespace implicitly)
           ;;}
           (let [[status ty _] (ty/type-of-term defenv/empty-env params body-term)]
             (if (= status :ko)

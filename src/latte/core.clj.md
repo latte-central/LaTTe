@@ -76,12 +76,12 @@ The `definition` macro is defined below.
 (defmacro definition
   "Defines a mathematical term with the following structure:
 
-  ```clojure
-  (definition <name>
-    \"<docstring>\"
-    [[x1 T1] ... [xN TN]]
-    <lambda-term>)
-  ```
+  
+      (definition <name>
+        \"<docstring>\"
+        [[x1 T1] ... [xN TN]]
+        <lambda-term>)
+
 
   composed of a `name`, and optional (but highly recommended)
   `docstring`, a vector of `parameters` (typed variables) and a `lambda-term` as definitional content.
