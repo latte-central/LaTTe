@@ -6,6 +6,7 @@
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/core.match "0.3.0-alpha5"]
                  [digest "1.4.8"]
+                 [com.taoensso/timbre "4.10.0"]
                  [latte-kernel "1.0b1-SNAPSHOT"]]
   :codox {:output-path "docs"
           :metadata {:doc/format :markdown}
