@@ -266,8 +266,9 @@
   (case category
     (:theorem :lemma) (defenv/->Theorem thm-name params (count params) ty nil)
     :axiom (defenv/->Axiom thm-name params (count params) ty)
-    (throw (ex-info "Cannot build statement: not a statement category (please report)" {:category category
-                                                                                        :thm-name thm-name}))))
+    (throw (ex-info "Cannot build statement: not a statement category (please report)"
+                    {:category category
+                     :thm-name thm-name}))))
 
 ;;{
 ;; The function below prepares the required metatadata associated to a statement.
