@@ -4,8 +4,6 @@
 
   (:require [clojure.spec.alpha :as s]
             [clojure.pprint :as pp]
-            [latte-kernel.utils :as u]
-            [latte-kernel.syntax :as syntax]
             [latte-kernel.presyntax :as stx]
             [latte-kernel.unparser :as unparser]
             [latte-kernel.typing :as ty]
