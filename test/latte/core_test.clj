@@ -17,7 +17,19 @@
 
 (deftest simple-definition
   (testing "disjunction"
-    (is (defenv/definition? disjunction))))
+    (is (defenv/definition? disjunction))
+    (is (= (:name disjunction) 'disjunction))
+    (is (= (:params disjunction) '[[A ✳] [B ✳]]))
+    (is (= (:arity disjunction) 2))
+    (is (= (:parsed-term disjunction) '(Π [C ✳] (Π [⇧ (Π [⇧ A] C)] (Π [⇧ (Π [⇧ B] C)] C)))))
+    (is (= (:type disjunction) '✳))
+    (is (= (:opts disjunction ){}))
+    ;; metadata
+    (is (= (:name (meta #'disjunction)) 'disjunction))
+    (is (string? (:doc (meta #'disjunction))))
+    (is (= (:arglists (meta #'disjunction)) '([[A :type] [B :type]])))
+    ))
+
 
 ;;{
 ;; Testing theorems
@@ -38,6 +50,7 @@
       (is (= (:type impl-refl) '(Π [⇧ A] A)))
       (is (nil? (:proof impl-refl)))
       ;; metadata
+      (is (= (:name (meta #'impl-refl)) 'impl-refl))
       (is (string? (:doc (meta #'impl-refl))))
       (is (= (:arglists (meta #'impl-refl)) '[[[A :type]]]))
       (is (not (:private (meta #'impl-refl))))))
@@ -75,8 +88,16 @@
 
 (deftest simple-axiom
   (testing "a dummy axiom"
-    (is (defenv/axiom? dummy-ax))))
-
+    (is (defenv/axiom? dummy-ax))
+    (is (= (:name dummy-ax) 'dummy-ax))
+    (is (= (:params dummy-ax) '[[A ✳]]))
+    (is (= (:arity dummy-ax) 1))
+    (is (= (:type dummy-ax) (list #'latte.core-test/disjunction 'A 'A)))
+    ;; metadata
+    (is (= (:name (meta #'dummy-ax)) 'dummy-ax))
+    (is (string? (:doc (meta #'dummy-ax))))
+    (is (= (:arglists (meta #'dummy-ax)) '[[[A :type]]]))
+    (is (not (:private (meta #'dummy-ax))))))
 
 
 
