@@ -1,3 +1,11 @@
+
+;;{
+;; # Top-level LaTTe forms and utilities
+;;
+;; In this namespace the main user-level syntactic forms of the
+;; LaTTe proof assistant are defined.
+;;}
+
 (ns latte.core
   "This namespace provides the top-level forms of the LaTTe
   framework."
@@ -12,13 +20,32 @@
             [latte-kernel.proof :as p]
             [latte.certify :as cert]))
 
-;; Initialisation of unparser
+;;{
+;; The unparser takes low-level lambda-terms and try
+;; to give them some readability.
+;; For users, this is mostly useful for understanding the
+;; reasons why a statement or a proof would fail.
+;;
+;; It is also a nice debugging aid when developping/extending
+;; the proof assistant itself.
+;;
+;; Unparsers are installed in an imperative way, and the following
+;; installs the most basic ones (e.g. recognizing implications vs.
+;; dependent products, simplifying nested implications, etc.)
+;; A few more important unparsers are installed by the standard library.
+;;}
+
+;; Initialization of unparser
 (unparser/install-fundamental-unparsers!)
 
 ;;{
 ;; ## Definitions
 ;;
-;; We begin with a lightweight spec of definitions (for simple error checking).
+;; Mathematical developments always start with the definition of
+;; mathematical concepts.
+;;
+;; In LaTTe this is handled by the `definition' top-level form.
+;; The following *spec* describes the grammar of this form.
 ;;}
 
 (s/def ::def-name symbol?)
@@ -32,12 +59,25 @@
                            :params ::def-params
                            :body ::def-body))
 
+;;{
+;; 
+;;}
+
 (declare handle-term-definition)
 (declare mk-def-doc)
 
 (defmacro definition
-  "Defines a mathematical term composed of a `name`, and optional (but highly recommended)
-  `docstring`, a vector of `parameters` and a `lambda-term` as definitional content.
+  "Defines a mathematical term with the following structure:
+
+  ```clojure
+  (definition <name>
+    \"<docstring>\"
+    [[x1 T1] ... [xN TN]]
+    <lambda-term>)
+  ```
+
+  composed of a `name`, and optional (but highly recommended)
+  `docstring`, a vector of `parameters` (typed variables) and a `lambda-term` as definitional content.
 
   An `ex-info` exception is thrown if the term cannot be defined.
 
