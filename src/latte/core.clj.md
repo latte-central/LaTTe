@@ -13,6 +13,7 @@ LaTTe proof assistant are defined.
 
   (:require [clojure.spec.alpha :as s]
             [clojure.pprint :as pp]
+            [taoensso.timbre :as log]
             [latte-kernel.presyntax :as stx]
             [latte-kernel.unparser :as unparser]
             [latte-kernel.typing :as ty]
@@ -79,21 +80,22 @@ The `definition` macro is defined below.
   
       (definition <name>
         \"<docstring>\"
-        [[x1 T1] ... [xN TN]]
-        <lambda-term>)
+        [[x1 T1] ... [xN TN]] ;; <params>
+        <body>)
 
 
   composed of a `name`, and optional (but highly recommended)
-  `docstring`, a vector of `parameters` (typed variables) and a `lambda-term` as definitional content.
+  `docstring`, a vector `params` of parameters (typed variables) and
+  `body` (a lambda-term) as definitional content.
 
   An `ex-info` exception is thrown if the term cannot be defined.
 
-  Note that it is a Clojure `def`, the term is defined in the namespace where the `definition` 
+  Note that a definition is a `def` in the Clojure sense, the term is defined in the namespace where the `definition` 
   form is invoked."
   [& args]
 ```
 
-First, we check the arguments syntax according to the spec grammar.
+- First, we check the arguments syntax according to the spec grammar.
 
 ```clojure
   (let [conf-form (s/conform ::definition args)]
@@ -102,13 +104,13 @@ First, we check the arguments syntax according to the spec grammar.
                       {:explain (s/explain-str ::definition args)}))
       (let [{def-name :name doc :doc params :params body :body} conf-form]
         (when (defenv/registered-definition? def-name)
-          (println "[Warning] redefinition as term: " def-name))
+          (log/warn "Redefinition as term: " def-name))
         (let [[status definition] (handle-term-definition def-name params body)]
           (when (= status :ko)
             (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
 ```
 
-Second, after some checks, we register the definition in the currently active namespace (i.e. `*ns*`).
+- Second, after some checks, we register the definition in the currently active namespace (i.e. `*ns*`).
 
 ```clojure
           (let [quoted-def# definition]
@@ -134,6 +136,7 @@ using LaTTe *presyntax* (in namespace `latte-kernel.presyntax`).
                 (reduced [:ko ty])
                 [:ok (conj params [x ty])]))) [:ok []] params))
 
+
 ```
 
 The following is how we handle the definitions.
@@ -143,13 +146,13 @@ The following is how we handle the definitions.
 (defn ^:no-doc handle-term-definition [def-name params body]
 ```
 
-At this stage the definition is of the form:
+- At this stage the definition is of the form:
 
-```clojure
+
 (definition <def-name> [<params> ...] <body>)
-```
 
-- Step 1: we parse the parameters (`parms`) of the definiton
+
+- Step 1: we parse the parameters (`params`) of the definiton
 
 ```clojure
   (let [[status params] (parse-parameters defenv/empty-env params)]
@@ -179,6 +182,15 @@ If Step 1-3 went well, the definition is created and returned
 ```clojure
               [:ok (defenv/->Definition def-name params (count params) body-term ty {})])))))))
 
+```
+
+The following function generates the clojure documentation of
+the definition, based on the provided `explanation` and `content`.
+The same function will be used to generate the documentation
+of other `kind` of statements such as theorems or axioms.
+
+
+```clojure
 (defn ^:no-doc mk-def-doc [kind content explanation]
   (str "\n```\n"
        (with-out-str
@@ -186,15 +198,144 @@ If Step 1-3 went well, the definition is created and returned
        "```\n**" kind "**: "
        (or explanation "")))
 
-;; example:
-;; (definition id [[A :type]] (lambda [x A] x))
-
 
 ```
 
-## Theorems and lemmas
+## Theorems, lemmas and axioms
 
-The specs are as follows.
+**Theorems** (of category `:theorem`) are the "bread and butter" of the mathematical developments.
+Based on their definition, the properties of mathematical contents
+are stated as theorem statements, which must then be demonstrated
+by a *proof*.
+
+**Lemmas** (of category `:lemma`) are often considered auxiliary results that may be used
+as intermediate steps towards the demonstration of higher-level
+theorems. In LaTTe lemmas are considered "private" theorems,
+similarly to what `defn-' is to `defn'.
+
+Finally, **axioms** (of category `:axiom`) are either unprovable or sometimes "hard to prove"
+statements that are considered true without a proof.
+
+All these are slightly different but roughly similar  *mathematical statements*:
+- theorems must have an attached proof, and are registered publicly
+- lemmas also have an attached proof, but are not registered publicly
+- axioms do *not* have a proof, and are registered publicly
+
+We can thus say that all these are slightly distinct form of "theorem", so
+we handle them in a generic way.
+
+In each case the first step is to check the conformance of the syntax according
+to its *spec*.
+
+
+```clojure
+(defn ^:no-doc conform-statement
+  [category args]
+  (let [spec (case category
+               :theorem ::theorem
+               :lemma ::theorem  ;; XXX: same spec
+               :axiom ::axiom
+               (throw (ex-info "Cannot check conformance: not a statement category (please report)" {:category category})))
+        conf-form (s/conform spec args)]
+    (if (= conf-form :clojure.spec.alpha/invalid)
+      (throw (ex-info (str "Cannot declare " (name category) ": syntax error.")
+                      {:explain (s/explain-str spec args)}))
+      conf-form)))
+
+```
+
+Now the maing handling of theorem-like statements is with the following function,
+taking a `category` (either `:theorem`, `:lemma` or  `:axiom`), a vector `params` of
+parameters and the statement itself as a type `ty`.
+
+
+```clojure
+(declare build-statement)
+
+(defn ^:no-doc handle-statement
+  [category thm-name params body]
+```
+
+- We first check the conformance of the statement according to its *spec*.
+
+```clojure
+  
+    (when (defenv/registered-definition? thm-name)
+      (log/warn (str "Redefinition as " (name category) ":") thm-name))
+```
+
+and then we proceed with the main steps:
+
+- Step 1: we parse the parameters (`params`) of the statement
+
+```clojure
+    (let [[status params] (parse-parameters defenv/empty-env params)]
+      (if (= status :ko)
+        [:ko params]
+```
+
+- Step 2: the `body` of the statement is also parsed.
+
+```clojure
+        (let [[status body-term] (stx/parse-term defenv/empty-env body)]
+          (if (= status :ko)
+            [:ko body-term]
+```
+
+- Step 3: we check that the statement is a proper type.
+
+```clojure
+            (if (not (ty/proper-type? defenv/empty-env params body-term))
+              [:ko {:msg (str "Body of " (name category) " is not a proper type") :statement thm-name :category category :body (unparser/unparse body-term)}]
+```
+
+- Step 4: if all went well, we construct the internal representation.
+
+```clojure
+              [:ok (build-statement category thm-name params body-term)]))))))
+
+```
+
+The following function builds the internal representation of a statement
+according to its `category`. Internally we distinguish between theorems/lemmas
+on the one side, and axioms on the other side.
+
+
+```clojure
+(defn ^:no-doc build-statement
+  [category thm-name params ty]
+  (case category
+    (:theorem :lemma) (defenv/->Theorem thm-name params (count params) ty nil)
+    :axiom (defenv/->Axiom thm-name params (count params) ty)
+    (throw (ex-info "Cannot build statement: not a statement category (please report)"
+                    {:category category
+                     :thm-name thm-name}))))
+
+```
+
+The function below prepares the required metatadata associated to a statement.
+
+
+```clojure
+(defn ^:no-doc statement-metadata
+  [category doc params body]
+  {:doc (mk-def-doc (clojure.string/capitalize (name category)) body doc)
+   :arglists (list params)
+   :private (= category :lemma)})
+
+
+(defn ^:no-doc define-statement!
+  [category def-name definition metadata]
+  `(do
+     (def ~def-name ~definition)
+     (alter-meta! (var ~def-name) #(merge % (quote ~metadata))) 
+     [:declared ~category (quote ~def-name)]))
+
+```
+
+### Theorems
+
+The most general form is `defthm' to define theorems.
 
 
 ```clojure
@@ -203,73 +344,63 @@ The specs are as follows.
                         :params ::def-params
                         :body ::def-body))
 
-(declare handle-defthm)
-(declare handle-thm-declaration)
-
 (defmacro defthm
-  "Declaration of a theorem of the specified `name` (first argument)
-  an optional `docstring` (second argument), a vector of `parameters`
- and the theorem proposition (last argument).
+  "Declaration of a theorem of the following form:
+
+      (defthm <name>
+        \"<docstring>\"
+        [[x1 T1] ... [xN TN]] ;; <params>
+        <body>)
+
+  with the specified `name` (first argument)
+  an optional `docstring` (second argument), a vector `params` of parameters
+  and the theorem proposition as `body` (last argument).
  Each parameter is a pair `[x T]` with `x` the parameter name and `T` its
   type. 
 
-  A theorem declared must later on be demonstrated using the [[proof]] form."
+  A theorem declared must later on be demonstrated using the [[proof]] form.
+  As a side effect, the statement of the theorem is recorded in the current
+  namespace (i.e. it is a Clojure `def`)."
   [& args]
-  (let [conf-form (s/conform ::theorem args)]
-    (if (= conf-form :clojure.spec.alpha/invalid)
-      (throw (ex-info "Cannot declare theorem: syntax error."
-                      {:explain (s/explain-str ::theorem args)}))
-      (let [{thm-name :name doc :doc params :params body :body} conf-form]
-        (let [[status def-name definition metadata] (handle-defthm :theorem thm-name doc params body)]
-          (if (= status :ko)
-            (throw (ex-info "Cannot declare theorem." {:name thm-name :error def-name}))
-            `(do
-               (def ~def-name ~definition)
-               (alter-meta! (var ~def-name) #(merge % (quote ~metadata))) 
-               [:declared :theorem (quote ~def-name)])))))))
-
-(defmacro deflemma
-  "Declaration of a lemma, i.e. an auxiliary theorem. In LaTTe a lemma
-  is private. To export a theorem the [[defthm]] form must be used instead."
-  [& args]
-  (let [conf-form (s/conform ::theorem args)]
-    (if (= conf-form :clojure.spec.alpha/invalid)
-      (throw (ex-info "Cannot declare lemma: syntax error."
-                      {:explain (s/explain-str ::theorem args)}))
-      (let [{thm-name :name doc :doc params :params body :body} conf-form]
-        (let [[status def-name definition metadata] (handle-defthm :lemma thm-name doc params body)]
-          (if (= status :ko)
-            (throw (ex-info "Cannot declare lemma." {:name thm-name :error def-name}))
-            `(do
-               (def ~def-name ~definition)
-               (alter-meta! (var ~def-name) #(merge % (quote ~metadata))) 
-               [:declared :lemma (quote ~def-name)])))))))
-
-(defn ^:no-doc handle-defthm [kind thm-name doc params ty]
-  (when (defenv/registered-definition? thm-name)
-    (println "[Warning] redefinition as" (name kind) ":" thm-name))
-  (let [[status definition] (handle-thm-declaration thm-name params ty)]
+  (let [{thm-name :name doc :doc params :params body :body}
+        (conform-statement :theorem args)
+        [status result] (handle-statement :theorem thm-name params body)]
     (if (= status :ko)
-      [:ko definition nil nil nil]
-      (let [metadata {:doc (mk-def-doc (clojure.string/capitalize (name kind)) ty doc)
-                      :arglists (list params)
-                      :private (= kind :lemma)}]
-        [:ok thm-name definition metadata]))))
-
-(defn ^:no-doc handle-thm-declaration [thm-name params ty]
-  (let [[status params] (parse-parameters defenv/empty-env params)]
-    (if (= status :ko)
-      [:ko params]
-      (let [[status ty'] (stx/parse-term defenv/empty-env ty)]
-        (if (= status :ko)
-          [:ko ty']
-          (if (not (ty/proper-type? defenv/empty-env params ty'))
-            [:ko {:msg "Theorem body is not a proper type" :theorem thm-name :type (unparser/unparse ty')}]
-            [:ok (defenv/->Theorem thm-name params (count params) ty' false)]))))))
+      (throw (ex-info "Cannot declare theorem." result))
+      (let [metadata (statement-metadata :theorem doc params body)]
+        (define-statement! :theorem thm-name result metadata)))))
 
 ```
 
-## Axioms
+### Lemmas
+
+A lemma is a theorem that is not exported, i.e. it remains private
+in the namespace where it is defined (it is still available as a
+Clojure var).
+
+
+```clojure
+(defmacro deflemma
+  "Declaration of a lemma, i.e. an auxiliary theorem. In LaTTe a lemma
+  is private. To export a theorem the [[defthm]] form must be used instead.
+  Otherwise the two forms are the same."
+  [& args]
+  (let [{thm-name :name doc :doc params :params body :body}
+        (conform-statement :lemma args)
+        [status result] (handle-statement :lemma thm-name params body)]
+    (if (= status :ko)
+      (throw (ex-info "Cannot declare lemma." result))
+      (let [metadata (statement-metadata :lemma doc params body)]
+        (define-statement! :lemma thm-name result metadata)))))
+
+```
+
+### Axioms
+
+An axiom is like a theorem but whose proof is assumed.
+It is a good practice to rely on the minimum amount of axioms,
+although they cannot be avoided in general (e.g. for classical logic,
+for the definite descriptor, for set equality, etc.).
 
 
 ```clojure
@@ -278,13 +409,18 @@ The specs are as follows.
                       :params ::def-params
                       :body ::def-body))
 
-(declare handle-defaxiom)
-(declare handle-ax-declaration)
 
 (defmacro defaxiom
-  "Declaration of an axiom with the specified `name` (first argument)
-  an optional `docstring` (second argument), a vector of `parameters`
- and the axiom statement (last argument).
+  "Declaration of an axiom of the form:
+
+      (defaxiom <name>
+        \"<docstring>\"
+        [[x1 T1] ... [xN TN]] ;; <params>
+        <body>)
+
+  with the specified `name` (first argument)
+  an optional `docstring` (second argument), a vector `params` of parameters
+ and the axiom `body`, the axiom statement as a lambda-term (last argument).
  Each parameter is a pair `[x T]` with `x` the parameter name and `T` its
   type. 
 
@@ -295,39 +431,13 @@ favored, but axioms are sometimes required (e.g. the law of the excluded
 In all cases the introduction of an axiom must be justified with strong
  (albeit informal) arguments."
   [& args]
-  (let [conf-form (s/conform ::axiom args)]
-    (if (= conf-form :clojure.spec.alpha/invalid)
-      (throw (ex-info "Cannot declare axiom: syntax error."
-                      {:explain (s/explain-str ::axiom args)}))
-      (let [{ax-name :name doc :doc params :params body :body} conf-form]
-        (let [[status def-name definition metadata] (handle-defaxiom :axiom ax-name doc params body)]
-          (if (= status :ko)
-            (throw (ex-info "Cannot declare axiom." {:name ax-name :error def-name}))
-            `(do
-               (def ~def-name ~definition)
-               (alter-meta! (var ~def-name) #(merge % (quote ~metadata))) 
-               [:declared :axiom (quote ~def-name)])))))))
-
-(defn ^:no-doc handle-defaxiom [kind ax-name doc params ty]
-  (when (defenv/registered-definition? ax-name)
-    (println "[Warning] redefinition as" (name kind) ":" ax-name))
-  (let [[status definition] (handle-ax-declaration ax-name params ty)]
+  (let [{thm-name :name doc :doc params :params body :body}
+        (conform-statement :axiom args)
+        [status result] (handle-statement :axiom thm-name params body)]
     (if (= status :ko)
-      [:ko definition nil nil nil]
-      (let [metadata {:doc (mk-def-doc (clojure.string/capitalize (name kind)) ty doc)
-                      :arglists (list params)}]
-        [:ok ax-name definition metadata]))))
-
-(defn ^:no-doc handle-ax-declaration [ax-name params ty]
-  (let [[status params] (parse-parameters defenv/empty-env params)]
-    (if (= status :ko)
-      [:ko params]
-      (let [[status ty'] (stx/parse-term defenv/empty-env ty)]
-        (if (= status :ko)
-          [:ko ty']
-          (if (not (ty/proper-type? defenv/empty-env params ty'))
-            [:ko {:msg "Axiom body is not a proper type" :axiom ax-name :type (unparser/unparse ty')}]
-            [:ok (defenv/->Axiom ax-name params (count params) ty')]))))))
+      (throw (ex-info "Cannot declare axiom." result))
+      (let [metadata (statement-metadata :axiom doc params body)]
+        (define-statement! :axiom thm-name result metadata)))))
 
 ```
 
@@ -458,6 +568,7 @@ An error is signaled if the proof cannot be concluded."
           (let [new-thm (assoc thm :proof steps)]
             (alter-var-root (resolve thm-name) (fn [_] new-thm))
             [:qed thm-name]))))))
+
 
 ```
 
