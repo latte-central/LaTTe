@@ -563,6 +563,14 @@ as well as a proof."
             [:ko {:msg "Example body is not a proper type" :type ty'}]
             [:ok (defenv/->Theorem (gensym "example") params (count params) ty' false)]))))))
 
+(defmacro try-example
+  "This is the same as [[example]] but without throwing exceptions."
+  {:style/indent [2 :form :form [1]]}
+  [& args]
+  `(try (example ~@args)
+        (catch Exception e#
+          [:failed (.getMessage e#) (ex-data e#)])))
+
 ;;{
 ;; ## Implicits
 ;;}
