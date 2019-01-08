@@ -587,7 +587,7 @@ as well as a proof."
                          :body (s/* any?)))
 
 
-(s/def ::iparam (s/tuple symbol? symbol?))
+(s/def ::iparam any?) ;; (s/tuple symbol? symbol?))
 
 (defn ^:no-doc mk-impl-doc [name params explanation]
   (str "\n```\n"
@@ -605,7 +605,9 @@ as well as a proof."
             {def-env :def-env ctx :ctx params :params} header]
         (when (defenv/registered-definition? def-name)
           (println "[Warning] redefinition as implicit"))
-        (let [metadata (merge (meta &form) {:doc (mk-impl-doc def-name (mapv first params) doc)})]
+        (let [metadata (merge (meta &form) {:doc (mk-impl-doc def-name (mapv #(if (vector? %)
+                                                                                (first %)
+                                                                                %) params) doc)})]
           `(do
              (def ~def-name (defenv/->Implicit '~def-name (fn [~def-env ~ctx ~@params] ~@body)))
              (alter-meta! (var ~def-name) #(merge % (quote ~metadata)))
