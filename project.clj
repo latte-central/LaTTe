@@ -11,7 +11,7 @@
   :codox {:output-path "docs"
           :metadata {:doc/format :markdown}
           :namespaces [latte.core]}
-  :plugins [[lein-codox "0.10.5"]])
+  :plugins [[lein-codox "0.10.6"]])
 
 
 
