@@ -624,6 +624,11 @@ as well as a proof."
                           :body (s/* any?)))
 
 
+(defimplicit the-type-of
+  "Replaces the provided term by its inferred type."
+  [def-env ctx [term typ]]
+  typ)
+
 (defmacro defimplicit*
   [& args]
   (let [conf-form (s/conform ::implicit* args)]
@@ -732,7 +737,7 @@ Be careful that the parser will be called recursively on the generated term, hen
 ;;}
 
 (defmacro type-of 
-  "Give the type of a term `t` in a context at the top-levle. 
+  "Give the type of a term `t` in a context at the top-level. 
   To only parse the term use [[term]]."
   [& args]
   (let [def-env defenv/empty-env
