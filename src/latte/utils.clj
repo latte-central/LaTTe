@@ -1,6 +1,8 @@
 (ns latte.utils
   "Misc. utilities for LaTTe libraries."
-  (:require [latte-kernel.defenv :as defenv]
+  (:require [clojure.string :as str]
+            [clojure.walk :as w]
+            [latte-kernel.defenv :as defenv]
             [latte-kernel.norm :as norm]))
 
 
@@ -63,4 +65,54 @@ is sometimes required to handle it transparently. This function
                    :axioms {}
                    :notations {}
                    :implicits {}} defs))))
+
+;;; handling of implicit type parameters (?T, ?U, etc.)
+
+(defn implicit-type-parameter? [v]
+  (and (symbol? v)
+       (= (first (name v)) \?)))
+
+;; (implicit-type-parameter? 'x) => false
+;;(implicit-type-parameter? '?x) => true
+;;(implicit-type-parameter? '???x) => true
+
+(defn explicit-type-name 
+  "Generates the explicit name of an implicit type `ty`."
+  [ty]
+  ;; remark: we remove all question marks
+  (symbol (str/replace (str ty) #"(\?)" "")))
+
+
+;; (explicit-type-name 'x) => 'x
+;; (explicit-type-name '?x) => 'x
+;; (explicit-type-name '???x) => 'x
+;; (explicit-type-name '???x???y?z???) => 'xyz
+;; ==> this is a little bit "too much" but question
+;;     marks should be avoided in type names anyway
+
+(defn fetch-implicit-type-parameters
+  "Fetch the implicit parameters in the `params` (parameters) list."
+  [params]
+  (let [+itypes+ (atom (sorted-set))
+        params' (w/postwalk (fn [x]
+                              (if (implicit-type-parameter? x)
+                                (do (swap! +itypes+ (fn [tys] (conj tys x)))
+                                    (explicit-type-name x))
+                                x)) params)]
+    (if (empty? @+itypes+)
+      nil
+      {:implicit-types @+itypes+
+       :new-params (into [] (concat (map (fn [ty] [(explicit-type-name ty) :type]) @+itypes+)
+                                    params'))
+       })))
+
+;; (fetch-implicit-type-parameters '[[T :type] [U :type] [R (rel T U)]])
+;; => nil
+
+;; (fetch-implicit-type-parameters '[[U :type] [R (rel ?T U)]])
+;; => {:implicit-types #{?T}, :new-params [[T :type] [U :type] [R (rel T U)]]}
+
+;; (fetch-implicit-type-parameters '[[R (rel ?T ?U)]])
+;; => {:implicit-types #{?T ?U}, :new-params [[T :type] [U :type] [R (rel T U)]]}
+
 
