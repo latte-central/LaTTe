@@ -66,7 +66,9 @@ is sometimes required to handle it transparently. This function
                    :notations {}
                    :implicits {}} defs))))
 
-;;; handling of implicit type parameters (?T, ?U, etc.)
+;;; ===================================================
+;;; Handling of implicit type parameters (?T, ?U, etc.)
+;;; ===================================================
 
 (defn implicit-type-parameter? [v]
   (and (symbol? v)
@@ -114,5 +116,3 @@ is sometimes required to handle it transparently. This function
 
 ;; (fetch-implicit-type-parameters '[[R (rel ?T ?U)]])
 ;; => {:implicit-types #{?T ?U}, :new-params [[T :type] [U :type] [R (rel T U)]]}
-
-

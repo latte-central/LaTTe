@@ -19,6 +19,7 @@
             [latte-kernel.norm :as n]
             [latte-kernel.defenv :as defenv]
             [latte-kernel.proof :as p]
+            [latte.utils :as u]
             [latte.certify :as cert]))
 
 ;;{
@@ -66,6 +67,8 @@
 
 (declare handle-term-definition)
 (declare mk-def-doc)
+(declare defimplicit)
+(declare gen-type-parameters-implicit-def)
 
 (defmacro definition
   "Defines a mathematical term with the following structure:
@@ -96,7 +99,16 @@
       (let [{def-name :name doc :doc params :params body :body} conf-form]
         (when (defenv/registered-definition? def-name)
           (log/warn "Redefinition as term: " def-name))
-        (let [[status definition] (handle-term-definition def-name params body)]
+        ;; handling of implicit parameter types
+        (if-let [res (u/fetch-implicit-type-parameters params)]
+          (let [{implicit-types :implicit-types new-params :new-params} res
+                 explicit-def-name (symbol (str def-name "-def"))]
+                `(do
+                   (definition ~explicit-def-name ~(str "This is an explicit variant of [[" def-name "]].") ~new-params ~@body)
+                   ~(gen-type-parameters-implicit-def def-name explicit-def-name implicit-types params)
+                   ))
+            ;; no implicit parmeter types from here...
+            (let [[status definition] (handle-term-definition def-name params body)]
           (when (= status :ko)
             (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
           ;;{
@@ -108,7 +120,16 @@
                (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
                                                              :doc (mk-def-doc "Definition" (quote ~body) ~doc)
                                                              :arglists (list (quote ~params)))))
-               [:defined :term (quote ~def-name)])))))))
+               [:defined :term (quote ~def-name)]))))))))
+
+;;{
+;; The following function generates a `defimplicit` form that (if successful) synthesizes
+;; the arguments for implicit type parameters.
+;; An exception is raised if the synthesis fails (which means no implicity-type-parameter handler
+;; is found).
+;;}
+
+
 
 ;;{
 ;; The following function parse a sequence of terms, the `params` (parameters),
