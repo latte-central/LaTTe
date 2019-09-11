@@ -131,7 +131,7 @@
 
 (comment
 
-  ;; example of a definition with-autoimplicits
+  ;; example of a definition with autoimplicit type arguments
 
   (definition ex
     "existential"
@@ -149,6 +149,9 @@
             (==> (forall [x T] (==> (P x) α))
                  α)))
 
+  ;; this is obtained from the following structure
+  '[[?T]]
+  
   ;; and (2) the following implicit
   
   (defimplicit ex
@@ -157,8 +160,15 @@
     (let [[T _] (decompose-impl-type P-ty)]
       (#'ex-def T P-ty)))
 
- 
+  ;; this is obtained from the following structure
+  '[[P ['==> T _]]]
+
+  ;; and the generation environment
+  {'==> decompose-impl-type}
 ) 
+
+(defn )
+
 
 
 
