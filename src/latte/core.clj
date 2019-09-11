@@ -129,6 +129,37 @@
 ;; is found).
 ;;}
 
+(comment
+
+  ;; example of a definition with-autoimplicits
+
+  (definition ex
+    "existential"
+    [[P (==> ?T :type)]]
+    (forall [α :type]
+            (==> (forall [x T] (==> (P x) α))
+                 α)))
+
+  ;; should produce (1) the following definiion
+
+  (definition ex-def
+    "explicit version of [[ex]]"
+    [[T :type] [P (==> T :type)]]
+    (forall [α :type]
+            (==> (forall [x T] (==> (P x) α))
+                 α)))
+
+  ;; and (2) the following implicit
+  
+  (defimplicit ex
+    "existential" ;; same doc as what would create the definition
+    [def-env ctx [P-term P-type]]
+    (let [[T _] (decompose-impl-type P-ty)]
+      (#'ex-def T P-ty)))
+
+ 
+) 
+
 
 
 ;;{
