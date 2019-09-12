@@ -104,8 +104,9 @@
           (let [{implicit-types :implicit-types new-params :new-params} res
                  explicit-def-name (symbol (str def-name "-def"))]
                 `(do
-                   (definition ~explicit-def-name ~(str "This is an explicit variant of [[" def-name "]].") ~new-params ~@body)
+                   (definition ~explicit-def-name ~(str "This is an explicit variant of [[" def-name "]].") ~new-params ~body)
                    ~(gen-type-parameters-defimplicit def-name doc explicit-def-name implicit-types new-params body)
+                   [:defined :term (quote ~def-name)]
                    ))
             ;; no implicit parmeter types from here...
             (let [[status definition] (handle-term-definition def-name params body)]
@@ -176,9 +177,9 @@
         [targs defparams] (reduce (fn [[targs defparams] [param param-ty]]
                                     (if (contains? implicit-types param)
                                       [targs defparams]
-                                      (let [param-var (gensym (str param "-term"))]
-                                        [(conj targs [param-var param-ty])
-                                         (conj defparams [param-var (gensym (str param "-ty"))])])))
+                                      (let [param-ty-var (gensym (str param "-ty"))]
+                                        [(conj targs [param-ty-var param-ty])
+                                         (conj defparams [(gensym (str param "-term")) param-ty-var])])))
                                   [[] []] new-params)
         _ (println "targs=" targs)
         _ (println "defparams=" defparams)
@@ -202,8 +203,8 @@
        ~ndoc
        [~def-env-var ~ctx-var ~@defparams]
        (let ~@lt-clauses
-         (list ~explicit-def-name ~@(concat implicit-types
-                                            (map first defparams)))))))
+         (list (resolve (quote ~explicit-def-name)) ~@(concat implicit-types
+                                                              (map first defparams)))))))
 
 
 ;;{

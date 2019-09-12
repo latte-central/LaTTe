@@ -123,8 +123,8 @@ is sometimes required to handle it transparently. This function
   )
 
 (defn register-implicit-type-parameters-handler!
-  [keysym handler]
-  (swap! +implicit-type-parameters-handlers+ (fn [old] (assoc keysym handler))))
+  [keysym handler-fn arity]
+  (swap! +implicit-type-parameters-handlers+ (fn [old] (assoc old keysym [handler-fn arity]))))
 
 (defn fetch-implicit-type-parameter-handler
   ([implicit-types def-env-var ctx-var [param-var param-ty]]
