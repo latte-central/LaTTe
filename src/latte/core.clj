@@ -68,7 +68,7 @@
 (declare handle-term-definition)
 (declare mk-def-doc)
 (declare defimplicit)
-(declare gen-type-parameters-implicit-def)
+(declare gen-type-parameters-defimplicit)
 
 (defmacro definition
   "Defines a mathematical term with the following structure:
@@ -105,7 +105,7 @@
                  explicit-def-name (symbol (str def-name "-def"))]
                 `(do
                    (definition ~explicit-def-name ~(str "This is an explicit variant of [[" def-name "]].") ~new-params ~@body)
-                   ~(gen-type-parameters-implicit-def def-name explicit-def-name implicit-types params)
+                   ~(gen-type-parameters-defimplicit def-name doc explicit-def-name implicit-types new-params body)
                    ))
             ;; no implicit parmeter types from here...
             (let [[status definition] (handle-term-definition def-name params body)]
@@ -167,9 +167,43 @@
   {'==> decompose-impl-type}
 ) 
 
-(defn )
-
-
+(defn ^:no-doc gen-type-parameters-defimplicit
+  "Generate the defimplicit for definitions with implicit type parameters."
+  [def-name doc explicit-def-name implicit-types new-params body]
+  (let [def-env-var (gensym "def-env")
+        ctx-var (gensym "ctx")
+        ndoc (mk-def-doc "Definition" body (str doc "\n see [[" explicit-def-name "]]"))
+        [targs defparams] (reduce (fn [[targs defparams] [param param-ty]]
+                                    (if (contains? implicit-types param)
+                                      [targs defparams]
+                                      (let [param-var (gensym (str param "-term"))]
+                                        [(conj targs [param-var param-ty])
+                                         (conj defparams [param-var (gensym (str param "-ty"))])])))
+                                  [[] []] new-params)
+        _ (println "targs=" targs)
+        _ (println "defparams=" defparams)
+        [remaining-implicit-types lt-clauses] 
+        (reduce (fn [[itypes lt-clauses] param]
+                  (println "==== param = " param)
+                  (println "itypes=" itypes)
+                  (println "lt-clauses=" lt-clauses)
+                  (let [[itypes' lt-clause] 
+                        (u/fetch-implicit-type-parameter-handler itypes def-env-var ctx-var param)
+                        _ (println "itypes'=" itypes')
+                        _ (println "lt-cause=" lt-clause)]
+                    [itypes' (if (nil? lt-clause)
+                               lt-clauses
+                               (conj lt-clauses lt-clause))])) [implicit-types []] targs)]
+    (when-not (empty? remaining-implicit-types)
+      (throw (ex-info "Unsolved implicit type parameters" {:definition def-name
+                                                           :implicit-type-params implicit-types
+                                                           :unsolved remaining-implicit-types})))
+    `(defimplicit ~def-name
+       ~ndoc
+       [~def-env-var ~ctx-var ~@defparams]
+       (let ~@lt-clauses
+         (list ~explicit-def-name ~@(concat implicit-types
+                                            (map first defparams)))))))
 
 
 ;;{

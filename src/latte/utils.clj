@@ -117,59 +117,69 @@ is sometimes required to handle it transparently. This function
 ;; (fetch-implicit-type-parameters '[[R (rel ?T ?U)]])
 ;; => {:implicit-types #{T U}, :new-params [[T :type] [U :type] [R (rel T U)]]}
 
-(def +implicit-type-parameters-handlers+ (atom {}))
+(def +implicit-type-parameters-handlers+ 
+  #_(atom {})
+  (atom {'rel ['fetch-rel-type 2]})
+  )
 
 (defn register-implicit-type-parameters-handler!
   [keysym handler]
   (swap! +implicit-type-parameters-handlers+ (fn [old] (assoc keysym handler))))
 
 (defn fetch-implicit-type-parameter-handler
-  [handlers implicit-types def-env-var ctx-var [param-var param-ty]]
-  (if-let [[handler-fn arity] 
-           (and (sequential? param-ty)
-                (>= (count param-ty) 1)
-                (get handlers (first param-ty)))]
-    ;; we have a handler
-    (let [let-params (into [] (map (fn [param]
-                                     (if (contains? implicit-types param)
-                                       param
-                                       '_)) (rest param-ty)))
-          let-expr (list handler-fn def-env-var ctx-var param-var)]
-      (when (not= (count let-params) arity)
-        (throw (ex-info "Wrong arity for implicit type parameter handling" {:expected-arity arity
-                                                                            :parameter-type param-ty})))
-      [let-params let-expr])))
+  ([implicit-types def-env-var ctx-var [param-var param-ty]]
+   (fetch-implicit-type-parameter-handler @+implicit-type-parameters-handlers+ implicit-types def-env-var ctx-var param-var param-ty))
+  ([handlers implicit-types def-env-var ctx-var param-var param-ty]
+   (if-let [[handler-fn arity] 
+            (and (sequential? param-ty)
+                 (>= (count param-ty) 1)
+                 (get handlers (first param-ty)))]
+     ;; we have a handler
+     (let [[implicit-types' lt-params]
+           (reduce (fn [[itypes ltparams] param]
+                     (if (contains? itypes param)
+                       [(disj itypes param) (conj ltparams param)]
+                       [itypes (conj ltparams '_)])) [implicit-types []] (rest param-ty))
+           lt-expr (list handler-fn def-env-var ctx-var param-var)]
+       (when (not= (count lt-params) arity)
+         (throw (ex-info "Wrong arity for implicit type parameter handling" {:expected-arity arity
+                                                                             :parameter-type param-ty})))
+       [implicit-types' (if (= implicit-types' implicit-types)
+                          nil
+                          [lt-params lt-expr])])
+     ;; we don't have a handler
+     [implicit-types nil])))
 
 
-(fetch-implicit-type-parameter-handler
- {'rel ['fetch-rel-type 2]}
- '#{T U}
- 'def-env
- 'ctx
- '[R-term (rel T U)])
-;; => [[T U] (fetch-rel-type def-env ctx R-term)]
+;; (fetch-implicit-type-parameter-handler
+;;  {'rel ['fetch-rel-type 2]}
+;;  '#{T U}
+;;  'def-env
+;;  'ctx
+;;  'R-term '(rel T U))
+;; => [#{} [[T U] (fetch-rel-type def-env ctx R-term)]]
 
-(fetch-implicit-type-parameter-handler
- {'rel ['fetch-rel-type 2]}
- '#{T}
- 'def-env
- 'ctx
- '[R-term (rel T U)])
-;; => [[T _] (fetch-rel-type def-env ctx R-term)]
-
-(fetch-implicit-type-parameter-handler
- {'rel ['fetch-rel-type 2]}
- '#{}
- 'def-env
- 'ctx
- '[R-term (rel T U)])
-;; => [[_ _] (fetch-rel-type def-env ctx R-term)]
+;; (fetch-implicit-type-parameter-handler
+;;  {'rel ['fetch-rel-type 2]}
+;;  '#{T}
+;;  'def-env
+;;  'ctx
+;;  'R-term '(rel T U))
+;; => [#{} [[T _] (fetch-rel-type def-env ctx R-term)]]
 
 ;; (fetch-implicit-type-parameter-handler
 ;;  {'rel ['fetch-rel-type 2]}
 ;;  '#{}
 ;;  'def-env
 ;;  'ctx
-;;  '[R-term (rel T U V)])
+;;  'R-term '(rel T U))
+;; => [#{} nil]
+
+;; (fetch-implicit-type-parameter-handler
+;;  {'rel ['fetch-rel-type 2]}
+;;  '#{}
+;;  'def-env
+;;  'ctx
+;;  'R-term '(rel T U V))
 ;; => Wrong arity for implicit type parameter handling
 ;;    {:expected-arity 2, :parameter-type (rel T U V)}
