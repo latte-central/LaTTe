@@ -19,6 +19,7 @@
             [latte-kernel.norm :as n]
             [latte-kernel.defenv :as defenv]
             [latte-kernel.proof :as p]
+            [latte.utils :as u]
             [latte.certify :as cert]))
 
 ;;{
@@ -66,6 +67,8 @@
 
 (declare handle-term-definition)
 (declare mk-def-doc)
+(declare defimplicit)
+(declare gen-type-parameters-defimplicit)
 
 (defmacro definition
   "Defines a mathematical term with the following structure:
@@ -94,21 +97,70 @@
       (throw (ex-info "Cannot define term: syntax error."
                       {:explain (s/explain-str ::definition args)}))
       (let [{def-name :name doc :doc params :params body :body} conf-form]
-        (when (defenv/registered-definition? def-name)
-          (log/warn "Redefinition as term: " def-name))
-        (let [[status definition] (handle-term-definition def-name params body)]
-          (when (= status :ko)
-            (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
-          ;;{
-          ;;  - Second, after some checks, we register the definition in the currently active namespace (i.e. `*ns*`).
-          ;;}          
-          (let [quoted-def# definition]
-            `(do
-               (def ~def-name ~quoted-def#)
-               (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
-                                                             :doc (mk-def-doc "Definition" (quote ~body) ~doc)
-                                                             :arglists (list (quote ~params)))))
-               [:defined :term (quote ~def-name)])))))))
+        ;; handling of implicit parameter types
+        (if-let [res (u/fetch-implicit-type-parameters params)]
+          (let [{implicit-types :implicit-types new-params :new-params} res
+                 explicit-def-name (symbol (str def-name "-def"))]
+                `(do
+                   (definition ~explicit-def-name ~(str "This is an explicit variant of [[" def-name "]].") ~new-params ~body)
+                   ~(gen-type-parameters-defimplicit def-name "Definition" doc explicit-def-name implicit-types params new-params body)
+                   (alter-meta! (var ~def-name) update-in [:arglists] (fn [_#] (list (quote ~params))))
+                   [:defined :term (quote ~def-name) :explicit (quote ~explicit-def-name)]))
+          ;; no implicit parmeter types from here...
+          (let [[status definition] (handle-term-definition def-name params body)]
+            (when (= status :ko)
+              (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
+            (when (defenv/registered-definition? def-name)
+              (log/warn "Redefinition as term: " def-name))
+            ;;{
+            ;;  - Second, after some checks, we register the definition in the currently active namespace (i.e. `*ns*`).
+            ;;}          
+            (let [quoted-def# definition]
+              `(do
+                 (def ~def-name ~quoted-def#)
+                 (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
+                                                               :doc (mk-def-doc "Definition" (quote ~body) ~doc)
+                                                               :arglists (list (quote ~params)))))
+                 [:defined :term (quote ~def-name)]))))))))
+
+;;{
+;; The following function generates a `defimplicit` form that (if successful) synthesizes
+;; the arguments for implicit type parameters.
+;; An exception is raised if the synthesis fails (which means no implicity-type-parameter handler
+;; is found).
+;;}
+
+(defn ^:no-doc gen-type-parameters-defimplicit
+  "Generate the defimplicit for definitions with implicit type parameters."
+  [def-name def-kind doc explicit-def-name implicit-types real-params explicit-params body]
+  (let [def-env-var (gensym "def-env")
+        ctx-var (gensym "ctx")
+        ndoc (mk-def-doc def-kind body (str doc "\nsee [[" explicit-def-name "]]"))
+        [targs defparams] (reduce (fn [[targs defparams] [param param-ty]]
+                                    (if (contains? implicit-types param)
+                                      [targs defparams]
+                                      (let [param-ty-var (gensym (str param "-ty"))]
+                                        [(conj targs [param-ty-var param-ty])
+                                         (conj defparams [(gensym (str param "-term")) param-ty-var])])))
+                                  [[] []] explicit-params)
+        [remaining-implicit-types lt-clauses] 
+        (reduce (fn [[itypes lt-clauses] param]
+                  (let [[itypes' lt-clause] 
+                        (u/fetch-implicit-type-parameter-handler itypes def-env-var ctx-var param)]
+                    [itypes' (if (nil? lt-clause)
+                               lt-clauses
+                               (conj lt-clauses (first lt-clause) (second lt-clause)))])) [implicit-types []] targs)]
+    (when-not (empty? remaining-implicit-types)
+      (throw (ex-info "Unsolved implicit type parameters" {:statement def-name
+                                                           :implicit-type-params implicit-types
+                                                           :unsolved remaining-implicit-types})))
+    `(defimplicit ~def-name
+       ~ndoc
+       [~def-env-var ~ctx-var ~@defparams]
+       (let [~@lt-clauses]
+         (list (var ~explicit-def-name) ~@(concat implicit-types
+                                                  (map first defparams)))))))
+
 
 ;;{
 ;; The following function parse a sequence of terms, the `params` (parameters),
@@ -166,13 +218,13 @@
 ;; of other `kind` of statements such as theorems or axioms.
 ;;}
 
-(defn ^:no-doc mk-def-doc [kind content explanation]
+(defn ^:no-doc mk-def-doc 
+  [kind content explanation]
   (str "\n```\n"
        (with-out-str
          (pp/pprint content))
        "```\n**" kind "**: "
        (or explanation "")))
-
 
 ;;{
 ;; ## Theorems, lemmas and axioms
@@ -318,12 +370,22 @@
   namespace (i.e. it is a Clojure `def`)."
   [& args]
   (let [{thm-name :name doc :doc params :params body :body}
-        (conform-statement :theorem args)
-        [status result] (handle-statement :theorem thm-name params body)]
-    (if (= status :ko)
-      (throw (ex-info "Cannot declare theorem." result))
-      (let [metadata (statement-metadata :theorem doc params body)]
-        (define-statement! :theorem thm-name result metadata)))))
+        (conform-statement :theorem args)]
+            ;; handling of implicit parameter types
+    (if-let [res (u/fetch-implicit-type-parameters params)]
+      (let [{implicit-types :implicit-types new-params :new-params} res
+            explicit-thm-name (symbol (str thm-name "-thm"))]
+        `(do
+           (defthm ~explicit-thm-name ~(str "This is an explicit variant of [[" thm-name "]].") ~new-params ~body)
+           ~(gen-type-parameters-defimplicit thm-name "Theorem" doc explicit-thm-name implicit-types params new-params body)
+           (alter-meta! (var ~thm-name) update-in [:arglists] (fn [_#] (list (quote ~params))))
+           [:declared :theorem (quote ~explicit-thm-name) :implicit (quote ~thm-name)]))
+      ;; no implicit type parameters
+      (let [[status result] (handle-statement :theorem thm-name params body)]
+        (if (= status :ko)
+          (throw (ex-info "Cannot declare theorem." result))
+          (let [metadata (statement-metadata :theorem doc params body)]
+            (define-statement! :theorem thm-name result metadata)))))))
 
 ;;{
 ;; ### Lemmas
@@ -589,11 +651,9 @@ as well as a proof."
 
 (s/def ::iparam any?) ;; (s/tuple symbol? symbol?))
 
-(defn ^:no-doc mk-impl-doc [name params explanation]
-  (str "\n```\n"
-       "(" name " " (clojure.string/join " " params) ")"
-       "```\n\n"
-       (or explanation "")))
+(defn ^:no-doc mk-impl-doc [name explanation]
+  ;; XXX: everything in the explanation ?
+  explanation)
 
 (defmacro defimplicit
   [& args]
@@ -605,9 +665,7 @@ as well as a proof."
             {def-env :def-env ctx :ctx params :params} header]
         (when (defenv/registered-definition? def-name)
           (println "[Warning] redefinition as implicit"))
-        (let [metadata (merge (meta &form) {:doc (mk-impl-doc def-name (mapv #(if (vector? %)
-                                                                                (first %)
-                                                                                %) params) doc)})]
+        (let [metadata (merge (meta &form) {:doc (mk-impl-doc def-name doc)})]
           `(do
              (def ~def-name (defenv/->Implicit '~def-name (fn [~def-env ~ctx ~@params] ~@body)))
              (alter-meta! (var ~def-name) #(merge % (quote ~metadata)))
