@@ -65,7 +65,7 @@
 ;; The `definition` macro is defined below.
 ;;}
 
-(declare gen-type-parameters-defimplicit)
+(declare handle-implicit-type-parameters)
 (declare handle-term-definition)
 (declare mk-def-doc)
 (declare defimplicit)
