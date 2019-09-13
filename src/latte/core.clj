@@ -99,13 +99,10 @@
       (let [{def-name :name doc :doc params :params body :body} conf-form]
         ;; handling of implicit parameter types
         (if-let [res (u/fetch-implicit-type-parameters params)]
-          (let [{implicit-types :implicit-types new-params :new-params} res
-                 explicit-def-name (symbol (str def-name "-def"))]
-                `(do
-                   (definition ~explicit-def-name ~(str "This is an explicit variant of [[" def-name "]].") ~new-params ~body)
-                   ~(gen-type-parameters-defimplicit def-name "Definition" doc explicit-def-name implicit-types params new-params body)
-                   (alter-meta! (var ~def-name) update-in [:arglists] (fn [_#] (list (quote ~params))))
-                   [:defined :term (quote ~def-name) :explicit (quote ~explicit-def-name)]))
+          (handle-implicit-type-parameters `definition def-name doc params body
+                                           (:implicit-types res)
+                                           (symbol (str def-name "-def"))
+                                           (:new-params res))
           ;; no implicit parmeter types from here...
           (let [[status definition] (handle-term-definition def-name params body)]
             (when (= status :ko)
@@ -131,16 +128,18 @@
 
 (defn ^:no-doc def-kind-infos [def-kind]
   (case def-kind
-    definition ["Definition" :definition]
-    defthm ["Theorem" :theorem]
-    deflemma ["Lemma" :lemma]
+    latte.core/definition ["Definition" :definition]
+    latte.core/defthm ["Theorem" :theorem]
+    latte.core/deflemma ["Lemma" :lemma]
+    latte.core/defaxiom ["Axiom" :axiom]
     (throw (ex-info "Definition kind not supported." {:def-kind def-kind}))))
 
 (defn ^:no-doc handle-implicit-type-parameters
   [def-kind def-name doc params body implicit-types explicit-def-name explicit-params]
   (let [[def-kind-name def-kind-kw] (def-kind-infos def-kind)]
     `(do
-       (~def-kind ^:no-doc ~explicit-def-name ~(str "This is an explicit variant of [[" def-name "]].") ~explicit-params ~body)
+       (~def-kind ~explicit-def-name ~(str "This is an explicit variant of [[" def-name "]].") ~explicit-params ~body)
+       (alter-meta! (var ~explicit-def-name) update-in [:no-doc] (fn [_#] true))
        ~(gen-type-parameters-defimplicit def-name def-kind-name doc explicit-def-name implicit-types params explicit-params body)
        (alter-meta! (var ~def-name) update-in [:arglists] (fn [_#] (list (quote ~params))))
        [:declared ~def-kind-kw (quote ~explicit-def-name) :implicit (quote ~def-name)])))
@@ -157,13 +156,13 @@
   [def-name def-kind doc explicit-def-name implicit-types real-params explicit-params body]
   (let [def-env-var (gensym "def-env")
         ctx-var (gensym "ctx")
-        ndoc (mk-def-doc def-kind body (str doc "\nsee [[" explicit-def-name "]]"))
+        ndoc (mk-def-doc def-kind body doc)
         [targs defparams] (reduce (fn [[targs defparams] [param param-ty]]
                                     (if (contains? implicit-types param)
                                       [targs defparams]
                                       (let [param-ty-var (gensym (str param "-ty"))]
                                         [(conj targs [param-ty-var param-ty])
-                                         (conj defparams [(gensym (str param "-term")) param-ty-var])])))
+                                         (conj defparams [(gensym param) param-ty-var])])))
                                   [[] []] explicit-params)
         [remaining-implicit-types lt-clauses] 
         (reduce (fn [[itypes lt-clauses] param]
@@ -395,13 +394,10 @@
         (conform-statement :theorem args)]
             ;; handling of implicit parameter types
     (if-let [res (u/fetch-implicit-type-parameters params)]
-      (let [{implicit-types :implicit-types new-params :new-params} res
-            explicit-thm-name (symbol (str thm-name "-thm"))]
-        `(do
-           (defthm ~explicit-thm-name ~(str "This is an explicit variant of [[" thm-name "]].") ~new-params ~body)
-           ~(gen-type-parameters-defimplicit thm-name "Theorem" doc explicit-thm-name implicit-types params new-params body)
-           (alter-meta! (var ~thm-name) update-in [:arglists] (fn [_#] (list (quote ~params))))
-           [:declared :theorem (quote ~explicit-thm-name) :implicit (quote ~thm-name)]))
+      (handle-implicit-type-parameters `defthm thm-name doc params body
+                                       (:implicit-types res)
+                                       (symbol (str thm-name "-thm"))
+                                       (:new-params res))
       ;; no implicit type parameters
       (let [[status result] (handle-statement :theorem thm-name params body)]
         (if (= status :ko)
@@ -425,9 +421,9 @@
   (let [{thm-name :name doc :doc params :params body :body}
         (conform-statement :lemma args)]
     (if-let [res (u/fetch-implicit-type-parameters params)]
-      (handle-implicit-type-parameters 'deflemma thm-name doc params body
+      (handle-implicit-type-parameters `deflemma thm-name doc params body
                                        (:implicit-types res)
-                                       (symbol (str thm-name) "-thm")
+                                       (symbol (str thm-name "-lemma"))
                                        (:new-params res))
       ;; no implicit type parameters
       (let [[status result] (handle-statement :lemma thm-name params body)]
@@ -473,12 +469,18 @@ In all cases the introduction of an axiom must be justified with strong
  (albeit informal) arguments."
   [& args]
   (let [{thm-name :name doc :doc params :params body :body}
-        (conform-statement :axiom args)
-        [status result] (handle-statement :axiom thm-name params body)]
-    (if (= status :ko)
-      (throw (ex-info "Cannot declare axiom." result))
-      (let [metadata (statement-metadata :axiom doc params body)]
-        (define-statement! :axiom thm-name result metadata)))))
+        (conform-statement :axiom args)]
+    (if-let [res (u/fetch-implicit-type-parameters params)]
+      (handle-implicit-type-parameters `defaxiom thm-name doc params body
+                                       (:implicit-types res)
+                                       (symbol (str thm-name "-ax"))
+                                       (:new-params res))
+      ;; no implicit type parameters
+      (let [[status result] (handle-statement :axiom thm-name params body)]
+        (if (= status :ko)
+          (throw (ex-info "Cannot declare axiom." result))
+          (let [metadata (statement-metadata :axiom doc params body)]
+            (define-statement! :axiom thm-name result metadata)))))))
 
 ;;{
 ;; ## Proofs
