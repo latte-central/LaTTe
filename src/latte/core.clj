@@ -158,8 +158,8 @@
        ~ndoc
        [~def-env-var ~ctx-var ~@defparams]
        (let ~@lt-clauses
-         (list (resolve (quote ~explicit-def-name)) ~@(concat implicit-types
-                                                              (map first defparams)))))))
+         (list (var ~explicit-def-name) ~@(concat implicit-types
+                                                  (map first defparams)))))))
 
 
 ;;{
