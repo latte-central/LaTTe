@@ -138,7 +138,7 @@ is sometimes required to handle it transparently. This function
                        [(disj itypes param) (conj ltparams param)]
                        [itypes (conj ltparams '_)])) [implicit-types []] (rest param-ty))
            lt-expr (list handler-fn def-env-var ctx-var param-var)]
-       (when (not= (count lt-params) arity)
+       (when (and arity (not= (count lt-params) arity))
          (throw (ex-info "Wrong arity for implicit type parameter handling" {:expected-arity arity
                                                                              :parameter-type param-ty})))
        [implicit-types' (if (= implicit-types' implicit-types)
