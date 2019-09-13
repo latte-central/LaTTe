@@ -65,10 +65,10 @@
 ;; The `definition` macro is defined below.
 ;;}
 
+(declare gen-type-parameters-defimplicit)
 (declare handle-term-definition)
 (declare mk-def-doc)
 (declare defimplicit)
-(declare gen-type-parameters-defimplicit)
 
 (defmacro definition
   "Defines a mathematical term with the following structure:
@@ -122,6 +122,28 @@
                                                                :doc (mk-def-doc "Definition" (quote ~body) ~doc)
                                                                :arglists (list (quote ~params)))))
                  [:defined :term (quote ~def-name)]))))))))
+
+;;{
+;; The next function implements the support of *implicit type parameters*.
+;;}
+
+(declare gen-type-parameters-defimplicit)
+
+(defn ^:no-doc def-kind-infos [def-kind]
+  (case def-kind
+    definition ["Definition" :definition]
+    defthm ["Theorem" :theorem]
+    deflemma ["Lemma" :lemma]
+    (throw (ex-info "Definition kind not supported." {:def-kind def-kind}))))
+
+(defn ^:no-doc handle-implicit-type-parameters
+  [def-kind def-name doc params body implicit-types explicit-def-name explicit-params]
+  (let [[def-kind-name def-kind-kw] (def-kind-infos def-kind)]
+    `(do
+       (~def-kind ^:no-doc ~explicit-def-name ~(str "This is an explicit variant of [[" def-name "]].") ~explicit-params ~body)
+       ~(gen-type-parameters-defimplicit def-name def-kind-name doc explicit-def-name implicit-types params explicit-params body)
+       (alter-meta! (var ~def-name) update-in [:arglists] (fn [_#] (list (quote ~params))))
+       [:declared ~def-kind-kw (quote ~explicit-def-name) :implicit (quote ~def-name)])))
 
 ;;{
 ;; The following function generates a `defimplicit` form that (if successful) synthesizes
@@ -401,12 +423,18 @@
   Otherwise the two forms are the same."
   [& args]
   (let [{thm-name :name doc :doc params :params body :body}
-        (conform-statement :lemma args)
-        [status result] (handle-statement :lemma thm-name params body)]
-    (if (= status :ko)
-      (throw (ex-info "Cannot declare lemma." result))
-      (let [metadata (statement-metadata :lemma doc params body)]
-        (define-statement! :lemma thm-name result metadata)))))
+        (conform-statement :lemma args)]
+    (if-let [res (u/fetch-implicit-type-parameters params)]
+      (handle-implicit-type-parameters 'deflemma thm-name doc params body
+                                       (:implicit-types res)
+                                       (symbol (str thm-name) "-thm")
+                                       (:new-params res))
+      ;; no implicit type parameters
+      (let [[status result] (handle-statement :lemma thm-name params body)]
+        (if (= status :ko)
+          (throw (ex-info "Cannot declare lemma." result))
+          (let [metadata (statement-metadata :lemma doc params body)]
+            (define-statement! :lemma thm-name result metadata)))))))
 
 ;;{
 ;; ### Axioms
