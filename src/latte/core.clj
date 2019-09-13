@@ -97,8 +97,6 @@
       (throw (ex-info "Cannot define term: syntax error."
                       {:explain (s/explain-str ::definition args)}))
       (let [{def-name :name doc :doc params :params body :body} conf-form]
-        (when (defenv/registered-definition? def-name)
-          (log/warn "Redefinition as term: " def-name))
         ;; handling of implicit parameter types
         (if-let [res (u/fetch-implicit-type-parameters params)]
           (let [{implicit-types :implicit-types new-params :new-params} res
@@ -107,11 +105,13 @@
                    (definition ~explicit-def-name ~(str "This is an explicit variant of [[" def-name "]].") ~new-params ~body)
                    ~(gen-type-parameters-defimplicit def-name "Definition" doc explicit-def-name implicit-types params new-params body)
                    (alter-meta! (var ~def-name) update-in [:arglists] (fn [_#] (list (quote ~params))))
-                   [:defined :term (quote ~def-name)]))
+                   [:defined :term (quote ~def-name) :explicit (quote ~explicit-def-name)]))
           ;; no implicit parmeter types from here...
           (let [[status definition] (handle-term-definition def-name params body)]
             (when (= status :ko)
               (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
+            (when (defenv/registered-definition? def-name)
+              (log/warn "Redefinition as term: " def-name))
             ;;{
             ;;  - Second, after some checks, we register the definition in the currently active namespace (i.e. `*ns*`).
             ;;}          
@@ -151,7 +151,7 @@
                                lt-clauses
                                (conj lt-clauses lt-clause))])) [implicit-types []] targs)]
     (when-not (empty? remaining-implicit-types)
-      (throw (ex-info "Unsolved implicit type parameters" {:definition def-name
+      (throw (ex-info "Unsolved implicit type parameters" {:statement def-name
                                                            :implicit-type-params implicit-types
                                                            :unsolved remaining-implicit-types})))
     `(defimplicit ~def-name
@@ -370,12 +370,22 @@
   namespace (i.e. it is a Clojure `def`)."
   [& args]
   (let [{thm-name :name doc :doc params :params body :body}
-        (conform-statement :theorem args)
-        [status result] (handle-statement :theorem thm-name params body)]
-    (if (= status :ko)
-      (throw (ex-info "Cannot declare theorem." result))
-      (let [metadata (statement-metadata :theorem doc params body)]
-        (define-statement! :theorem thm-name result metadata)))))
+        (conform-statement :theorem args)]
+            ;; handling of implicit parameter types
+    (if-let [res (u/fetch-implicit-type-parameters params)]
+      (let [{implicit-types :implicit-types new-params :new-params} res
+            explicit-thm-name (symbol (str thm-name "-thm"))]
+        `(do
+           (defthm ~explicit-thm-name ~(str "This is an explicit variant of [[" thm-name "]].") ~new-params ~body)
+           ~(gen-type-parameters-defimplicit thm-name "Theorem" doc explicit-thm-name implicit-types params new-params body)
+           (alter-meta! (var ~thm-name) update-in [:arglists] (fn [_#] (list (quote ~params))))
+           [:declared :theorem (quote ~explicit-thm-name) :implicit (quote ~thm-name)]))
+      ;; no implicit type parameters
+      (let [[status result] (handle-statement :theorem thm-name params body)]
+        (if (= status :ko)
+          (throw (ex-info "Cannot declare theorem." result))
+          (let [metadata (statement-metadata :theorem doc params body)]
+            (define-statement! :theorem thm-name result metadata)))))))
 
 ;;{
 ;; ### Lemmas
