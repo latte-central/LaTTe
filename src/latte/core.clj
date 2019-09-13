@@ -182,7 +182,6 @@
          (list (var ~explicit-def-name) ~@(concat implicit-types
                                                   (map first defparams)))))))
 
-
 ;;{
 ;; The following function parse a sequence of terms, the `params` (parameters),
 ;; using LaTTe *presyntax* (in namespace `latte-kernel.presyntax`).
