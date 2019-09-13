@@ -149,7 +149,7 @@
                         (u/fetch-implicit-type-parameter-handler itypes def-env-var ctx-var param)]
                     [itypes' (if (nil? lt-clause)
                                lt-clauses
-                               (conj lt-clauses lt-clause))])) [implicit-types []] targs)]
+                               (conj lt-clauses (first lt-clause) (second lt-clause)))])) [implicit-types []] targs)]
     (when-not (empty? remaining-implicit-types)
       (throw (ex-info "Unsolved implicit type parameters" {:statement def-name
                                                            :implicit-type-params implicit-types
@@ -157,7 +157,7 @@
     `(defimplicit ~def-name
        ~ndoc
        [~def-env-var ~ctx-var ~@defparams]
-       (let ~@lt-clauses
+       (let [~@lt-clauses]
          (list (var ~explicit-def-name) ~@(concat implicit-types
                                                   (map first defparams)))))))
 
