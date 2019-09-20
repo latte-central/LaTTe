@@ -1,0 +1,20 @@
+{:paths ["src"]
+ :deps
+ {org.clojure/clojure {:mvn/version "1.10.1"}
+  org.clojure/core.match {:mvn/version "0.3.0"}
+  digest {:mvn/version "1.4.9"}
+  com.taoensso/timbre {:mvn/version "4.10.0"}
+  latte-kernel {:mvn/version "1.0b4-SNAPSHOT"}}
+
+ :aliases
+ {:codox
+  {:extra-paths ["src" "codox"]
+   :main-opts ["-m" "codox"]
+   :extra-deps {codox {:mvn/version "0.10.7"}}}
+
+  :test
+  {:extra-paths ["test"]
+   :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-541"}}
+   :main-opts ["-m" "kaocha.runner"
+               "--reporter" "kaocha.report/documentation"
+               "--plugin" "kaocha.plugin/print-invocations"]}}}
