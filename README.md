@@ -15,19 +15,19 @@ http://latte-central.github.io/LaTTe/
 
 **LaTTe** : a Laboratory for Type Theory experiments (in clojure)
 
-[![Clojars Project](https://img.shields.io/clojars/v/latte.svg)](https://clojars.org/latte)
 
+[![CircleCI](https://circleci.com/gh/zampino/LaTTe/tree/depsify.svg?style=svg)](https://circleci.com/gh/zampino/LaTTe/tree/depsify) [![Clojars Project](https://img.shields.io/clojars/v/latte.svg)](https://clojars.org/latte)
 ## What?
 
 LaTTe is a **proof assistant library** based on type theory (a variant of
 λD as described in the book [Type theory and formal proof: an introduction](http://www.cambridge.org/fr/academic/subjects/computer-science/programming-languages-and-applied-logic/type-theory-and-formal-proof-introduction)).
 
  - **Hot!** Watch Latte *live* at: https://www.youtube.com/watch?v=5YTCY7wm0Nw
- 
+
  - **Sizzling!** A paper about LaTTe at the European Lisp Symposium, 2017:
-   https://github.com/latte-central/latte-ELS-2017 
+   https://github.com/latte-central/latte-ELS-2017
    [[PDF]](https://github.com/latte-central/latte-ELS-2017/blob/master/paper/latte-els-2017.pdf)
-   
+
  - **Blistering** LaTTe was in the [Hacker news!](https://news.ycombinator.com/item?id=18383654)
 
 The specific feature of LaTTe is its design as a library (unlike most proof assistant, generally designed as tools) tightly integrated with the Clojure language. It is of course fully implemented in Clojure, but most importantly all the definitional aspects of the assistant (definitions, theorem and axioms) are handled using Clojure namespaces, definitions and macros.
@@ -70,7 +70,7 @@ The proof of the theorem can be also constructed as a Clojure form:
 > assuming `A` holds, as an hypothesis named `x`
 > we can deduce `A` by `x`
 > hence `A` implies `A` as stated (QED).
-  
+
 Of course, all the proofs are *checked for correctness*. Without the introduction
  of an inconsistent axiom (and assuming the correctness of the implementation of the LaTTe kernel),
  *no mathematical inconsistency* can be introduced by the `proof` form.
@@ -85,13 +85,13 @@ Given the tight integration with the Clojure language, *existing* Clojure develo
  - There will be a *tutorial* at some point ...
 
  - The *reference documentation* is at: http://latte-central.github.io/LaTTe/
- 
-**Standard library** : 
- 
+
+**Standard library** :
+
  - The **prelude** library is at: https://github.com/latte-central/latte-prelude
- 
+
  - The **(typed) sets** library is at: https://github.com/latte-central/latte-sets
- 
+
  - The **integer arithmetic** library is at: https://github.com/latte-central/latte-integers
 
 (obviously more to come ...)
@@ -114,5 +114,18 @@ A few non-trivial formalizations have been conducted using LaTTe:
 
 Contributions such as mathematical content or enhancement/correction of the underlying machinery are very much welcomed.
 
+## Build
+
+Running Tests
+
+```
+clj -A:test
+```
+
+Building Documentation
+
+```
+clj -A:codox
+```
 ----
 Copyright (C) 2015-2018 Frederic Peschanski (MIT license, cf. `LICENSE`)
