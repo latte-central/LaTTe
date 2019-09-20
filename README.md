@@ -15,8 +15,8 @@ http://latte-central.github.io/LaTTe/
 
 **LaTTe** : a Laboratory for Type Theory experiments (in clojure)
 
-[![Clojars Project](https://img.shields.io/clojars/v/latte.svg)](https://clojars.org/latte)
 
+[![CircleCI](https://circleci.com/gh/zampino/LaTTe/tree/depsify.svg?style=svg)](https://circleci.com/gh/zampino/LaTTe/tree/depsify) [![Clojars Project](https://img.shields.io/clojars/v/latte.svg)](https://clojars.org/latte)
 ## What?
 
 LaTTe is a **proof assistant library** based on type theory (a variant of
