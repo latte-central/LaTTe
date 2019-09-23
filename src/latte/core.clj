@@ -101,6 +101,7 @@
         (if-let [res (u/fetch-implicit-type-parameters params)]
           (handle-implicit-type-parameters `definition def-name doc (:rest-params res) body
                                            (:implicit-types res)
+                                           (map first (:explicit-type-params res))
                                            (symbol (str def-name "-def"))
                                            (into [] (concat (:explicit-type-params res) (:rest-params res))))
           ;; no implicit parmeter types from here...
@@ -135,12 +136,14 @@
     (throw (ex-info "Definition kind not supported." {:def-kind def-kind}))))
 
 (defn ^:no-doc handle-implicit-type-parameters
-  [def-kind def-name doc params body implicit-types explicit-def-name explicit-params]
+  [def-kind def-name doc params body implicit-types implicit-types-params explicit-def-name explicit-params]
+  (println "implicit-types-params=" implicit-types-params)
+  (println "implicit-type=" implicit-types)
   (let [[def-kind-name def-kind-kw] (def-kind-infos def-kind)]
     `(do
        (~def-kind ~explicit-def-name ~(str "This is an explicit variant of [[" def-name "]].") ~explicit-params ~body)
        (alter-meta! (var ~explicit-def-name) update-in [:no-doc] (fn [_#] true))
-       ~(gen-type-parameters-defimplicit def-name def-kind-name doc explicit-def-name implicit-types params explicit-params body)
+       ~(gen-type-parameters-defimplicit def-name def-kind-name doc explicit-def-name implicit-types implicit-types-params params explicit-params body)
        (alter-meta! (var ~def-name) update-in [:arglists] (fn [_#] (list (quote ~params))))
        [:declared ~def-kind-kw (quote ~explicit-def-name) :implicit (quote ~def-name)])))
 
@@ -153,7 +156,7 @@
 
 (defn ^:no-doc gen-type-parameters-defimplicit
   "Generate the defimplicit for definitions with implicit type parameters."
-  [def-name def-kind doc explicit-def-name implicit-types real-params explicit-params body]
+  [def-name def-kind doc explicit-def-name implicit-types implicit-types-params real-params explicit-params body]
   (let [def-env-var (gensym "def-env")
         ctx-var (gensym "ctx")
         ndoc (mk-def-doc def-kind body doc)
@@ -179,7 +182,7 @@
        ~ndoc
        [~def-env-var ~ctx-var ~@defparams]
        (let [~@lt-clauses]
-         (list (var ~explicit-def-name) ~@(concat implicit-types
+         (list (var ~explicit-def-name) ~@(concat implicit-types-params
                                                   (map first defparams)))))))
 
 ;;{
@@ -395,6 +398,7 @@
     (if-let [res (u/fetch-implicit-type-parameters params)]
       (handle-implicit-type-parameters `defthm thm-name doc (:rest-params res) body
                                        (:implicit-types res)
+                                       (map first (:explicit-type-params res))
                                        (symbol (str thm-name "-thm"))
                                        (into [] (concat (:explicit-type-params res) (:rest-params res))))
       ;; no implicit type parameters
@@ -422,6 +426,7 @@
     (if-let [res (u/fetch-implicit-type-parameters params)]
       (handle-implicit-type-parameters `deflemma thm-name doc (:rest-params res) body
                                        (:implicit-types res)
+                                       (map first (:explicit-type-params res))
                                        (symbol (str thm-name "-lemma"))
                                        (into [] (concat (:explicit-type-params res) (:rest-params res))))
       ;; no implicit type parameters
@@ -472,6 +477,7 @@ In all cases the introduction of an axiom must be justified with strong
     (if-let [res (u/fetch-implicit-type-parameters params)]
       (handle-implicit-type-parameters `defaxiom thm-name doc (:rest-params res) body
                                        (:implicit-types res)
+                                       (map first (:explicit-type-params res))
                                        (symbol (str thm-name "-ax"))
                                        (into [] (concat (:explicit-type-params res) (:rest-params res))))
       ;; no implicit type parameters
