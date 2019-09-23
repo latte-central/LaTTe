@@ -393,10 +393,10 @@
         (conform-statement :theorem args)]
             ;; handling of implicit parameter types
     (if-let [res (u/fetch-implicit-type-parameters params)]
-      (handle-implicit-type-parameters `defthm thm-name doc params body
+      (handle-implicit-type-parameters `defthm thm-name doc (:rest-params res) body
                                        (:implicit-types res)
                                        (symbol (str thm-name "-thm"))
-                                       (:new-params res))
+                                       (into [] (concat (:explicit-type-params res) (:rest-params res))))
       ;; no implicit type parameters
       (let [[status result] (handle-statement :theorem thm-name params body)]
         (if (= status :ko)
@@ -420,10 +420,10 @@
   (let [{thm-name :name doc :doc params :params body :body}
         (conform-statement :lemma args)]
     (if-let [res (u/fetch-implicit-type-parameters params)]
-      (handle-implicit-type-parameters `deflemma thm-name doc params body
+      (handle-implicit-type-parameters `deflemma thm-name doc (:rest-params res) body
                                        (:implicit-types res)
                                        (symbol (str thm-name "-lemma"))
-                                       (:new-params res))
+                                       (into [] (concat (:explicit-type-params res) (:rest-params res))))
       ;; no implicit type parameters
       (let [[status result] (handle-statement :lemma thm-name params body)]
         (if (= status :ko)
@@ -470,10 +470,10 @@ In all cases the introduction of an axiom must be justified with strong
   (let [{thm-name :name doc :doc params :params body :body}
         (conform-statement :axiom args)]
     (if-let [res (u/fetch-implicit-type-parameters params)]
-      (handle-implicit-type-parameters `defaxiom thm-name doc params body
+      (handle-implicit-type-parameters `defaxiom thm-name doc (:rest-params res) body
                                        (:implicit-types res)
                                        (symbol (str thm-name "-ax"))
-                                       (:new-params res))
+                                       (into [] (concat (:explicit-type-params res) (:rest-params res))))
       ;; no implicit type parameters
       (let [[status result] (handle-statement :axiom thm-name params body)]
         (if (= status :ko)
