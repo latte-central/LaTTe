@@ -173,8 +173,8 @@
                                (conj lt-clauses (first lt-clause) (second lt-clause)))])) [implicit-types []] targs)]
     (when-not (empty? remaining-implicit-types)
       (throw (ex-info "Unsolved implicit type parameters" {:statement def-name
-                                                           :implicit-type-params implicit-types
-                                                           :unsolved remaining-implicit-types})))
+                                                           :implicit-type-params (into #{} (map #(symbol (str "?" (name %))) implicit-types))
+                                                           :unsolved (into #{} (map #(symbol (str "?" (name %))) remaining-implicit-types))})))
     `(defimplicit ~def-name
        ~ndoc
        [~def-env-var ~ctx-var ~@defparams]
