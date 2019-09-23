@@ -99,10 +99,10 @@
       (let [{def-name :name doc :doc params :params body :body} conf-form]
         ;; handling of implicit parameter types
         (if-let [res (u/fetch-implicit-type-parameters params)]
-          (handle-implicit-type-parameters `definition def-name doc params body
+          (handle-implicit-type-parameters `definition def-name doc (:rest-params res) body
                                            (:implicit-types res)
                                            (symbol (str def-name "-def"))
-                                           (:new-params res))
+                                           (into [] (concat (:explicit-type-params res) (:rest-params res))))
           ;; no implicit parmeter types from here...
           (let [[status definition] (handle-term-definition def-name params body)]
             (when (= status :ko)

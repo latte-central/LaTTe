@@ -3,7 +3,8 @@
   (:require [clojure.string :as str]
             [clojure.walk :as w]
             [latte-kernel.defenv :as defenv]
-            [latte-kernel.norm :as norm]))
+            [latte-kernel.norm :as norm]
+            [latte-kernel.presyntax :as stx]))
 
 
 ;; decomposer (rebindable) parameters
@@ -95,27 +96,33 @@ is sometimes required to handle it transparently. This function
 (defn fetch-implicit-type-parameters
   "Fetch the implicit parameters in the `params` (parameters) list."
   [params]
-  (let [+itypes+ (atom (sorted-set))
-        params' (w/postwalk (fn [x]
-                              (if (implicit-type-parameter? x)
-                                (do (swap! +itypes+ (fn [tys] (conj tys (explicit-type-name x))))
-                                    (explicit-type-name x))
-                                x)) params)]
-    (if (empty? @+itypes+)
+  (let [[implicit-types explicit-type-params rest-params _] 
+        (reduce (fn [[itypes eparams rparams finished] [pname ptype]]
+                  (if (implicit-type-parameter? pname)
+                    (if finished
+                      (throw (ex-info "Implicit parameters must be at the front of parameters list." {:param pname}))
+                      (if (stx/type? ptype)
+                        (let [ename (explicit-type-name pname)]
+                          [(conj itypes ename) (conj eparams [ename ptype]) rparams finished])
+                        (throw (ex-info "Implicit parameter must be a type." {:param pname
+                                                                              :param-type ptype}))))
+                    ;; not an implicit type parameter, we're finished (and checking for misplaced implicit type params)
+                    [itypes eparams (conj rparams [pname ptype]) true]))
+                [#{} [] [] false] params)]
+    (if (empty? implicit-types)
       nil
-      {:implicit-types @+itypes+
-       :new-params (into [] (concat (map (fn [ty] [(explicit-type-name ty) :type]) @+itypes+)
-                                    params'))
-       })))
+      {:implicit-types implicit-types
+       :explicit-type-params explicit-type-params
+       :rest-params rest-params})))
 
 ;; (fetch-implicit-type-parameters '[[T :type] [U :type] [R (rel T U)]])
 ;; => nil
 
-;; (fetch-implicit-type-parameters '[[U :type] [R (rel ?T U)]])
-;; => {:implicit-types #{T}, :new-params [[T :type] [U :type] [R (rel T U)]]}
+;; (fetch-implicit-type-parameters '[[?T :type] [U :type] [R (rel T U)]])
+;; => {:implicit-types #{T}, :explicit-type-params [[T :type]], :rest-params [[U :type] [R (rel T U)]]}
 
-;; (fetch-implicit-type-parameters '[[R (rel ?T ?U)]])
-;; => {:implicit-types #{T U}, :new-params [[T :type] [U :type] [R (rel T U)]]}
+(fetch-implicit-type-parameters '[[?T :type] [?U :type] [R (rel T U)]])
+;; => {:implicit-types #{U T}, :explicit-type-params [[T :type] [U :type]], :rest-params [[R (rel T U)]]}
 
 (defonce +implicit-type-parameters-handlers+ (atom {}))
 
