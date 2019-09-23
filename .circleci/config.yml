@@ -1,0 +1,9 @@
+version: 2
+jobs:
+  build:
+    working_directory: ~/LaTTe
+    docker:
+      - image: circleci/clojure:openjdk-11-tools-deps-1.10.0.442
+    steps:
+      - checkout
+      - run: clojure -A:test

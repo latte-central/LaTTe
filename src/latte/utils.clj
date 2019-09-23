@@ -117,10 +117,7 @@ is sometimes required to handle it transparently. This function
 ;; (fetch-implicit-type-parameters '[[R (rel ?T ?U)]])
 ;; => {:implicit-types #{T U}, :new-params [[T :type] [U :type] [R (rel T U)]]}
 
-(def +implicit-type-parameters-handlers+ 
-  #_(atom {})
-  (atom {'rel ['fetch-rel-type 2]})
-  )
+(defonce +implicit-type-parameters-handlers+ (atom {}))
 
 (defn register-implicit-type-parameters-handler!
   [keysym handler-fn arity]
@@ -141,12 +138,15 @@ is sometimes required to handle it transparently. This function
                        [(disj itypes param) (conj ltparams param)]
                        [itypes (conj ltparams '_)])) [implicit-types []] (rest param-ty))
            lt-expr (list handler-fn def-env-var ctx-var param-var)]
-       (when (not= (count lt-params) arity)
+       (when (and arity (not= (count lt-params) arity))
          (throw (ex-info "Wrong arity for implicit type parameter handling" {:expected-arity arity
                                                                              :parameter-type param-ty})))
        [implicit-types' (if (= implicit-types' implicit-types)
                           nil
-                          [lt-params lt-expr])])
+                          [(if (= (count lt-params) 1)
+                             (first lt-params)
+                             lt-params)
+                           lt-expr])])
      ;; we don't have a handler
      [implicit-types nil])))
 
@@ -183,3 +183,11 @@ is sometimes required to handle it transparently. This function
 ;;  'R-term '(rel T U V))
 ;; => Wrong arity for implicit type parameter handling
 ;;    {:expected-arity 2, :parameter-type (rel T U V)}
+
+;; (fetch-implicit-type-parameter-handler
+;;  {'set ['fetch-set-type 1]}
+;;  '#{T}
+;;  'def-env
+;;  'ctx
+;;  'R-term '(set T))
+;; => [#{} [T (fetch-set-type def-env ctx R-term)]]
