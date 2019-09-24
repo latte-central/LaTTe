@@ -4,7 +4,7 @@
   org.clojure/core.match {:mvn/version "0.3.0"}
   digest {:mvn/version "1.4.9"}
   com.taoensso/timbre {:mvn/version "4.10.0"}
-  latte-kernel {:mvn/version "1.0b4-SNAPSHOT"}}
+  latte-kernel {:mvn/version "1.0b5-SNAPSHOT"}}
 
  :aliases
  {:codox
