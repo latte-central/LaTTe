@@ -20,6 +20,7 @@
             [latte-kernel.defenv :as defenv]
             [latte-kernel.proof :as p]
             [latte.utils :as u]
+            [latte.parse :as parse]
             [latte.certify :as cert]))
 
 ;;{
@@ -92,11 +93,11 @@
   ;;{
   ;;  - First, we check the arguments syntax according to the spec grammar.
   ;;}
-  (let [conf-form (s/conform ::definition args)]
-    (if (= conf-form :clojure.spec.alpha/invalid)
-      (throw (ex-info "Cannot define term: syntax error."
-                      {:explain (s/explain-str ::definition args)}))
-      (let [{def-name :name doc :doc params :params body :body} conf-form]
+  (let [[status msg infos] (parse/parse-definition args)]
+    (if (= status :ko)
+      (throw (ex-info (str "Cannot define term: " msg)
+                      infos))
+      (let [{def-name :def-name doc :def-doc params :params body :body} infos]
         ;; handling of implicit parameter types
         (if-let [res (u/fetch-implicit-type-parameters params)]
           (handle-implicit-type-parameters `definition def-name doc (:rest-params res) body
