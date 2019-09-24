@@ -7,7 +7,7 @@
 ;;}
 
 (ns latte.parse
-  (:require [latte-kernel.presyntax :as stx]))
+  )
 
 (declare check-def-name
          parse-def-params)
@@ -31,8 +31,8 @@
                            (second args))
                   [status def-params infos] (parse-def-params params)]
               (if (= status :ko)
-                [:ko "Cannot parse parameter list" {:def-params def-name
-                                                    :cause [def-params infos]}]
+                [:ko "Cannot parse parameter list" {:def-name def-name
+                                                    :from (assoc infos :msg def-params)}]
                 (if (or (and def-doc (> (count args) 4))
                         (and (nil? def-doc) (> (count args) 3)))
                   [:ko "Too many arguments for definition." {:def-name def-name
@@ -77,7 +77,11 @@
           :else ;; type part
           (recur (rest params) nil (conj def-params [pname (first params)])))
         ;; no more parameters
-        [:ok def-params nil]))))
+        (if (not (nil? pname))
+          [:ko "Parameter is without a type." {:param-name pname}]
+          [:ok def-params nil])))))
+
+
 
 
                

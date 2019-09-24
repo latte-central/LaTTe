@@ -39,6 +39,10 @@
                                                 :cause ["Parameter must be a pair `[name type]`."
                                                         {:param [U :type 42]}]}]))
     
+    (is (= (parse-definition ['dname "dummy def" '[[T :type]  [U :type] V] '(==> T U :type)])
+           '[:ko "Cannot parse parameter list" {:def-params dname, 
+                                                :cause ["Parameter is without a type." {:param-name V}]}]))
+
     ))
 
 
