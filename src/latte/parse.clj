@@ -9,6 +9,8 @@
 (ns latte.parse
   (:require [latte-kernel.presyntax :as stx]))
 
+(declare check-def-name
+         parse-def-params)
 
 (defn parse-definition [args]
   (if (< (count args) 3)
@@ -18,8 +20,67 @@
       (if (= status :ko)
         [status msg infos]
         (let [def-doc (if (string? (second args))
-                        )])
+                        (second args)
+                        nil)]
+          (if (and def-doc
+                   (< (count args) 4))
+            [:ko "Definition form (with docstring) requires at least 4 arguments." {:def-name def-name
+                                                                                    :nb-args (count args)}]
+            (let [params (if def-doc
+                           (nth args 2)
+                           (second args))
+                  [status def-params infos] (parse-def-params params)]
+              (if (= status :ko)
+                [:ko "Cannot parse parameter list" {:def-params def-name
+                                                    :cause [def-params infos]}]
+                (if (or (and def-doc (> (count args) 4))
+                        (and (nil? def-doc) (> (count args) 3)))
+                  [:ko "Too many arguments for definition." {:def-name def-name
+                                                             :nb-args (count args)
+                                                             :garbage (drop 4 args)}]
+                  ;; everything's fine
+                  [:ok "" {:def-name def-name
+                           :def-doc def-doc
+                           :params def-params
+                           :body (if def-doc
+                                   (nth args 3)
+                                   (nth args 2))}])))))))))
 
+(defn check-def-name [name]
+  (if (symbol? name)
+    [:ok name nil]
+    [:ko "Definition name must be a symbol." {:name name}]))
+
+(defn parse-def-params [params]
+  (if (not (vector? params))
+    [:ko "Parameters must be specifed as a vector." {:params params}]
+    (loop [params params, pname nil, def-params []]
+      (if (seq params)
+        (cond
+          (vector? (first params))
+          (let [param (first params)]
+            (cond
+              (not (nil? pname)) 
+              [:ko "Expecting a parameter type, not a pair." {:param-name pname
+                                                              :param-type param}]
+              (not= (count param) 2)
+              [:ko "Parameter must be a pair `[name type]`." {:param param}]
+              (not= (symbol? (first param)))
+              [:ko "Parameter name must be a symbol." {:param param}]
+              :else
+              (recur (rest params) nil (conj def-params param))))
+          ;; a non-vector parameter
+          (nil? pname)
+          (if (not (symbol? (first params)))
+            [:ko "Expecting a parameter name as a symbol." {:param (first params)}]
+            (recur (rest params) (first params) def-params))
+          :else ;; type part
+          (recur (rest params) nil (conj def-params [pname (first params)])))
+        ;; no more parameters
+        [:ok def-params nil]))))
+
+
+               
 
 
 
