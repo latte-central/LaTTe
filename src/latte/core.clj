@@ -97,7 +97,7 @@
     (if (= status :ko)
       (throw (ex-info (str "Cannot define term: " msg)
                       infos))
-      (let [{def-name :def-name doc :doc params :params body :body} infos]
+      (let [{def-name :name doc :doc params :params body :body} infos]
         ;; handling of implicit parameter types
         (if-let [res (u/fetch-implicit-type-parameters params)]
           (handle-implicit-type-parameters `definition def-name doc (:rest-params res) body
@@ -278,16 +278,10 @@
 
 (defn ^:no-doc conform-statement
   [category args]
-  (let [spec (case category
-               :theorem ::theorem
-               :lemma ::theorem  ;; XXX: same spec
-               :axiom ::axiom
-               (throw (ex-info "Cannot check conformance: not a statement category (please report)" {:category category})))
-        conf-form (s/conform spec args)]
-    (if (= conf-form :clojure.spec.alpha/invalid)
-      (throw (ex-info (str "Cannot declare " (name category) ": syntax error.")
-                      {:explain (s/explain-str spec args)}))
-      conf-form)))
+  (let [[status msg infos] (parse/parse-definition category args)]
+    (if (= status :ko)
+      (throw (ex-info (str "Cannot declare " (name category) ": " msg) infos))
+      infos)))
 
 ;;{
 ;; Now the maing handling of theorem-like statements is with the following function,

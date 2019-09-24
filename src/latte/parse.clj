@@ -13,12 +13,12 @@
          parse-def-params)
 
 (defn parse-definition [def-kind args]
-  (let [[def-Descr def-descr def-name-kw] (case def-kind
-                                            :definition ["Definition" "definition" :def-name]
-                                            :theorem ["Theorem" "theorem" :thm-name]
-                                            :lemma ["Lemma" "lemma" :lem-name]
-                                            :axiom ["Axiom" "axiom" :ax-name]
-                                            (throw (ex-info "No such definition kind." {:def-kind def-kind})))]
+  (let [[def-Descr def-descr] (case def-kind
+                                :definition ["Definition" "definition"]
+                                :theorem ["Theorem" "theorem"]
+                                :lemma ["Lemma" "lemma"]
+                                :axiom ["Axiom" "axiom"]
+                                (throw (ex-info "No such definition kind." {:def-kind def-kind})))]
     (if (< (count args) 3)
       [:ko (str def-Descr " form requires at least 3 arguments.") {:nb-args (count args)}]
       (let [def-name (first args)
@@ -31,22 +31,22 @@
             (if (and def-doc
                      (< (count args) 4))
               [:ko (str def-Descr " form (with docstring) requires at least 4 arguments.") 
-               {def-name-kw def-name
+               {:name def-name
                 :nb-args (count args)}]
               (let [params (if def-doc
                              (nth args 2)
                              (second args))
                     [status def-params infos] (parse-def-params params)]
                 (if (= status :ko)
-                  [:ko "Cannot parse parameter list" {def-name-kw def-name
+                  [:ko "Cannot parse parameter list" {:name def-name
                                                       :from (assoc infos :msg def-params)}]
                   (if (or (and def-doc (> (count args) 4))
                           (and (nil? def-doc) (> (count args) 3)))
-                    [:ko (str "Too many arguments for " def-descr ".")  {def-name-kw def-name
+                    [:ko (str "Too many arguments for " def-descr ".")  {:name def-name
                                                                          :nb-args (count args)
                                                                          :garbage (drop 4 args)}]
                     ;; everything's fine
-                    [:ok "" {def-name-kw def-name
+                    [:ok "" {:name def-name
                              :doc def-doc
                              :params def-params
                              :body (if def-doc
