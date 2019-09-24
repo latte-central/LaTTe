@@ -137,8 +137,6 @@
 
 (defn ^:no-doc handle-implicit-type-parameters
   [def-kind def-name doc params body implicit-types implicit-types-params explicit-def-name explicit-params]
-  (println "implicit-types-params=" implicit-types-params)
-  (println "implicit-type=" implicit-types)
   (let [[def-kind-name def-kind-kw] (def-kind-infos def-kind)]
     `(do
        (~def-kind ~explicit-def-name ~(str "This is an explicit variant of [[" def-name "]].") ~explicit-params ~body)
