@@ -93,11 +93,11 @@
   ;;{
   ;;  - First, we check the arguments syntax according to the spec grammar.
   ;;}
-  (let [[status msg infos] (parse/parse-definition args)]
+  (let [[status msg infos] (parse/parse-definition :definition args)]
     (if (= status :ko)
       (throw (ex-info (str "Cannot define term: " msg)
                       infos))
-      (let [{def-name :def-name doc :def-doc params :params body :body} infos]
+      (let [{def-name :def-name doc :doc params :params body :body} infos]
         ;; handling of implicit parameter types
         (if-let [res (u/fetch-implicit-type-parameters params)]
           (handle-implicit-type-parameters `definition def-name doc (:rest-params res) body
