@@ -99,10 +99,11 @@
       (let [{def-name :name doc :doc params :params body :body} conf-form]
         ;; handling of implicit parameter types
         (if-let [res (u/fetch-implicit-type-parameters params)]
-          (handle-implicit-type-parameters `definition def-name doc params body
+          (handle-implicit-type-parameters `definition def-name doc (:rest-params res) body
                                            (:implicit-types res)
+                                           (map first (:explicit-type-params res))
                                            (symbol (str def-name "-def"))
-                                           (:new-params res))
+                                           (into [] (concat (:explicit-type-params res) (:rest-params res))))
           ;; no implicit parmeter types from here...
           (let [[status definition] (handle-term-definition def-name params body)]
             (when (= status :ko)
@@ -135,12 +136,12 @@
     (throw (ex-info "Definition kind not supported." {:def-kind def-kind}))))
 
 (defn ^:no-doc handle-implicit-type-parameters
-  [def-kind def-name doc params body implicit-types explicit-def-name explicit-params]
+  [def-kind def-name doc params body implicit-types implicit-types-params explicit-def-name explicit-params]
   (let [[def-kind-name def-kind-kw] (def-kind-infos def-kind)]
     `(do
        (~def-kind ~explicit-def-name ~(str "This is an explicit variant of [[" def-name "]].") ~explicit-params ~body)
        (alter-meta! (var ~explicit-def-name) update-in [:no-doc] (fn [_#] true))
-       ~(gen-type-parameters-defimplicit def-name def-kind-name doc explicit-def-name implicit-types params explicit-params body)
+       ~(gen-type-parameters-defimplicit def-name def-kind-name doc explicit-def-name implicit-types implicit-types-params params explicit-params body)
        (alter-meta! (var ~def-name) update-in [:arglists] (fn [_#] (list (quote ~params))))
        [:declared ~def-kind-kw (quote ~explicit-def-name) :implicit (quote ~def-name)])))
 
@@ -153,7 +154,7 @@
 
 (defn ^:no-doc gen-type-parameters-defimplicit
   "Generate the defimplicit for definitions with implicit type parameters."
-  [def-name def-kind doc explicit-def-name implicit-types real-params explicit-params body]
+  [def-name def-kind doc explicit-def-name implicit-types implicit-types-params real-params explicit-params body]
   (let [def-env-var (gensym "def-env")
         ctx-var (gensym "ctx")
         ndoc (mk-def-doc def-kind body doc)
@@ -173,13 +174,13 @@
                                (conj lt-clauses (first lt-clause) (second lt-clause)))])) [implicit-types []] targs)]
     (when-not (empty? remaining-implicit-types)
       (throw (ex-info "Unsolved implicit type parameters" {:statement def-name
-                                                           :implicit-type-params implicit-types
-                                                           :unsolved remaining-implicit-types})))
+                                                           :implicit-type-params (into #{} (map #(symbol (str "?" (name %))) implicit-types))
+                                                           :unsolved (into #{} (map #(symbol (str "?" (name %))) remaining-implicit-types))})))
     `(defimplicit ~def-name
        ~ndoc
        [~def-env-var ~ctx-var ~@defparams]
        (let [~@lt-clauses]
-         (list (var ~explicit-def-name) ~@(concat implicit-types
+         (list (var ~explicit-def-name) ~@(concat implicit-types-params
                                                   (map first defparams)))))))
 
 ;;{
@@ -393,10 +394,11 @@
         (conform-statement :theorem args)]
             ;; handling of implicit parameter types
     (if-let [res (u/fetch-implicit-type-parameters params)]
-      (handle-implicit-type-parameters `defthm thm-name doc params body
+      (handle-implicit-type-parameters `defthm thm-name doc (:rest-params res) body
                                        (:implicit-types res)
+                                       (map first (:explicit-type-params res))
                                        (symbol (str thm-name "-thm"))
-                                       (:new-params res))
+                                       (into [] (concat (:explicit-type-params res) (:rest-params res))))
       ;; no implicit type parameters
       (let [[status result] (handle-statement :theorem thm-name params body)]
         (if (= status :ko)
@@ -420,10 +422,11 @@
   (let [{thm-name :name doc :doc params :params body :body}
         (conform-statement :lemma args)]
     (if-let [res (u/fetch-implicit-type-parameters params)]
-      (handle-implicit-type-parameters `deflemma thm-name doc params body
+      (handle-implicit-type-parameters `deflemma thm-name doc (:rest-params res) body
                                        (:implicit-types res)
+                                       (map first (:explicit-type-params res))
                                        (symbol (str thm-name "-lemma"))
-                                       (:new-params res))
+                                       (into [] (concat (:explicit-type-params res) (:rest-params res))))
       ;; no implicit type parameters
       (let [[status result] (handle-statement :lemma thm-name params body)]
         (if (= status :ko)
@@ -470,10 +473,11 @@ In all cases the introduction of an axiom must be justified with strong
   (let [{thm-name :name doc :doc params :params body :body}
         (conform-statement :axiom args)]
     (if-let [res (u/fetch-implicit-type-parameters params)]
-      (handle-implicit-type-parameters `defaxiom thm-name doc params body
+      (handle-implicit-type-parameters `defaxiom thm-name doc (:rest-params res) body
                                        (:implicit-types res)
+                                       (map first (:explicit-type-params res))
                                        (symbol (str thm-name "-ax"))
-                                       (:new-params res))
+                                       (into [] (concat (:explicit-type-params res) (:rest-params res))))
       ;; no implicit type parameters
       (let [[status result] (handle-statement :axiom thm-name params body)]
         (if (= status :ko)

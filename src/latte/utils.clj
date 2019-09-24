@@ -3,7 +3,9 @@
   (:require [clojure.string :as str]
             [clojure.walk :as w]
             [latte-kernel.defenv :as defenv]
-            [latte-kernel.norm :as norm]))
+            [latte-kernel.norm :as norm]
+            [latte-kernel.presyntax :as stx]
+            [latte-kernel.typing :as ty]))
 
 
 ;; decomposer (rebindable) parameters
@@ -95,27 +97,33 @@ is sometimes required to handle it transparently. This function
 (defn fetch-implicit-type-parameters
   "Fetch the implicit parameters in the `params` (parameters) list."
   [params]
-  (let [+itypes+ (atom (sorted-set))
-        params' (w/postwalk (fn [x]
-                              (if (implicit-type-parameter? x)
-                                (do (swap! +itypes+ (fn [tys] (conj tys (explicit-type-name x))))
-                                    (explicit-type-name x))
-                                x)) params)]
-    (if (empty? @+itypes+)
+  (let [[implicit-types explicit-type-params rest-params _] 
+        (reduce (fn [[itypes eparams rparams finished] [pname ptype]]
+                  (if (implicit-type-parameter? pname)
+                    (if finished
+                      (throw (ex-info "Implicit parameters must be at the front of parameters list." {:param pname}))
+                      (if (stx/type? ptype)
+                        (let [ename (explicit-type-name pname)]
+                          [(conj itypes ename) (conj eparams [ename ptype]) rparams finished])
+                        (throw (ex-info "Implicit parameter must be a type." {:param pname
+                                                                              :param-type ptype}))))
+                    ;; not an implicit type parameter, we're finished (and checking for misplaced implicit type params)
+                    [itypes eparams (conj rparams [pname ptype]) true]))
+                [#{} [] [] false] params)]
+    (if (empty? implicit-types)
       nil
-      {:implicit-types @+itypes+
-       :new-params (into [] (concat (map (fn [ty] [(explicit-type-name ty) :type]) @+itypes+)
-                                    params'))
-       })))
+      {:implicit-types implicit-types
+       :explicit-type-params explicit-type-params
+       :rest-params rest-params})))
 
 ;; (fetch-implicit-type-parameters '[[T :type] [U :type] [R (rel T U)]])
 ;; => nil
 
-;; (fetch-implicit-type-parameters '[[U :type] [R (rel ?T U)]])
-;; => {:implicit-types #{T}, :new-params [[T :type] [U :type] [R (rel T U)]]}
+;; (fetch-implicit-type-parameters '[[?T :type] [U :type] [R (rel T U)]])
+;; => {:implicit-types #{T}, :explicit-type-params [[T :type]], :rest-params [[U :type] [R (rel T U)]]}
 
-;; (fetch-implicit-type-parameters '[[R (rel ?T ?U)]])
-;; => {:implicit-types #{T U}, :new-params [[T :type] [U :type] [R (rel T U)]]}
+(fetch-implicit-type-parameters '[[?T :type] [?U :type] [R (rel T U)]])
+;; => {:implicit-types #{U T}, :explicit-type-params [[T :type] [U :type]], :rest-params [[R (rel T U)]]}
 
 (defonce +implicit-type-parameters-handlers+ (atom {}))
 
@@ -123,11 +131,25 @@ is sometimes required to handle it transparently. This function
   [keysym handler-fn arity]
   (swap! +implicit-type-parameters-handlers+ (fn [old] (assoc old keysym [handler-fn arity]))))
 
+
+(defn fetch-atomic-implicit-type-parameter
+  [def-env ctx term]
+  (let [[status ty] (ty/type-of def-env ctx term)]
+    (if (= status :ok)
+      ty
+      (throw (ex-info "Cannot fetch implicit type" {:term term
+                                                    :cause ty})))))
+
 (defn fetch-implicit-type-parameter-handler
   ([implicit-types def-env-var ctx-var [param-var param-ty]]
    (fetch-implicit-type-parameter-handler @+implicit-type-parameters-handlers+ implicit-types def-env-var ctx-var param-var param-ty))
   ([handlers implicit-types def-env-var ctx-var param-var param-ty]
-   (if-let [[handler-fn arity] 
+   ;; atomic type
+   (if (and (symbol? param-ty)
+            (contains? implicit-types param-ty))
+     [(disj implicit-types param-ty) [param-ty (list `fetch-atomic-implicit-type-parameter def-env-var ctx-var param-var)]]
+     ;; compound type
+     (if-let [[handler-fn arity] 
             (and (sequential? param-ty)
                  (>= (count param-ty) 1)
                  (get handlers (first param-ty)))]
@@ -148,7 +170,16 @@ is sometimes required to handle it transparently. This function
                              lt-params)
                            lt-expr])])
      ;; we don't have a handler
-     [implicit-types nil])))
+     [implicit-types nil]))))
+
+
+;; (fetch-implicit-type-parameter-handler
+;;  {'rel ['fetch-rel-type 2]}
+;;  '#{T}
+;;  'def-env
+;;  'ctx
+;;  'R-term 'T)
+;; => [#{} [T (latte.utils/fetch-atomic-implicit-type-parameter def-env ctx R-term)]]
 
 
 ;; (fetch-implicit-type-parameter-handler
