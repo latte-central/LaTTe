@@ -70,12 +70,22 @@
               (not (nil? pname)) 
               [:ko "Expecting a parameter type, not a pair." {:param-name pname
                                                               :param-type param}]
-              (not= (count param) 2)
-              [:ko "Parameter must be a pair `[name type]`." {:param param}]
-              (not= (symbol? (first param)))
-              [:ko "Parameter name must be a symbol." {:param param}]
+              (< (count param) 2)
+              [:ko "Wrong parameter syntax." {:param param}]
               :else
-              (recur (rest params) nil (conj def-params param))))
+              (let [ptype (last param)
+                    [status msg res]
+                    (loop [names (butlast param), nparams def-params]
+                      (if (seq names)
+                        (if (not (symbol? (first names)))
+                          [:ko "Parameter name must be a symbol." {:param param
+                                                                   :name (first names)}]
+                          (recur (rest names) (conj nparams [(first names) ptype])))
+                        ;; no more names
+                        [:ok "" nparams]))]
+                (if (= status :ko)
+                  [:ko msg res]
+                  (recur (rest params) nil res)))))
           ;; a non-vector parameter
           (nil? pname)
           (if (not (symbol? (first params)))

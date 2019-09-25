@@ -33,7 +33,10 @@
            '[:ok "" {:name dname, :doc "dummy def", :params [[T :type] [U :type]], :body (==> T U :type)}]))
 
     (is (= (parse-definition :definition ['dname "dummy def" '[[T :type]  [U :type 42]] '(==> T U :type)])
-           '[:ko "Cannot parse parameter list" {:name dname, :from {:param [U :type 42], :msg "Parameter must be a pair `[name type]`."}}]))
+           '[:ko "Cannot parse parameter list" {:name dname, :from {:param [U :type 42], :name :type, :msg "Parameter name must be a symbol."}}]))
+
+    (is (= (parse-definition :definition ['dname "dummy def" '[[T :type]  [U V W :type]] '(==> T U V W :type)])
+           '[:ok "" {:name dname, :doc "dummy def", :params [[T :type] [U :type] [V :type] [W :type]], :body (==> T U V W :type)}]))
     
     (is (= (parse-definition :definition ['dname "dummy def" '[[T :type]  [U :type] V] '(==> T U :type)])
            '[:ko "Cannot parse parameter list" {:name dname, :from {:param-name V, :msg "Parameter is without a type."}}]))
