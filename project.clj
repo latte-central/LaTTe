@@ -7,7 +7,7 @@
                  [org.clojure/core.match "0.3.0"]
                  [digest "1.4.9"]
                  [com.taoensso/timbre "4.10.0"]
-                 [latte-kernel "1.0b5-SNAPSHOT"]]
+                 [latte-kernel "1.0b6-SNAPSHOT"]]
   :codox {:output-path "docs"
           :metadata {:doc/format :markdown}
           :namespaces [latte.core]}
