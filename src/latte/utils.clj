@@ -133,12 +133,14 @@ is sometimes required to handle it transparently. This function
 
 
 (defn fetch-atomic-implicit-type-parameter
-  [def-env ctx term]
-  (let [[status ty] (ty/type-of def-env ctx term)]
+  [def-env ctx ty]
+  ty
+  #_(let [[status ty] (ty/type-of def-env ctx term)]
     (if (= status :ok)
       ty
       (throw (ex-info "Cannot fetch implicit type" {:term term
-                                                    :cause ty})))))
+                                                    :cause ty}))))
+  )
 
 (defn fetch-implicit-type-parameter-handler
   ([implicit-types def-env-var ctx-var [param-var param-ty]]
