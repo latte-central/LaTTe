@@ -127,10 +127,24 @@ is sometimes required to handle it transparently. This function
 
 (defonce +implicit-type-parameters-handlers+ (atom {}))
 
+(defn fully-qualified-symbol 
+  ([sym] (fully-qualified-symbol *ns* sym))
+  ([ns sym] (symbol (str (ns-name ns) "/" sym))))
+
+;; (fully-qualified-symbol 'test)
+;; => latte.utils/test
+
+;; (fully-qualified-symbol (the-ns 'latte-kernel.norm) 'test)
+;; => latte-kernel.norm/test
+
 (defn register-implicit-type-parameters-handler!
   [keysym handler-fn arity]
-  (swap! +implicit-type-parameters-handlers+ (fn [old] (assoc old keysym [handler-fn arity]))))
-
+  (swap! +implicit-type-parameters-handlers+ 
+         (fn [old] (assoc old 
+                          (or (resolve keysym)
+                              keysym) [handler-fn arity]
+                          ;; (fully-qualified-symbol keysym) [handler-fn arity]
+                          ))))
 
 (defn fetch-atomic-implicit-type-parameter
   [def-env ctx ty]
@@ -154,7 +168,9 @@ is sometimes required to handle it transparently. This function
      (if-let [[handler-fn arity] 
             (and (sequential? param-ty)
                  (>= (count param-ty) 1)
-                 (get handlers (first param-ty)))]
+                 (let [search-key (or (resolve (first param-ty))
+                                      (first param-ty))]
+                   (get handlers search-key)))]
      ;; we have a handler
      (let [[implicit-types' lt-params]
            (reduce (fn [[itypes ltparams] param]
