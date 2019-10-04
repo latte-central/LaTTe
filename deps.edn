@@ -4,7 +4,8 @@
   org.clojure/core.match {:mvn/version "0.3.0"}
   digest {:mvn/version "1.4.9"}
   com.taoensso/timbre {:mvn/version "4.10.0"}
-  latte-kernel {:mvn/version "1.0b7-SNAPSHOT"}}
+  latte-kernel {:git/url "https://github.com/latte-central/latte-kernel.git"
+                :sha "b2a4a6245465fe26aad2f47512d68c7db566ddd4"}}
 
  :aliases
  {:codox
