@@ -32,6 +32,14 @@ else
     echo "Kernel not found, skipping"
 fi
 
+echo "\nLaTTe (main)"
+echo "-------------"
+
+echo " ==> Updating repository"
+git pull "$DEVREPO" "$DEVBRANCH"
+echo " ==> Installing LaTTe"
+lein install
+
 echo "\nLaTTe prelude"
 echo "--------------"
 
@@ -64,13 +72,7 @@ else
     echo "Latte-sets not found, skipping"
 fi
 
-echo "\nLaTTe (main)"
-echo "-------------"
 
-echo " ==> Updating repository"
-git pull "$DEVREPO" "$DEVBRANCH"
-echo " ==> Installing LaTTe"
-lein install
-
+echo "==========================="
 echo "\n LaTTe ready for hacking!"
 
