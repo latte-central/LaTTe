@@ -19,7 +19,12 @@
   (println "  :axioms  [namespaces] | list all axioms in `namespaces`, or in whole" library-name "library if not specified")
   (println "  :help                 | this message"))
 
+(defn require-all! [namespaces]
+  (doseq [namesp namespaces]
+         (require namesp)))
+
 (defn run-certify! [library-name namespaces]
+  (require-all! namespaces)
   (cert/certify-library! library-name namespaces))
 
 (defn run-clear-cert! []
@@ -27,6 +32,7 @@
 
 (defn run-axioms! [args namespaces]
   ;; TODO: take args into account
+  (require-all! namespaces)
   (let [axiom-map (into {} (map (fn [namesp]
                                   [namesp (map first (:axioms (u/fetch-ns-elements (the-ns namesp))))]) namespaces))]
     (println axiom-map))
