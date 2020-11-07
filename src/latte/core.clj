@@ -231,7 +231,7 @@
               ;;{
               ;; If Step 1-3 went well, the definition is created and returned
               ;;}
-              [:ok (defenv/->Definition def-name params (count params) body-term ty {})])))))))
+              [:ok (defenv/->Definition def-name params (count params) body-term #{} ty {})])))))))
 
 ;;{
 ;; The following function generates the clojure documentation of
