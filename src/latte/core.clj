@@ -41,6 +41,9 @@
 ;; Initialization of unparser
 (unparser/install-fundamental-unparsers!)
 
+;; Initialization of opacity manager in proofs
+(p/install-opacity-function u/set-opacity!)
+
 ;;{
 ;; ## Definitions
 ;;
