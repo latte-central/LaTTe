@@ -73,12 +73,16 @@ is sometimes required to handle it transparently. This function
 ;;; ===================================================
 
 (defn implicit-type-parameter? [v]
-  (and (symbol? v)
-       (= (first (name v)) \?)))
+  (if-not (symbol? v)
+    false
+    (let [sname (name v)]
+      (and (> (count sname) 1)
+           (= (first sname) \?)))))
 
 ;; (implicit-type-parameter? 'x) => false
-;;(implicit-type-parameter? '?x) => true
-;;(implicit-type-parameter? '???x) => true
+;; (implicit-type-parameter? '?x) => true
+;; (implicit-type-parameter? '???x) => true
+;; (implicit-type-parameter? '?) => false
 
 (defn explicit-type-name 
   "Generates the explicit name of an implicit type `ty`."
