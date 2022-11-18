@@ -15,42 +15,52 @@
       (and (> (count sname) 1)
            (= (first sname) \?)))))
 
-(declare match-list)
+(declare match-list
+         match-var)
          
 (defn match 
   ([patt term] (match {} patt term))
   ([env patt term]
    (cond
-     (variable? patt) (assoc env patt term)
-     (list? patt) (match-list env patt term)
+     (variable? patt) (match-var env patt term)
+     (list? patt) (if-not (list? term)
+                    false
+                    (match-list env patt term))
      :else
      (if (= patt term)
        env
        false))))
 
-(sequential? 'toto)
-(sequential? '())
-(list? 'toto)
-
+(defn match-var [env var term]
+  (if-let [prev-term (get env var)]
+    (if (= prev-term term)
+      env
+      false)
+    ;; no previous binding
+    (assoc env var term)))
 
 (defn match-list [env patts terms]
   (if (seq patts)
-    (if-not (list? terms)
-      false
-      (if (seq terms)
-        (let [patt (first patts)
-              term (first terms)]
-          (if-let [env' (match env patt term)]
-            (recur env' (rest patts) (rest terms))
-            false))
-        ;; no element in term
-        false))
+    (if (seq terms)
+      (let [patt (first patts)
+            term (first terms)]
+        (if-let [env' (match env patt term)]
+          (recur env' (rest patts) (rest terms))
+          false))
+      ;; no element in term
+      false)
     ;; nothing left to match
-    env))
+    (if (seq terms)
+      false ; unmatched terms
+      env)))
       
 (match '?X '(==> A A))
 (match '==> '(==> A A))
+(match '(==> ?X) '(==> A A))
 (match '(==> A A) '(==> A A))
 (match '(==> ?X ?Y) '(==> A A))
+(match '(==> ?X ?X) '(==> A A))
+(match '(==> ?X ?X) '(==> A B))
+
 
 
