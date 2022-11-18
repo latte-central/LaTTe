@@ -349,6 +349,7 @@
   [category doc params body]
   {:doc (mk-def-doc (clojure.string/capitalize (name category)) body doc)
    :arglists (list params)
+   :body body
    :private (= category :lemma)})
 
 
