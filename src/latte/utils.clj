@@ -68,6 +68,8 @@ is sometimes required to handle it transparently. This function
                    :notations {}
                    :implicits {}} defs))))
 
+;; (fetch-ns-elements (the-ns 'latte-prelude.prop))
+
 ;;; ===================================================
 ;;; Handling of implicit type parameters (?T, ?U, etc.)
 ;;; ===================================================
@@ -126,7 +128,7 @@ is sometimes required to handle it transparently. This function
 ;; (fetch-implicit-type-parameters '[[?T :type] [U :type] [R (rel T U)]])
 ;; => {:implicit-types #{T}, :explicit-type-params [[T :type]], :rest-params [[U :type] [R (rel T U)]]}
 
-(fetch-implicit-type-parameters '[[?T :type] [?U :type] [R (rel T U)]])
+;; (fetch-implicit-type-parameters '[[?T :type] [?U :type] [R (rel T U)]])
 ;; => {:implicit-types #{U T}, :explicit-type-params [[T :type] [U :type]], :rest-params [[R (rel T U)]]}
 
 (defonce +implicit-type-parameters-handlers+ (atom {}))
