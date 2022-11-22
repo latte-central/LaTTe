@@ -125,5 +125,7 @@
   ([patt] (search-theorem (into #{} (map second @+search-namespaces+)) patt)))
 
 
-           
+;; (search-theorem 'latte-prelude.prop '(==> (and ?X ?Y) (and ?Y ?X)))
+
+
 
