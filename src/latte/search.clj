@@ -137,20 +137,23 @@
                 term (first terms)]
             (cond
               (opt-variable? patt)
-              (if-let [env' (match env (ext-variable-sym patt) term)]
+              (if-let [env' (and (> (count terms) min-count)
+                                 (match env (ext-variable-sym patt) term))]
                 (recur env' (rest patts) (rest terms))
                 (recur env (rest patts) terms))
 
               (star-variable? patt)
-              (do (when (get env (ext-variable-sym patt))
-                    (throw (ex-info "Multiple occurrence of zero-or-many variable" {:variable patt                                                                          :env env})))
-                  (let [[matches terms'] (match-star (ext-variable-sym patt) env terms)]
-                    (recur (assoc env (ext-variable-sym patt) matches) (rest patts) terms')))
+              (if (= (count terms) min-count)
+                (recur env (rest patts) terms)
+                (do (when (get env (ext-variable-sym patt))
+                      (throw (ex-info "Multiple occurrence of zero-or-many variable" {:variable patt                                                                          :env env})))
+                    (let [[matches terms'] (match-star (ext-variable-sym patt) env terms min-count)]
+                      (recur (assoc env (ext-variable-sym patt) matches) (rest patts) terms'))))
               
               (plus-variable? patt)
               (do (when (get env (ext-variable-sym patt))
-                    (throw (ex-info "Multiple occurrence of one-or-many variable" {:variable patt                                                                          :env env})))
-                  (let [[matches terms'] (match-star (ext-variable-sym patt) env terms)]
+                    (throw (ex-info "Multiple occurrence of one-or-many variable" {:variable patt                                                                          :env env})))             
+                  (let [[matches terms'] (match-star (ext-variable-sym patt) env terms (dec min-count))]
                     (if (zero? (count matches))
                       false ; not enough matches                     
                       (recur (assoc env (ext-variable-sym patt) matches) (rest patts) terms'))))
@@ -166,11 +169,11 @@
       false ; unmatched terms
       env)))
 
-(defn match-star [sv env terms]
-  (loop [terms terms, matches []]
-    (if (seq terms)              
+(defn match-star [sv env terms min-count]
+  (loop [terms terms, nb-remain (- (count terms) min-count) matches []]
+    (if (and (> nb-remain 0) (seq terms))              
       (if-let [env' (match env sv (first terms))]
-        (recur (rest terms) (conj matches (get env' sv)))
+        (recur (rest terms) (dec nb-remain) (conj matches (get env' sv)))
         [matches terms])
       [matches terms])))
 
@@ -200,6 +203,11 @@
 
   (match '(==> ?X*) '(==> A B C))
   (match '(==> ?X* ?Y) '(==> A B C))
+  (match '(==> ?X+ ?Y) '(==> A B C))
+  (match '(==> ?X* ?Z ?T) '(==> A B))
+  (match '(==> ?X+ ?Z ?T) '(==> A B))
+  (match '(==> ?X* ?Z ?T) '(==> A B C))
+  (match '(==> ?X+ ?Z ?T) '(==> A B C))
 
   )
 
