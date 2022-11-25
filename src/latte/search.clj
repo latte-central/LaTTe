@@ -258,9 +258,9 @@
      (cond
        ;; a namespace name
        (symbol? (first things))
-       (if-let [search-ns (get @+search-namespaces+ (first things))]
+       (if-let [search-ns (find-ns (first things))]
          (recur (cons search-ns (rest things)) patt results)
-         (throw (ex-info "Cannot search pattern: no such registered namespace" {:namespace (first things)})))
+         (throw (ex-info "Cannot search pattern: no such namespace" {:namespace (first things)})))
 
        ;; a namespace
        (namespace? (first things))
