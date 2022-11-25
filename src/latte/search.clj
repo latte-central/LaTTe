@@ -2,9 +2,7 @@
   "A Search facility for LaTTe
   (searching theorems, definitions, etc.)
   "
-
-  (:require [latte-prelude.prop :as p]
-            [latte.utils :as u])
+  (:require [latte.utils :as u])
 )
 
 (defn variable? [v]
@@ -96,8 +94,6 @@
   (ext-variable-name '?X+)
   (ext-variable-name '?_+)
 )
-
-(defrecord Repeat [patt min max sol cont])
 
 (declare match-repeat
          match-list
@@ -249,9 +245,12 @@
     :else
     (throw (ex-info "Cannot register search namespace: wrong argument" {:arg arg}))))
     
-(register-search-namespace! 'latte-prelude.prop)
+(comment
+  (register-search-namespace! 'latte-prelude.prop)
+  (register-search-namespace! 'latte-prelude.quant)
 
-@+search-namespaces+
+  @+search-namespaces+
+)
 
 (defn search-theorem
   ([things patt results]
@@ -290,9 +289,14 @@
   ([patt] (search-theorem (into #{} (map second @+search-namespaces+)) patt)))
 
 
-;; (search-theorem 'latte-prelude.prop '(==> (and ?X ?Y) (and ?Y ?X)))
-;; (search-theorem 'latte-prelude.prop '(==> (==> ?X ?Y) ?Z ?T))
-;; (search-theorem 'latte-prelude.prop '(==> ?X (not ?X) ?Y))
+(comment
+ 
+(search-theorem 'latte-prelude.prop '(==> (and ?X ?Y) (and ?Y ?X)))
+(search-theorem 'latte-prelude.prop '(==> (==> ?X ?Y) ?Z ?T))
+(search-theorem 'latte-prelude.prop '(==> ?X (not ?X) ?Y))
+(search-theorem 'latte-prelude.prop '(==> ?X* (and ?Y ?Z)))
 
+(search-theorem '(?X* (==> ?Y ?Z)))
 
+)
 
