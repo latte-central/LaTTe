@@ -21,7 +21,10 @@
             [latte-kernel.proof :as p]
             [latte.utils :as u]
             [latte.parse :as parse]
-            [latte.certify :as cert]))
+            [latte.certify :as cert]
+            [latte.search :as search])
+)
+
 
 ;;{
 ;; The unparser takes low-level lambda-terms and try
@@ -349,6 +352,7 @@
   [category doc params body]
   {:doc (mk-def-doc (clojure.string/capitalize (name category)) body doc)
    :arglists (list params)
+   :body body
    :private (= category :lemma)})
 
 
@@ -846,6 +850,32 @@ Be careful that the parser will be called recursively on the generated term, hen
     ;;(println "[check-type?] ctx=" ctx)
     (let [tty (ty/type-of def-env ctx t)]
       (n/beta-eq? def-env ctx ty tty))))
+
+;;{
+;; ## Search facilities (re-exported)
+;;}
+
+(defn search-theorem
+  "Search a theorem using pattern `patt`.
+  A pattern (generally quoted) is either:
+    - any clojure value, that has to be matched exactly, with
+      the exception of a symbol starting with a question mark (denoting a variable)
+    - a simple variable `?X` that can match anything
+    - a list/sequence of patterns `(patt1 patt2 ...)`
+    - a zero-or-many variable `?Y*` that matches zero or more times greedily 
+    - a one-or-many variable `?Z+` that matches at least once greedily
+    - an optional variable `?V?` that matches at most once
+  The optional argument `where` is the name (symbol) of a namespace where
+the search must be applied (by default, use all registered namespaces)
+
+The special variables `?_`, `?_*`,  `?_+` and `?_?` produce no binding when matched.
+
+  The result is a vector of matches, each match being a pair `[theorem-var match-env]`
+  with `theorem-var` the reference to the theorem as a clojure var,
+ and `match-env` the variable bindings corresponding to the match.
+"
+  ([patt] (search/search-theorem patt))
+  ([where patt] (search/search-theorem where patt)))
 
 ;;{
 ;; ## Basic forms

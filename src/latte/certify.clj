@@ -114,7 +114,7 @@
      thms))
   ([] (demonstrated-theorems *ns*)))
 
-;; (demonstrated-theorems 'latte.prop)
+;; (demonstrated-theorems 'latte-prelude.prop)
 
 (defn certified-theorems
   "Build a map of theorem certifications from a map `thms' of theorems.
@@ -124,8 +124,6 @@
                      (if (:proof thm-content)
                        (conj cthms [thm-name (theorem-signature (:params thm-content) (:type thm-content) (:proof thm-content))])
                        cthms)) [] thms)))
-
-;; (certified-theorems (demonstrated-theorems 'latte.prop))
 
 (defn certify-namespace! [namesp]
   (when *verbose-certification*
