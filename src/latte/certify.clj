@@ -127,8 +127,9 @@
 
 (defn certify-namespace! [namesp]
   (when *verbose-certification*
-    (println "..Certify namespace:" namesp)
-    (println "  ==> certification started ..."))
+    ;;(println "..Certify namespace:" namesp)
+    (println "  ==> Certification started ...")
+    (flush))
   (if-let [thms (demonstrated-theorems namesp)]
     (let [thm-certs (certified-theorems thms)]
       (when *verbose-certification*
@@ -161,6 +162,10 @@
       (mk-timestamp-file! library-name)
       ;; 4) certify namespaces
       (doseq [namesp namespaces]
+        (when *verbose-certification* 
+          (println ".." (str "[" namesp "]"))
+          (flush))
+        (require namesp)
         (certify-namespace! namesp))
       (let [end-time (System/currentTimeMillis)]
-        (println "=== Certificate issued in" (str (- end-time start-time)  "ms") "==")))))
+        (println "=== Certificate issued in" (str (/ (- end-time start-time) 1000.0)  "s") "==")))))

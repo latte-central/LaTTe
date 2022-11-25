@@ -24,7 +24,7 @@
          (require namesp)))
 
 (defn run-certify! [library-name namespaces]
-  (require-all! namespaces)
+  ;;(require-all! namespaces)
   (cert/certify-library! library-name namespaces))
 
 (defn run-clear-cert! []
