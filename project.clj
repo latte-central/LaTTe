@@ -5,8 +5,8 @@
             :url "http://opensource.org/licenses/MIT"}
   :dependencies [[org.clojure/clojure "1.11.1"]
                  [org.clojure/core.match "1.0.0"]
-                 [digest "1.4.9"]
-                 [com.taoensso/timbre "4.10.0"]
+                 [org.clj-commons/digest "1.4.100"]
+                 [com.taoensso/timbre "6.0.2"]
                  [latte-kernel "1.0b10-SNAPSHOT"]]
   :codox {:output-path "docs"
           :metadata {:doc/format :markdown}
