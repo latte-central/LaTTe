@@ -122,7 +122,9 @@
       env
       false)
     ;; no previous binding
-    (assoc env var term)))
+    (if (= var '?_)
+      env
+      (assoc env var term))))
 
 (declare count-min-expected-terms
          match-star)
@@ -145,18 +147,27 @@
               (star-variable? patt)
               (if (= (count terms) min-count)
                 (recur env (rest patts) terms)
-                (do (when (get env (ext-variable-sym patt))
-                      (throw (ex-info "Multiple occurrence of zero-or-many variable" {:variable patt                                                                          :env env})))
-                    (let [[matches terms'] (match-star (ext-variable-sym patt) env terms min-count)]
-                      (recur (assoc env (ext-variable-sym patt) matches) (rest patts) terms'))))
+                (let [ext-var (ext-variable-sym patt)]
+                  (do (when (get env ext-var)
+                        (throw (ex-info "Multiple occurrence of zero-or-many variable" {:variable patt                                                                          :env env})))
+                    (let [[matches terms'] (match-star ext-var env terms min-count)]
+                      (recur (if (= ext-var '?_)
+                               env
+                               (assoc env ext-var matches))
+                             (rest patts) 
+                             terms')))))
               
               (plus-variable? patt)
-              (do (when (get env (ext-variable-sym patt))
-                    (throw (ex-info "Multiple occurrence of one-or-many variable" {:variable patt                                                                          :env env})))             
-                  (let [[matches terms'] (match-star (ext-variable-sym patt) env terms (dec min-count))]
-                    (if (zero? (count matches))
-                      false ; not enough matches                     
-                      (recur (assoc env (ext-variable-sym patt) matches) (rest patts) terms'))))
+              (let [ext-var (ext-variable-sym patt)]
+                (do (when (get env ext-var)
+                      (throw (ex-info "Multiple occurrence of one-or-many variable" {:variable patt                                                                          :env env})))             
+                    (let [[matches terms'] (match-star ext-var env terms (dec min-count))]
+                      (if (zero? (count matches))
+                        false ; not enough matches                     
+                        (recur (if (= ext-var '?_)
+                                 env
+                                 (assoc env ext-var matches))
+                               (rest patts) terms')))))
 
               :else ; other kind of pattern
               (if-let [env' (match env patt term)]
@@ -194,20 +205,26 @@
  
 (comment     
   (match '?X '(==> A A))
+  (match '?_ '(==> A A))
   (match '==> '(==> A A))
   (match '(==> ?X) '(==> A A))
   (match '(==> A A) '(==> A A))
   (match '(==> ?X ?Y) '(==> A A))
+  (match '(==> ?_ ?X) '(==> A A))
   (match '(==> ?X ?X) '(==> A A))
   (match '(==> ?X ?X) '(==> A B))
 
   (match '(==> ?X*) '(==> A B C))
   (match '(==> ?X* ?Y) '(==> A B C))
-  (match '(==> ?X+ ?Y) '(==> A B C))
   (match '(==> ?X* ?Z ?T) '(==> A B))
-  (match '(==> ?X+ ?Z ?T) '(==> A B))
   (match '(==> ?X* ?Z ?T) '(==> A B C))
+  (match '(==> ?_* ?X) '(==> A B C))
+  (match '(==> ?_* ?X ?Y) '(==> A B C))
+
+  (match '(==> ?X+ ?Y) '(==> A B C))
+  (match '(==> ?X+ ?Z ?T) '(==> A B))
   (match '(==> ?X+ ?Z ?T) '(==> A B C))
+  (match '(==> ?_+ ?X) '(==> A B C))
 
   )
 
