@@ -515,6 +515,10 @@ In all cases the introduction of an axiom must be justified with strong
                           :by-kw #(= % :by)
                           :have-term any?))
 
+(s/def ::pose-args (s/cat :pose-name symbol?
+                          :def-kw #(= % :=)
+                          :have-term any?))
+
 (defmacro have
   "A have step of the form `(have <x> T :by e)` checks that the
  term `e` is of type `T`. If it is the case, then the fact is recorded
@@ -528,14 +532,24 @@ The name `<x>` can be replaced by `_` in which case no definition is recorded."
       (throw (ex-info "Have step syntax error."
                       {:infos infos
                        :explain (s/explain-str ::have-args (rest &form))}))
-      `[:have (quote ~have-name) (quote ~have-type) (quote ~have-term) ~(or infos {})])))
+      `[:have (quote ~have-name) (quote ~have-type) (quote ~have-term) ~(assoc (or infos {})
+                                                                               :pose false)])))
 
 (defmacro pose
   "A local definition `(pose P := e)` allows a proof to refer to term `e` under
 the name `P` in a proof. This is equivalent to `(have P _ :by e)` (with the type of
 `e` inferred)."
   [pose-name pose-kw pose-term]
-  `(have ~pose-name ~(symbol "_") :by ~pose-term))
+  (let [infos (meta &form)
+        conf-form (s/conform ::pose-args (rest &form))]
+    (if (= conf-form :clojure.spec.alpha/invalid)
+      (throw (ex-info "Pose step syntax error."
+                      {:infos infos
+                       :explain (s/explain-str ::pose-args (rest &form))}))
+      `[:have (quote ~pose-name) (quote ~(symbol "_")) (quote ~pose-term) ~(assoc (or infos {})
+                                                              :pose true)])))
+
+
 
 (defmacro qed
   "A Qed step of the form `(qed e)` checks that the
