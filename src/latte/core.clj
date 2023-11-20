@@ -151,7 +151,7 @@ This is used to inspect definition errors."
           (let [[status definition] (handle-term-definition def-name params body)]
             (if (= status :ko)
               [:error definition]
-              [:valid :definition (quote ~def-name)])))))))
+              `[:valid :definition (quote ~def-name)])))))))
 
 ;;{
 ;; The next function implements the support of *implicit type parameters*.
