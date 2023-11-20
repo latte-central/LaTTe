@@ -128,6 +128,31 @@
                                                                :arglists (list (quote ~params)))))
                  [:defined :term (quote ~def-name)]))))))))
 
+
+(defmacro try-definition
+  "Try to make the [[definition]] without registering it, and without throwing exceptions in case of error.
+This is used to inspect definition errors."
+  [& args]
+  ;;{
+  ;;  - First, we check the arguments syntax according to the spec grammar.
+  ;;}
+  (let [[status msg infos] (parse/parse-definition :definition args)]
+    (if (= status :ko)
+      [:error msg infos]
+      (let [{def-name :name doc :doc params :params body :body} infos]
+        ;; handling of implicit parameter types
+        (if-let [res (u/fetch-implicit-type-parameters params)]
+          (handle-implicit-type-parameters `definition def-name doc (:rest-params res) body
+                                           (:implicit-types res)
+                                           (map first (:explicit-type-params res))
+                                           (symbol (str def-name "-def"))
+                                           (into [] (concat (:explicit-type-params res) (:rest-params res))))
+          ;; no implicit parmeter types from here...
+          (let [[status definition] (handle-term-definition def-name params body)]
+            (if (= status :ko)
+              [:error definition]
+              [:valid :definition (quote ~def-name)])))))))
+
 ;;{
 ;; The next function implements the support of *implicit type parameters*.
 ;;}
