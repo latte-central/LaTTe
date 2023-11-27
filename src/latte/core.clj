@@ -150,7 +150,7 @@ This is used to inspect definition errors."
           ;; no implicit parmeter types from here...
           (let [[status definition] (handle-term-definition def-name params body)]
             (if (= status :ko)
-              [:error definition]
+              `[:error (quote ~definition)]
               `[:valid :definition (quote ~def-name)])))))))
 
 ;;{
@@ -258,7 +258,7 @@ This is used to inspect definition errors."
           ;;}
           (let [[status ty _] (ty/type-of-term defenv/empty-env params body-term)]
             (if (= status :ko)
-              [:ko ty]
+              `[:ko (quote ~ty)]
               ;;{
               ;; If Step 1-3 went well, the definition is created and returned
               ;;}
@@ -320,7 +320,8 @@ This is used to inspect definition errors."
 ;; parameters and the statement itself as a type `ty`.
 ;;}
 
-(declare build-statement)
+(declare safe-property-type?
+         build-statement)
 
 (defn ^:no-doc handle-statement
   [category thm-name params body]
@@ -353,6 +354,11 @@ This is used to inspect definition errors."
               ;;  - Step 4: if all went well, we construct the internal representation.
               ;;}
               [:ok (build-statement category thm-name params body-term)]))))))
+
+
+;;{
+;; The `proper-type?` predicate of the kernel might throw an exception
+;;}
 
 ;;{
 ;; The following function builds the internal representation of a statement
@@ -432,6 +438,24 @@ This is used to inspect definition errors."
           (throw (ex-info "Cannot declare theorem." result))
           (let [metadata (statement-metadata :theorem doc params body)]
             (define-statement! :theorem thm-name result metadata)))))))
+
+(defmacro try-defthm
+  "A try-only version of [[defthm]] (does not register theorem in case of success)"
+  [& args]
+  (let [{thm-name :name doc :doc params :params body :body}
+        (conform-statement :theorem args)]
+            ;; handling of implicit parameter types
+    (if-let [res (u/fetch-implicit-type-parameters params)]
+      (handle-implicit-type-parameters `defthm thm-name doc (:rest-params res) body
+                                       (:implicit-types res)
+                                       (map first (:explicit-type-params res))
+                                       (symbol (str thm-name "-thm"))
+                                       (into [] (concat (:explicit-type-params res) (:rest-params res))))
+      ;; no implicit type parameters
+      (let [[status result] (handle-statement :theorem thm-name params body)]
+        (if (= status :ko)
+          `[:error (quote ~result)]
+          `[:valid :theorem (quote ~thm-name)])))))
 
 ;;{
 ;; ### Lemmas
