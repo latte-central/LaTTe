@@ -348,12 +348,21 @@ This is used to inspect definition errors."
             ;;{
             ;; - Step 3: we check that the statement is a proper type.
             ;;}
-            (if (not (ty/proper-type? defenv/empty-env params body-term))
-              [:ko {:msg (str "Body of " (name category) " is not a proper type") :statement thm-name :category category :body (unparser/unparse body-term)}]
-              ;;{
-              ;;  - Step 4: if all went well, we construct the internal representation.
-              ;;}
-              [:ok (build-statement category thm-name params body-term)]))))))
+            (let [[status infos] (try (if (ty/proper-type? defenv/empty-env params body-term)
+                                        [:ok true]
+                                        [:ok false])
+                                      (catch Exception e [:ko {:msg (ex-message e)
+                                                               :data (ex-data e)}]))]
+              (cond 
+                (= status :ko)
+                [:ko infos]
+                (false? infos)
+                [:ko {:msg (str "Body of " (name category) " is not a proper type") :statement thm-name :category category :body (unparser/unparse body-term)}]
+                :else
+                ;;{
+                ;;  - Step 4: if all went well, we construct the internal representation.
+                ;;}
+                [:ok (build-statement category thm-name params body-term)])))))))
 
 
 ;;{
