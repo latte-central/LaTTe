@@ -142,13 +142,10 @@ This is used to inspect definition errors."
       (let [{def-name :name doc :doc params :params body :body} infos]
         ;; handling of implicit parameter types
         (if-let [res (u/fetch-implicit-type-parameters params)]
-          (handle-implicit-type-parameters `definition def-name doc (:rest-params res) body
-                                           (:implicit-types res)
-                                           (map first (:explicit-type-params res))
-                                           (symbol (str def-name "-def"))
-                                           (into [] (concat (:explicit-type-params res) (:rest-params res))))
+          `[:error {:msg "Cannot use implicit parameters with `try-definition`" :implicit-types (quote ~(:implicit-types res))}]
           ;; no implicit parmeter types from here...
           (let [[status definition] (handle-term-definition def-name params body)]
+            (println "def:" status definition)
             (if (= status :ko)
               `[:error (quote ~definition)]
               `[:valid :definition (quote ~def-name)])))))))
@@ -256,7 +253,8 @@ This is used to inspect definition errors."
           ;;  - Step 3: the type of the definition is computed based on the parsed parameters and body
           ;;  (in the empty definitional environment because we use the current namespace implicitly)
           ;;}
-          (let [[status ty _] (ty/type-of-term defenv/empty-env params body-term)]
+          (let [[status ty _] (try (ty/type-of-term defenv/empty-env params body-term)
+                                   (catch Exception e [:ko {:msg (ex-message e) :info (ex-info e)}]))]
             (if (= status :ko)
               `[:ko (quote ~ty)]
               ;;{
