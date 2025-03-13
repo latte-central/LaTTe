@@ -95,6 +95,7 @@
 
   Note that a definition is a `def` in the Clojure sense, the term is defined in the namespace where the `definition` 
   form is invoked."
+  {:clj-kondo/ignore [:unresolved-symbol]}
   [& args]
   ;;{
   ;;  - First, we check the arguments syntax according to the spec grammar.
