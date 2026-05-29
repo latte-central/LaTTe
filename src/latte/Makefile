@@ -1,5 +1,5 @@
 
-MARKDOWNIZE_PATH = ../../../markdownize
+MARKDOWNIZE_PATH = ../../../../markdownize
 PYTHON = python3
 
 MARKDOWNIZE = $(PYTHON) $(MARKDOWNIZE_PATH)/markdownize.py

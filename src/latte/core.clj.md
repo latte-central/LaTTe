@@ -20,7 +20,12 @@ LaTTe proof assistant are defined.
             [latte-kernel.norm :as n]
             [latte-kernel.defenv :as defenv]
             [latte-kernel.proof :as p]
-            [latte.certify :as cert]))
+            [latte.utils :as u]
+            [latte.parse :as parse]
+            [latte.certify :as cert]
+            [latte.search :as search])
+)
+
 
 ```
 
@@ -41,6 +46,9 @@ A few more important unparsers are installed by the standard library.
 ```clojure
 ;; Initialization of unparser
 (unparser/install-fundamental-unparsers!)
+
+;; Initialization of opacity manager in proofs
+(p/install-opacity-function u/set-opacity!)
 
 ```
 
@@ -71,8 +79,10 @@ The `definition` macro is defined below.
 
 
 ```clojure
+(declare handle-implicit-type-parameters)
 (declare handle-term-definition)
 (declare mk-def-doc)
+(declare defimplicit)
 
 (defmacro definition
   "Defines a mathematical term with the following structure:
@@ -92,34 +102,133 @@ The `definition` macro is defined below.
 
   Note that a definition is a `def` in the Clojure sense, the term is defined in the namespace where the `definition` 
   form is invoked."
+  {:clj-kondo/ignore [:unresolved-symbol]}
   [& args]
 ```
 
 - First, we check the arguments syntax according to the spec grammar.
 
 ```clojure
-  (let [conf-form (s/conform ::definition args)]
-    (if (= conf-form :clojure.spec.alpha/invalid)
-      (throw (ex-info "Cannot define term: syntax error."
-                      {:explain (s/explain-str ::definition args)}))
-      (let [{def-name :name doc :doc params :params body :body} conf-form]
-        (when (defenv/registered-definition? def-name)
-          (log/warn "Redefinition as term: " def-name))
-        (let [[status definition] (handle-term-definition def-name params body)]
-          (when (= status :ko)
-            (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
+  (let [[status msg infos] (parse/parse-definition :definition args)]
+    (if (= status :ko)
+      (throw (ex-info (str "Cannot define term: " msg)
+                      infos))
+      (let [{def-name :name doc :doc params :params body :body} infos]
+        ;; handling of implicit parameter types
+        (if-let [res (u/fetch-implicit-type-parameters params)]
+          (handle-implicit-type-parameters `definition def-name doc (:rest-params res) body
+                                           (:implicit-types res)
+                                           (map first (:explicit-type-params res))
+                                           (symbol (str def-name "-def"))
+                                           (into [] (concat (:explicit-type-params res) (:rest-params res))))
+          ;; no implicit parmeter types from here...
+          (let [[status definition] (handle-term-definition def-name params body)]
+            (when (= status :ko)
+              (throw (ex-info "Cannot define term." {:name def-name, :error definition})))
+            (when (defenv/registered-definition? def-name)
+              (log/warn "Redefinition as term: " def-name))
 ```
 
 - Second, after some checks, we register the definition in the currently active namespace (i.e. `*ns*`).
 
 ```clojure
-          (let [quoted-def# definition]
-            `(do
-               (def ~def-name ~quoted-def#)
-               (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
-                                                             :doc (mk-def-doc "Definition" (quote ~body) ~doc)
-                                                             :arglists (list (quote ~params)))))
-               [:defined :term (quote ~def-name)])))))))
+            (let [quoted-def# definition]
+              `(do
+                 (def ~def-name ~quoted-def#)
+                 (alter-meta! (var ~def-name)  (fn [m#] (assoc m#
+                                                               :doc (mk-def-doc "Definition" (quote ~body) ~doc)
+                                                               :arglists (list (quote ~params)))))
+                 [:defined :term (quote ~def-name)]))))))))
+
+
+(defmacro try-definition
+  "Try to make the [[definition]] without registering it, and without throwing exceptions in case of error.
+This is used to inspect definition errors."
+  [& args]
+```
+
+- First, we check the arguments syntax according to the spec grammar.
+
+```clojure
+  (let [[status msg infos] (parse/parse-definition :definition args)]
+    (if (= status :ko)
+      [:error msg infos]
+      (let [{def-name :name doc :doc params :params body :body} infos]
+        ;; handling of implicit parameter types
+        (if-let [res (u/fetch-implicit-type-parameters params)]
+          `[:error {:msg "Cannot use implicit parameters with `try-definition`" :implicit-types (quote ~(:implicit-types res))}]
+          ;; no implicit parmeter types from here...
+          (let [[status definition] (handle-term-definition def-name params body)]
+            (println "def:" status definition)
+            (if (= status :ko)
+              `[:error (quote ~definition)]
+              `[:valid :definition (quote ~def-name)])))))))
+
+```
+
+The next function implements the support of *implicit type parameters*.
+
+
+```clojure
+(declare gen-type-parameters-defimplicit)
+
+(defn ^:no-doc def-kind-infos [def-kind]
+  (case def-kind
+    latte.core/definition ["Definition" :definition]
+    latte.core/defthm ["Theorem" :theorem]
+    latte.core/deflemma ["Lemma" :lemma]
+    latte.core/defaxiom ["Axiom" :axiom]
+    (throw (ex-info "Definition kind not supported." {:def-kind def-kind}))))
+
+(defn ^:no-doc handle-implicit-type-parameters
+  [def-kind def-name doc params body implicit-types implicit-types-params explicit-def-name explicit-params]
+  (let [[def-kind-name def-kind-kw] (def-kind-infos def-kind)]
+    `(do
+       (~def-kind ~explicit-def-name ~(str "This is an explicit variant of [[" def-name "]].") ~explicit-params ~body)
+       (alter-meta! (var ~explicit-def-name) update-in [:no-doc] (fn [_#] true))
+       ~(gen-type-parameters-defimplicit def-name def-kind-name doc explicit-def-name implicit-types implicit-types-params params explicit-params body)
+       (alter-meta! (var ~def-name) update-in [:arglists] (fn [_#] (list (quote ~params))))
+       [:declared ~def-kind-kw (quote ~explicit-def-name) :implicit (quote ~def-name)])))
+
+```
+
+The following function generates a `defimplicit` form that (if successful) synthesizes
+the arguments for implicit type parameters.
+An exception is raised if the synthesis fails (which means no implicity-type-parameter handler
+is found).
+
+
+```clojure
+(defn ^:no-doc gen-type-parameters-defimplicit
+  "Generate the defimplicit for definitions with implicit type parameters."
+  [def-name def-kind doc explicit-def-name implicit-types implicit-types-params real-params explicit-params body]
+  (let [def-env-var (gensym "def-env")
+        ctx-var (gensym "ctx")
+        ndoc (mk-def-doc def-kind body doc)
+        [targs defparams] (reduce (fn [[targs defparams] [param param-ty]]
+                                    (if (contains? implicit-types param)
+                                      [targs defparams]
+                                      (let [param-ty-var (gensym (str param "-ty"))]
+                                        [(conj targs [param-ty-var param-ty])
+                                         (conj defparams [(gensym param) param-ty-var])])))
+                                  [[] []] explicit-params)
+        [remaining-implicit-types lt-clauses] 
+        (reduce (fn [[itypes lt-clauses] param]
+                  (let [[itypes' lt-clause] 
+                        (u/fetch-implicit-type-parameter-handler itypes def-env-var ctx-var param)]
+                    [itypes' (if (nil? lt-clause)
+                               lt-clauses
+                               (conj lt-clauses (first lt-clause) (second lt-clause)))])) [implicit-types []] targs)]
+    (when-not (empty? remaining-implicit-types)
+      (throw (ex-info "Unsolved implicit type parameters" {:statement def-name
+                                                           :implicit-type-params (into #{} (map #(symbol (str "?" (name %))) implicit-types))
+                                                           :unsolved (into #{} (map #(symbol (str "?" (name %))) remaining-implicit-types))})))
+    `(defimplicit ~def-name
+       ~ndoc
+       [~def-env-var ~ctx-var ~@defparams]
+       (let [~@lt-clauses]
+         (list (var ~explicit-def-name) ~@(concat implicit-types-params
+                                                  (map first defparams)))))))
 
 ```
 
@@ -172,15 +281,16 @@ The following is how we handle the definitions.
 (in the empty definitional environment because we use the current namespace implicitly)
 
 ```clojure
-          (let [[status ty _] (ty/type-of-term defenv/empty-env params body-term)]
+          (let [[status ty _] (try (ty/type-of-term defenv/empty-env params body-term)
+                                   (catch Exception e [:ko {:msg (ex-message e) :info (ex-info e)}]))]
             (if (= status :ko)
-              [:ko ty]
+              `[:ko (quote ~ty)]
 ```
 
 If Step 1-3 went well, the definition is created and returned
 
 ```clojure
-              [:ok (defenv/->Definition def-name params (count params) body-term ty {})])))))))
+              [:ok (defenv/->Definition def-name params (count params) body-term #{} ty {})])))))))
 
 ```
 
@@ -191,13 +301,13 @@ of other `kind` of statements such as theorems or axioms.
 
 
 ```clojure
-(defn ^:no-doc mk-def-doc [kind content explanation]
+(defn ^:no-doc mk-def-doc 
+  [kind content explanation]
   (str "\n```\n"
        (with-out-str
          (pp/pprint content))
        "```\n**" kind "**: "
        (or explanation "")))
-
 
 ```
 
@@ -231,16 +341,10 @@ to its *spec*.
 ```clojure
 (defn ^:no-doc conform-statement
   [category args]
-  (let [spec (case category
-               :theorem ::theorem
-               :lemma ::theorem  ;; XXX: same spec
-               :axiom ::axiom
-               (throw (ex-info "Cannot check conformance: not a statement category (please report)" {:category category})))
-        conf-form (s/conform spec args)]
-    (if (= conf-form :clojure.spec.alpha/invalid)
-      (throw (ex-info (str "Cannot declare " (name category) ": syntax error.")
-                      {:explain (s/explain-str spec args)}))
-      conf-form)))
+  (let [[status msg infos] (parse/parse-definition category args)]
+    (if (= status :ko)
+      (throw (ex-info (str "Cannot declare " (name category) ": " msg) infos))
+      infos)))
 
 ```
 
@@ -250,7 +354,8 @@ parameters and the statement itself as a type `ty`.
 
 
 ```clojure
-(declare build-statement)
+(declare safe-property-type?
+         build-statement)
 
 (defn ^:no-doc handle-statement
   [category thm-name params body]
@@ -285,16 +390,30 @@ and then we proceed with the main steps:
 - Step 3: we check that the statement is a proper type.
 
 ```clojure
-            (if (not (ty/proper-type? defenv/empty-env params body-term))
-              [:ko {:msg (str "Body of " (name category) " is not a proper type") :statement thm-name :category category :body (unparser/unparse body-term)}]
+            (let [[status infos] (try (if (ty/proper-type? defenv/empty-env params body-term)
+                                        [:ok true]
+                                        [:ok false])
+                                      (catch Exception e [:ko {:msg (ex-message e)
+                                                               :data (ex-data e)}]))]
+              (cond 
+                (= status :ko)
+                [:ko infos]
+                (false? infos)
+                [:ko {:msg (str "Body of " (name category) " is not a proper type") :statement thm-name :category category :body (unparser/unparse body-term)}]
+                :else
 ```
 
 - Step 4: if all went well, we construct the internal representation.
 
 ```clojure
-              [:ok (build-statement category thm-name params body-term)]))))))
+                [:ok (build-statement category thm-name params body-term)])))))))
+
 
 ```
+
+The `proper-type?` predicate of the kernel might throw an exception
+
+
 
 The following function builds the internal representation of a statement
 according to its `category`. Internally we distinguish between theorems/lemmas
@@ -321,6 +440,7 @@ The function below prepares the required metatadata associated to a statement.
   [category doc params body]
   {:doc (mk-def-doc (clojure.string/capitalize (name category)) body doc)
    :arglists (list params)
+   :body body
    :private (= category :lemma)})
 
 
@@ -363,12 +483,38 @@ The most general form is `defthm' to define theorems.
   namespace (i.e. it is a Clojure `def`)."
   [& args]
   (let [{thm-name :name doc :doc params :params body :body}
-        (conform-statement :theorem args)
-        [status result] (handle-statement :theorem thm-name params body)]
-    (if (= status :ko)
-      (throw (ex-info "Cannot declare theorem." result))
-      (let [metadata (statement-metadata :theorem doc params body)]
-        (define-statement! :theorem thm-name result metadata)))))
+        (conform-statement :theorem args)]
+            ;; handling of implicit parameter types
+    (if-let [res (u/fetch-implicit-type-parameters params)]
+      (handle-implicit-type-parameters `defthm thm-name doc (:rest-params res) body
+                                       (:implicit-types res)
+                                       (map first (:explicit-type-params res))
+                                       (symbol (str thm-name "-thm"))
+                                       (into [] (concat (:explicit-type-params res) (:rest-params res))))
+      ;; no implicit type parameters
+      (let [[status result] (handle-statement :theorem thm-name params body)]
+        (if (= status :ko)
+          (throw (ex-info "Cannot declare theorem." result))
+          (let [metadata (statement-metadata :theorem doc params body)]
+            (define-statement! :theorem thm-name result metadata)))))))
+
+(defmacro try-defthm
+  "A try-only version of [[defthm]] (does not register theorem in case of success)"
+  [& args]
+  (let [{thm-name :name doc :doc params :params body :body}
+        (conform-statement :theorem args)]
+            ;; handling of implicit parameter types
+    (if-let [res (u/fetch-implicit-type-parameters params)]
+      (handle-implicit-type-parameters `defthm thm-name doc (:rest-params res) body
+                                       (:implicit-types res)
+                                       (map first (:explicit-type-params res))
+                                       (symbol (str thm-name "-thm"))
+                                       (into [] (concat (:explicit-type-params res) (:rest-params res))))
+      ;; no implicit type parameters
+      (let [[status result] (handle-statement :theorem thm-name params body)]
+        (if (= status :ko)
+          `[:error (quote ~result)]
+          `[:valid :theorem (quote ~thm-name)])))))
 
 ```
 
@@ -386,12 +532,19 @@ Clojure var).
   Otherwise the two forms are the same."
   [& args]
   (let [{thm-name :name doc :doc params :params body :body}
-        (conform-statement :lemma args)
-        [status result] (handle-statement :lemma thm-name params body)]
-    (if (= status :ko)
-      (throw (ex-info "Cannot declare lemma." result))
-      (let [metadata (statement-metadata :lemma doc params body)]
-        (define-statement! :lemma thm-name result metadata)))))
+        (conform-statement :lemma args)]
+    (if-let [res (u/fetch-implicit-type-parameters params)]
+      (handle-implicit-type-parameters `deflemma thm-name doc (:rest-params res) body
+                                       (:implicit-types res)
+                                       (map first (:explicit-type-params res))
+                                       (symbol (str thm-name "-lemma"))
+                                       (into [] (concat (:explicit-type-params res) (:rest-params res))))
+      ;; no implicit type parameters
+      (let [[status result] (handle-statement :lemma thm-name params body)]
+        (if (= status :ko)
+          (throw (ex-info "Cannot declare lemma." result))
+          (let [metadata (statement-metadata :lemma doc params body)]
+            (define-statement! :lemma thm-name result metadata)))))))
 
 ```
 
@@ -432,12 +585,19 @@ In all cases the introduction of an axiom must be justified with strong
  (albeit informal) arguments."
   [& args]
   (let [{thm-name :name doc :doc params :params body :body}
-        (conform-statement :axiom args)
-        [status result] (handle-statement :axiom thm-name params body)]
-    (if (= status :ko)
-      (throw (ex-info "Cannot declare axiom." result))
-      (let [metadata (statement-metadata :axiom doc params body)]
-        (define-statement! :axiom thm-name result metadata)))))
+        (conform-statement :axiom args)]
+    (if-let [res (u/fetch-implicit-type-parameters params)]
+      (handle-implicit-type-parameters `defaxiom thm-name doc (:rest-params res) body
+                                       (:implicit-types res)
+                                       (map first (:explicit-type-params res))
+                                       (symbol (str thm-name "-ax"))
+                                       (into [] (concat (:explicit-type-params res) (:rest-params res))))
+      ;; no implicit type parameters
+      (let [[status result] (handle-statement :axiom thm-name params body)]
+        (if (= status :ko)
+          (throw (ex-info "Cannot declare axiom." result))
+          (let [metadata (statement-metadata :axiom doc params body)]
+            (define-statement! :axiom thm-name result metadata)))))))
 
 ```
 
@@ -469,6 +629,10 @@ The specs are as follows.
                           :by-kw #(= % :by)
                           :have-term any?))
 
+(s/def ::pose-args (s/cat :pose-name symbol?
+                          :def-kw #(= % :=)
+                          :have-term any?))
+
 (defmacro have
   "A have step of the form `(have <x> T :by e)` checks that the
  term `e` is of type `T`. If it is the case, then the fact is recorded
@@ -482,14 +646,24 @@ The name `<x>` can be replaced by `_` in which case no definition is recorded."
       (throw (ex-info "Have step syntax error."
                       {:infos infos
                        :explain (s/explain-str ::have-args (rest &form))}))
-      `[:have (quote ~have-name) (quote ~have-type) (quote ~have-term) ~(or infos {})])))
+      `[:have (quote ~have-name) (quote ~have-type) (quote ~have-term) ~(assoc (or infos {})
+                                                                               :pose false)])))
 
 (defmacro pose
   "A local definition `(pose P := e)` allows a proof to refer to term `e` under
 the name `P` in a proof. This is equivalent to `(have P _ :by e)` (with the type of
 `e` inferred)."
   [pose-name pose-kw pose-term]
-  `(have ~pose-name ~(symbol "_") :by ~pose-term))
+  (let [infos (meta &form)
+        conf-form (s/conform ::pose-args (rest &form))]
+    (if (= conf-form :clojure.spec.alpha/invalid)
+      (throw (ex-info "Pose step syntax error."
+                      {:infos infos
+                       :explain (s/explain-str ::pose-args (rest &form))}))
+      `[:have (quote ~pose-name) (quote ~(symbol "_")) (quote ~pose-term) ~(assoc (or infos {})
+                                                              :pose true)])))
+
+
 
 (defmacro qed
   "A Qed step of the form `(qed e)` checks that the
@@ -556,8 +730,8 @@ An error is signaled if the proof cannot be concluded."
     (let [certified-proof?
           (and *proof-certification-enabled*
                (cert/proof-certified? *ns* thm-name (:params thm) (:type thm) steps))]
-      ;; (when certified-proof?
-      ;;   (println (str "[proof] theorem '" *ns* "/" thm-name "' has certified proof")))
+      #_(when certified-proof?
+        (println (str "[proof] theorem '" *ns* "/" thm-name "' has certified proof")))
       (let [[status infos] (if certified-proof?
                              [:ok {}]
                              (p/check-proof def-env (reverse (:params thm)) thm-name (:type thm) steps))]
@@ -616,6 +790,14 @@ as well as a proof."
             [:ko {:msg "Example body is not a proper type" :type ty'}]
             [:ok (defenv/->Theorem (gensym "example") params (count params) ty' false)]))))))
 
+(defmacro try-example
+  "This is the same as [[example]] but without throwing exceptions."
+  {:style/indent [2 :form :form [1]]}
+  [& args]
+  `(try (example ~@args)
+        (catch Exception e#
+          [:failed (.getMessage e#) (ex-data e#)])))
+
 ```
 
 ## Implicits
@@ -634,13 +816,11 @@ as well as a proof."
                          :body (s/* any?)))
 
 
-(s/def ::iparam (s/tuple symbol? symbol?))
+(s/def ::iparam any?) ;; (s/tuple symbol? symbol?))
 
-(defn ^:no-doc mk-impl-doc [name params explanation]
-  (str "\n```\n"
-       "(" name " " (clojure.string/join " " params) ")"
-       "```\n\n"
-       (or explanation "")))
+(defn ^:no-doc mk-impl-doc [name explanation]
+  ;; XXX: everything in the explanation ?
+  explanation)
 
 (defmacro defimplicit
   [& args]
@@ -652,7 +832,7 @@ as well as a proof."
             {def-env :def-env ctx :ctx params :params} header]
         (when (defenv/registered-definition? def-name)
           (println "[Warning] redefinition as implicit"))
-        (let [metadata (merge (meta &form) {:doc (mk-impl-doc def-name (mapv first params) doc)})]
+        (let [metadata (merge (meta &form) {:doc (mk-impl-doc def-name doc)})]
           `(do
              (def ~def-name (defenv/->Implicit '~def-name (fn [~def-env ~ctx ~@params] ~@body)))
              (alter-meta! (var ~def-name) #(merge % (quote ~metadata)))
@@ -668,6 +848,11 @@ as well as a proof."
                           :header (s/spec ::implicit*-header)
                           :body (s/* any?)))
 
+
+(defimplicit the-type-of
+  "Replaces the provided term by its inferred type."
+  [def-env ctx [term typ]]
+  typ)
 
 (defmacro defimplicit*
   [& args]
@@ -783,7 +968,7 @@ Be careful that the parser will be called recursively on the generated term, hen
 
 ```clojure
 (defmacro type-of 
-  "Give the type of a term `t` in a context at the top-levle. 
+  "Give the type of a term `t` in a context at the top-level. 
   To only parse the term use [[term]]."
   [& args]
   (let [def-env defenv/empty-env
@@ -803,6 +988,34 @@ Be careful that the parser will be called recursively on the generated term, hen
     ;;(println "[check-type?] ctx=" ctx)
     (let [tty (ty/type-of def-env ctx t)]
       (n/beta-eq? def-env ctx ty tty))))
+
+```
+
+## Search facilities (re-exported)
+
+
+```clojure
+(defn search-theorem
+  "Search a theorem using pattern `patt`.
+  A pattern (generally quoted) is either:
+    - any clojure value, that has to be matched exactly, with
+      the exception of a symbol starting with a question mark (denoting a variable)
+    - a simple variable `?X` that can match anything
+    - a list/sequence of patterns `(patt1 patt2 ...)`
+    - a zero-or-many variable `?Y*` that matches zero or more times greedily 
+    - a one-or-many variable `?Z+` that matches at least once greedily
+    - an optional variable `?V?` that matches at most once
+  The optional argument `where` is the name (symbol) of a namespace where
+the search must be applied (by default, use all registered namespaces)
+
+The special variables `?_`, `?_*`,  `?_+` and `?_?` produce no binding when matched.
+
+  The result is a vector of matches, each match being a pair `[theorem-var match-env]`
+  with `theorem-var` the reference to the theorem as a clojure var,
+ and `match-env` the variable bindings corresponding to the match.
+"
+  ([patt] (search/search-theorem patt))
+  ([where patt] (search/search-theorem where patt)))
 
 ```
 
